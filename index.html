@@ -112,16 +112,71 @@ tailwind.config = {
       <label class="block text-sm font-bold text-slate-600 mb-2">帳號 (ID)</label> 
       <input id="nameInput" type="text" placeholder="輸入帳號..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold" maxlength="20">
     </div>
-    <div class="mb-4">
+ <div class="mb-4">
       <label class="block text-sm font-bold text-slate-600 mb-2">密碼</label> 
       <input id="pwdInput" type="password" placeholder="輸入密碼..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold">
     </div>
     <p id="loginError" class="text-red-400 text-sm font-semibold mb-2 hidden text-center">請輸入帳號同密碼</p>
     <button id="loginBtn" onclick="doLogin()" class="w-full bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition-colors"> 開始旅程 🚀 </button>
    </div>
-  </div><!-- Modal Container -->
+  </div>
+  
+  <!-- Modal Container -->
   <div id="modalContainer"></div>
-  <script>
+
+  <!-- 💡 正確位置：將 Hub Screen 同新 APP 容器放喺 <script> 之前 -->
+  
+  <!-- Main Hub Screen -->
+  <div id="hubScreen" class="h-full w-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-sky1 to-sky2" style="display:none;">
+    
+    <!-- 歡迎語句 -->
+    <div class="text-center mb-8">
+      <div class="text-6xl mb-4 float-anim">👋</div>
+      <h1 class="text-3xl font-extrabold text-primary mb-2">歡迎回來！</h1>
+      <p class="text-slate-600 font-semibold" id="hubWelcomeName">請選擇你要使用嘅功能</p>
+    </div>
+
+    <!-- 功能選擇卡片 -->
+    <div class="w-full max-w-sm space-y-4">
+      
+      <!-- 選項 1：原本嘅運動 APP -->
+      <button onclick="enterApp('gymigogo')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-sky3 group">
+        <div class="w-14 h-14 rounded-full bg-sky1 flex items-center justify-center text-2xl group-hover:bg-sky2 transition-colors">🦊</div>
+        <div class="flex-1">
+          <h2 class="font-extrabold text-lg text-primary">Gymigogo 運動記錄</h2>
+          <p class="text-xs text-slate-500 mt-1">繼續你嘅 Work(out) Hard 旅程</p>
+        </div>
+        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-primary"></i>
+      </button>
+
+      <!-- 選項 2：新功能區 (DailyPlus) -->
+      <button onclick="enterApp('newFeature')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-orange-300 group">
+        <div class="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center text-2xl group-hover:bg-orange-100 transition-colors">✨</div>
+        <div class="flex-1">
+          <h2 class="font-extrabold text-lg text-orange-500">DailyPlus (開發中)</h2>
+          <p class="text-xs text-slate-500 mt-1">點擊進入新工具模塊</p>
+        </div>
+        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-orange-500"></i>
+      </button>
+      
+    </div>
+    
+    <!-- 登出按鈕 -->
+    <button onclick="doLogout()" class="mt-8 text-sm font-bold text-slate-500 hover:text-red-500 transition-colors px-4 py-2 bg-white/50 rounded-xl">登出帳戶</button>
+  </div>
+
+  <!-- 呢度預留畀你嘅新功能 APP 容器 -->
+  <div id="newFeatureApp" class="h-full w-full bg-white flex-col" style="display:none;">
+    <div class="p-4 bg-orange-500 text-white flex justify-between items-center">
+      <h1 class="font-bold">DailyPlus</h1>
+      <button onclick="backToHub()" class="font-bold text-sm bg-white/20 px-3 py-1 rounded-lg">返回主選單</button>
+    </div>
+    <div class="p-6 text-center text-slate-500 mt-10">
+      <p>呢度可以放入你未來開發嘅新功能！🚀</p>
+    </div>
+  </div>
+   <script>
+    
 // ========== STATE ==========
 let allRecords = [];
 let currentPage = 'calendar';
@@ -319,12 +374,18 @@ function doLogout() {
 auth.onAuthStateChanged(async user => {
   if (user) {
     currentUser = user;
+ 
+    // 💡 修改部分：隱藏登入畫面，顯示 Hub Screen，而唔係直接入運動 APP
     document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('newFeatureApp').style.display = 'none';
+    document.getElementById('hubScreen').style.display = 'flex';
     
     const displayId = user.displayName || user.email.split('@')[0];
     document.getElementById('userBadge').textContent = displayId;
+    document.getElementById('hubWelcomeName').textContent = `準備好今日嘅任務未呀，${displayId}？`;
     
+    // (下面保留你原本載入 Firebase 數據嘅邏輯不變...)
     // --- 檢查是否 Admin，顯示按鈕 ---
     const isAdmin = user.email === 'adming@gymigogo.com';
     const navAdmin = document.getElementById('nav-admin');
@@ -419,7 +480,29 @@ auth.onAuthStateChanged(async user => {
     if(pwdInput) pwdInput.value = '';
   }
 });
+// 進入指定的應用模塊
+function enterApp(appName) {
+  // 先隱藏大堂
+  document.getElementById('hubScreen').style.display = 'none';
+  
+  if (appName === 'gymigogo') {
+    // 顯示原本嘅運動 APP，並確保 Lucide icon 正確載入
+    document.getElementById('app').style.display = 'flex';
+    lucide.createIcons();
+  } else if (appName === 'newFeature') {
+    // 顯示新功能區
+    document.getElementById('newFeatureApp').style.display = 'flex';
+  }
+}
 
+// 從子模塊返回大堂
+function backToHub() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('newFeatureApp').style.display = 'none';
+  document.getElementById('hubScreen').style.display = 'flex';
+}
+
+   
 // ========== NAVIGATION ==========
 function switchPage(page) {
   currentPage = page;
