@@ -189,6 +189,35 @@ tailwind.config = {
         <div class="text-4xl opacity-50">📖</div>
       </div>
 
+<!-- 🌟 新增：書架工具列 (搜尋 + 篩選 + 排序) -->
+<div class="bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white card-enter">
+  <!-- 搜尋框 -->
+  <div class="relative">
+    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+    <input id="shelfSearchInput" type="text" oninput="handleShelfChange()" placeholder="搜尋書名或作者..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold focus:outline-none focus:border-primary focus:ring-2 focus:ring-sky-100 transition-all">
+  </div>
+  
+  <div class="flex gap-2">
+    <!-- 分類篩選 -->
+    <div class="flex-1 relative">
+      <select id="shelfCategoryFilter" onchange="handleShelfChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+        <option value="all">所有分類</option>
+      </select>
+      <i data-lucide="chevron-down" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+    </div>
+    
+    <!-- 排序方式 -->
+    <div class="flex-1 relative">
+      <select id="shelfSortOrder" onchange="handleShelfChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+        <option value="recent">最近讀完 (時間軸)</option>
+        <option value="oldest">最舊讀完</option>
+        <option value="title">書名排序 (A-Z)</option>
+      </select>
+      <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+    </div>
+  </div>
+</div>
+
       <!-- 書籍列表 Grid -->
       <div id="bookshelfGrid" class="grid grid-cols-2 gap-4 pb-24">
         <!-- 書籍卡片會喺度動態生成 -->
@@ -2627,17 +2656,17 @@ window.toggleSpecialDay = async (date, type) => {
   }
 };
 
-// ==========================================
-// ========== 📚 DAILYPLUS READ 模塊 ==========
-// ==========================================
-window.allBooks = window.allBooks || [];
-
-// ========== 📚 書架渲染功能 (穩重陳列版，無浮起特效) ==========
+// ========== 📚 書架渲染功能 (進化版：全方位時間軸支援) ==========
 function renderBooks() {
   const grid = document.getElementById('bookshelfGrid');
+  const searchVal = document.getElementById('shelfSearchInput')?.value.toLowerCase() || '';
+  const categoryVal = document.getElementById('shelfCategoryFilter')?.value || 'all';
+  const sortVal = document.getElementById('shelfSortOrder')?.value || 'recent';
+  
   document.getElementById('totalBooksCount').textContent = window.allBooks.length;
   
-  grid.className = "grid grid-cols-2 gap-4 pb-24";
+  // 保持垂直佈局以支援月份分組
+  grid.className = "flex flex-col gap-6 pb-24 relative"; 
 
   if (window.allBooks.length === 0) {
     grid.innerHTML = `
@@ -2649,56 +2678,178 @@ function renderBooks() {
     return;
   }
 
+  // 1. 動態更新分類選單
+  updateCategoryDropdown();
+
+  // 2. 執行過濾 (搜尋框 + 分類選單)
+  let filtered = window.allBooks.filter(book => {
+    const title = (book.title || '').toLowerCase();
+    const author = (book.author || '').toLowerCase();
+    const matchesSearch = title.includes(searchVal) || author.includes(searchVal);
+    const matchesCategory = categoryVal === 'all' || book.category === categoryVal;
+    return matchesSearch && matchesCategory;
+  });
+
+  // 3. 基礎分組：正在閱讀 vs 已讀完
+  const readingBooks = filtered.filter(b => b.status === 'reading');
+  let finishedBooks = filtered.filter(b => b.status === 'finished');
+
   let html = '';
-  window.allBooks.forEach(book => {
-    const coverHtml = book.coverUrl 
-      ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
-      : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
 
-    // 🌟 獨立渲染狀態標籤 (雙向快捷操作)
-    let statusBadgeHtml = '';
-    if (book.status === 'reading') {
-      statusBadgeHtml = `
-        <button onclick="event.stopPropagation(); quickFinishBook('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 hover:border-orange-300 transition-colors shadow-sm relative z-20">
-          <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse group-hover:hidden"></span>
-          <i data-lucide="check-circle" class="w-2.5 h-2.5 hidden group-hover:block text-orange-600"></i>
-          <span class="group-hover:hidden">閱讀中</span>
-          <span class="hidden group-hover:block">標記讀完</span>
-        </button>`;
-    } else {
-      statusBadgeHtml = `
-        <button onclick="event.stopPropagation(); promptRevertToReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-600 border border-green-200 hover:bg-sky-50 hover:text-sky-600 hover:border-sky-300 transition-colors shadow-sm relative z-20">
-          <span class="w-1.5 h-1.5 rounded-full bg-green-500 group-hover:hidden"></span>
-          <i data-lucide="rotate-ccw" class="w-2.5 h-2.5 hidden group-hover:block text-sky-500"></i>
-          <span class="group-hover:hidden">已讀完</span>
-          <span class="hidden group-hover:block">還原狀態</span>
-        </button>`;
-    }
-
-    // 🌟 新增：分類 Tag (如果有先顯示)，加入小標籤圖示
-    const categoryTagHtml = book.category 
-      ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
-      : '';
-
-    // 💡 呢度移除咗 hover:-translate-y-1 同 hover:shadow-lg，改為更低調嘅 hover:shadow-md
+  // 🚀 A. 渲染「正在閱讀」區塊
+  if (readingBooks.length > 0) {
     html += `
-      <div onclick="viewBook('${book.id}')" class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer card-enter border border-slate-100 flex flex-col relative">
-        <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
-          <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
-          ${coverHtml}
+      <div class="card-enter">
+        <div class="flex items-center gap-2 mb-4 px-1">
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+          <h2 class="font-extrabold text-slate-800 text-base">正在閱讀</h2>
         </div>
-        <div class="p-3 flex-1 flex flex-col bg-white">
-          <h3 class="font-extrabold text-sm text-slate-800 line-clamp-2 leading-snug mb-1">${book.title}</h3>
-          <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
-          ${categoryTagHtml}
-          <div class="mt-auto pt-3 flex items-center">
-            ${statusBadgeHtml}
-          </div>
+        <div class="grid grid-cols-2 gap-4">
+          ${readingBooks.map(book => renderSingleBookCard(book)).join('')}
         </div>
       </div>`;
-  });
-  grid.innerHTML = html;
+  }
+
+  // 🚀 B. 渲染「已讀完」區塊 (處理時間軸排序)
+  const isTimelineMode = (sortVal === 'recent' || sortVal === 'oldest');
+
+  if (isTimelineMode) {
+    // 💡 時間軸模式：按月分組
+    const monthlyGroups = {};
+    finishedBooks.forEach(book => {
+      const month = book.endDate ? book.endDate.substring(0, 7) : '日期不詳';
+      if (!monthlyGroups[month]) monthlyGroups[month] = [];
+      monthlyGroups[month].push(book);
+    });
+
+    // 排序月份清單
+    let sortedMonths = Object.keys(monthlyGroups).sort(); // 預設 ASC (舊至新)
+    if (sortVal === 'recent') sortedMonths.reverse(); // 最近讀完則 DESC (新至舊)
+
+    sortedMonths.forEach(month => {
+      const groupBooks = monthlyGroups[month];
+      
+      // 🌟 重要：同月內的書也要跟隨排序方向
+      groupBooks.sort((a, b) => {
+        const dateA = a.endDate || '';
+        const dateB = b.endDate || '';
+        return sortVal === 'recent' ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+      });
+
+      const parts = month.split('-');
+      const displayMonth = month === '日期不詳' ? month : `${parts[0]}年 ${parseInt(parts[1])}月`;
+
+      html += `
+        <div class="card-enter mb-2">
+          <div class="flex items-center gap-3 mb-4 px-1">
+            <div class="bg-white px-3 py-1 rounded-full shadow-sm border border-slate-100 flex items-center gap-1.5">
+              <i data-lucide="${sortVal === 'recent' ? 'calendar' : 'history'}" class="w-3.5 h-3.5 text-primary"></i>
+              <h2 class="font-extrabold text-primary text-sm">${displayMonth}</h2>
+            </div>
+            <div class="h-[1px] flex-1 bg-slate-200/60"></div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            ${groupBooks.map(book => renderSingleBookCard(book)).join('')}
+          </div>
+        </div>`;
+    });
+  } else {
+    // 💡 書名 A-Z 模式：純列表顯示
+    finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
+    html += `
+      <div class="card-enter">
+        <div class="flex items-center gap-2 mb-4 px-1">
+          <i data-lucide="sort-asc" class="w-4 h-4 text-slate-400"></i>
+          <h2 class="font-extrabold text-slate-800 text-base">按書名 A-Z 排序</h2>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          ${finishedBooks.map(book => renderSingleBookCard(book)).join('')}
+        </div>
+      </div>`;
+  }
+
+  grid.innerHTML = html || `<div class="text-center py-10 text-slate-400 font-bold">搵唔到符合條件嘅書 🔍</div>`;
   lucide.createIcons();
+}
+
+// 🌟 輔助：當工具列有變動時重新渲染
+window.handleShelfChange = () => {
+  renderBooks();
+};
+
+// 🌟 輔助：自動根據目前書架嘅書，更新「分類篩選」下拉選單
+function updateCategoryDropdown() {
+  const select = document.getElementById('shelfCategoryFilter');
+  if(!select) return;
+  const currentSelection = select.value;
+  
+  // 攞出所有非空分類並去重排序
+  const categories = [...new Set(window.allBooks.map(b => b.category).filter(Boolean))].sort();
+  
+  let options = `<option value="all">所有分類</option>`;
+  categories.forEach(cat => {
+    options += `<option value="${cat}" ${currentSelection === cat ? 'selected' : ''}>${cat}</option>`;
+  });
+  
+  select.innerHTML = options;
+}
+
+// 抽取卡片渲染邏輯，確保樣式同原本一模一樣，並優化日期顯示格式
+function renderSingleBookCard(book) {
+  const coverHtml = book.coverUrl 
+    ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
+    : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
+
+  // 🌟 核心修正：處理「已讀完」嘅顯示字串 (格式：d/m 已讀完)
+  let displayFinishedDate = '已讀完';
+  if (book.endDate) {
+    const parts = book.endDate.split('-'); // 假設係 YYYY-MM-DD
+    if (parts.length >= 3) {
+      const day = parseInt(parts[2]);   // 攞返日，自動走 0
+      const month = parseInt(parts[1]); // 攞返月，自動走 0
+      displayFinishedDate = `${day}/${month} 已讀完`;
+    }
+  }
+
+  // 渲染 HTML 按鈕
+  let statusBadgeHtml = '';
+  if (book.status === 'reading') {
+    statusBadgeHtml = `
+      <button onclick="event.stopPropagation(); quickFinishBook('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors shadow-sm relative z-20">
+        <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse group-hover:hidden"></span>
+        <i data-lucide="check-circle" class="w-2.5 h-2.5 hidden group-hover:block text-orange-600"></i>
+        <span class="group-hover:hidden">閱讀中</span>
+        <span class="hidden group-hover:block">標記讀完</span>
+      </button>`;
+  } else {
+    statusBadgeHtml = `
+      <button onclick="event.stopPropagation(); promptRevertToReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-600 border border-green-200 hover:bg-sky-50 hover:text-sky-600 transition-colors shadow-sm relative z-20">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500 group-hover:hidden"></span>
+        <i data-lucide="rotate-ccw" class="w-2.5 h-2.5 hidden group-hover:block text-sky-500"></i>
+        <span class="group-hover:hidden">${displayFinishedDate}</span>
+        <span class="hidden group-hover:block">還原狀態</span>
+      </button>`;
+  }
+
+  const categoryTagHtml = book.category 
+    ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
+    : '';
+
+  return `
+    <div onclick="viewBook('${book.id}')" class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative">
+      <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
+        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
+        ${coverHtml}
+      </div>
+      <div class="p-3 flex-1 flex flex-col bg-white">
+        <h3 class="font-extrabold text-sm text-slate-800 line-clamp-2 leading-snug mb-1">${book.title}</h3>
+        <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
+        ${categoryTagHtml}
+        <div class="mt-auto pt-3 flex items-center">
+          ${statusBadgeHtml}
+        </div>
+      </div>
+    </div>`;
 }
 
 // ========== ⚡ 快捷結案功能 ==========
