@@ -72,16 +72,25 @@ tailwind.config = {
     <div class="flex items-center gap-2">
      <span class="text-2xl">🦊</span> <span id="headerTitle" class="font-extrabold text-primary text-lg">Gymigogo</span>
     </div>
-    <div class="flex items-center gap-2">
-     <button onclick="switchPage('friends')" class="relative p-1.5 rounded-full bg-sky1 text-primary hover:bg-sky2 transition flex items-center justify-center">
-       <i data-lucide="users" class="w-5 h-5"></i>
-       <span id="friendNotif" class="absolute -top-1 -right-1 flex h-3 w-3 hidden">
-         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-         <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
-       </span>
-     </button>
-     <span id="pointsBadge" class="bg-warm2 text-warm3 font-bold text-sm px-3 py-1 rounded-full flex items-center gap-1">⭐ <span id="totalPoints">0</span></span> <span id="userBadge" class="bg-sky2 text-primary font-semibold text-sm px-3 py-1 rounded-full truncate max-w-[100px]"></span>
-    </div>
+   <div class="flex items-center gap-2">
+  <!-- 原有的好友按鈕 -->
+  <button onclick="switchPage('friends')" class="relative p-1.5 rounded-full bg-sky1 text-primary hover:bg-sky2 transition flex items-center justify-center">
+    <i data-lucide="users" class="w-5 h-5"></i>
+    <span id="friendNotif" class="absolute -top-1 -right-1 flex h-3 w-3 hidden">
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+      <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+    </span>
+  </button>
+
+  <!-- 原有的積分與用戶標籤 -->
+  <span id="pointsBadge" class="bg-warm2 text-warm3 font-bold text-sm px-3 py-1 rounded-full flex items-center gap-1">⭐ <span id="totalPoints">0</span></span> 
+  <span id="userBadge" class="bg-sky2 text-primary font-semibold text-sm px-3 py-1 rounded-full truncate max-w-[80px]"></span>
+
+  <!-- 🌟 新增：返回大堂主頁按鈕 -->
+  <button onclick="backToHub()" class="p-1.5 rounded-full bg-white text-primary border border-sky2 hover:bg-sky1 transition flex items-center justify-center shadow-sm active:scale-90" title="返回大堂">
+    <i data-lucide="home" class="w-5 h-5"></i>
+  </button>
+</div>
    </header>
    <!-- Pages -->
    <main id="mainContent" class="flex-1 overflow-y-auto overflow-x-hidden">
@@ -173,9 +182,9 @@ tailwind.config = {
         <span class="text-2xl">📚</span> 
         <span class="font-extrabold text-orange-500 text-lg">DailyPlus Read</span>
       </div>
-      <button onclick="backToHub()" class="bg-sky2 text-primary px-3 py-1.5 rounded-xl font-bold text-sm hover:bg-sky3 transition">
-        返回大堂
-      </button>
+<button onclick="backToHub()" class="p-2 rounded-full bg-sky2 text-primary hover:bg-sky3 transition flex items-center justify-center shadow-sm active:scale-90" title="返回大堂">
+  <i data-lucide="home" class="w-5 h-5"></i>
+</button>
     </header>
 
     <!-- 書架主體 -->
