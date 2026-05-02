@@ -2951,9 +2951,16 @@ function openAddBookModal() {
         
         <div class="grid grid-cols-2 gap-2">
           <div><label class="text-xs font-bold text-slate-500 block mb-1">開始日期</label><input id="bookStartDate" type="date" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
-          <div><label class="text-xs font-bold text-slate-500 block mb-1">結束日期</label><input id="bookEndDate" type="date" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
+          <div><label class="text-xs font-bold text-slate-500 block mb-1">結束日期</label>
+            <input id="bookEndDate" type="date" onchange="syncDateAndStatus('date', 'bookEndDate', 'bookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700">
+          </div>
         </div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label><select id="bookStatus" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white"><option value="reading">📖 閱讀中</option><option value="finished">✅ 已讀完</option></select></div>
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
+          <select id="bookStatus" onchange="syncDateAndStatus('status', 'bookEndDate', 'bookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white">
+            <option value="reading">📖 閱讀中</option>
+            <option value="finished">✅ 已讀完</option>
+          </select>
+        </div>
         
         <!-- 💡 獨立出「官方簡介」欄位 -->
         <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (可自動獲取)</label><textarea id="bookDesc" rows="3" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm"></textarea></div>
