@@ -165,15 +165,41 @@ tailwind.config = {
     <button onclick="doLogout()" class="mt-8 text-sm font-bold text-slate-500 hover:text-red-500 transition-colors px-4 py-2 bg-white/50 rounded-xl">登出帳戶</button>
   </div>
 
-  <!-- 呢度預留畀你嘅新功能 APP 容器 -->
-  <div id="newFeatureApp" class="h-full w-full bg-white flex-col" style="display:none;">
-    <div class="p-4 bg-orange-500 text-white flex justify-between items-center">
-      <h1 class="font-bold">DailyPlus</h1>
-      <button onclick="backToHub()" class="font-bold text-sm bg-white/20 px-3 py-1 rounded-lg">返回主選單</button>
-    </div>
-    <div class="p-6 text-center text-slate-500 mt-10">
-      <p>呢度可以放入你未來開發嘅新功能！🚀</p>
-    </div>
+<!-- DailyPlus Read 書架容器 -->
+  <div id="newFeatureApp" class="h-full w-full bg-sky1 flex flex-col overflow-hidden" style="display:none;">
+    <!-- 頂部導航 -->
+    <header class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">📚</span> 
+        <span class="font-extrabold text-orange-500 text-lg">DailyPlus Read</span>
+      </div>
+      <button onclick="backToHub()" class="bg-sky2 text-primary px-3 py-1.5 rounded-xl font-bold text-sm hover:bg-sky3 transition">
+        返回大堂
+      </button>
+    </header>
+
+    <!-- 書架主體 -->
+    <main class="flex-1 overflow-y-auto p-4 relative" id="bookMainContent">
+      <!-- 數據概覽 -->
+      <div class="bg-white rounded-2xl p-4 shadow-sm mb-4 flex justify-between items-center card-enter">
+        <div>
+          <div class="text-xs font-bold text-slate-400">總閱讀量</div>
+          <div class="text-2xl font-extrabold text-primary"><span id="totalBooksCount">0</span> 本</div>
+        </div>
+        <div class="text-4xl opacity-50">📖</div>
+      </div>
+
+      <!-- 書籍列表 Grid -->
+      <div id="bookshelfGrid" class="grid grid-cols-2 gap-4 pb-24">
+        <!-- 書籍卡片會喺度動態生成 -->
+      </div>
+
+      <!-- 懸浮新增按鈕 (FAB) -->
+      <button onclick="openAddBookModal()" class="fixed bottom-6 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 hover:scale-105 transition-all z-20">
+        <i data-lucide="plus" class="w-8 h-8"></i>
+      </button>
+    </main>
+  </div>
   </div>
    <script>
     
@@ -385,6 +411,18 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('userBadge').textContent = displayId;
     document.getElementById('hubWelcomeName').textContent = `準備好今日嘅任務未呀，${displayId}？`;
     
+    // --- 新增：實時載入書架數據 ---
+    if(window.booksUnsubscribe) window.booksUnsubscribe();
+    window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books")
+      .orderBy("timestamp", "desc")
+      .onSnapshot(snapshot => {
+        window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 如果目前畫面係開緊書架，就即時刷新
+        if(document.getElementById('newFeatureApp').style.display === 'flex') {
+          renderBooks();
+        }
+      });
+
     // (下面保留你原本載入 Firebase 數據嘅邏輯不變...)
     // --- 檢查是否 Admin，顯示按鈕 ---
     const isAdmin = user.email === 'adming@gymigogo.com';
@@ -482,16 +520,13 @@ auth.onAuthStateChanged(async user => {
 });
 // 進入指定的應用模塊
 function enterApp(appName) {
-  // 先隱藏大堂
   document.getElementById('hubScreen').style.display = 'none';
-  
   if (appName === 'gymigogo') {
-    // 顯示原本嘅運動 APP，並確保 Lucide icon 正確載入
     document.getElementById('app').style.display = 'flex';
     lucide.createIcons();
   } else if (appName === 'newFeature') {
-    // 顯示新功能區
     document.getElementById('newFeatureApp').style.display = 'flex';
+    renderBooks(); // <-- 新增呢行：確保一入去就畫個書架出嚟
   }
 }
 
@@ -2591,6 +2626,456 @@ window.toggleSpecialDay = async (date, type) => {
     showToast('標記失敗，請檢查網絡', 'error');
   }
 };
+
+// ==========================================
+// ========== 📚 DAILYPLUS READ 模塊 ==========
+// ==========================================
+window.allBooks = window.allBooks || [];
+
+function renderBooks() {
+  const grid = document.getElementById('bookshelfGrid');
+  document.getElementById('totalBooksCount').textContent = window.allBooks.length;
+  
+  if (window.allBooks.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-2 text-center py-12 text-slate-400 card-enter">
+        <div class="text-5xl mb-3">📇</div>
+        <p class="font-bold">書架仲係空空如也</p>
+        <p class="text-xs mt-1">撳右下角新增第一本書啦！</p>
+      </div>`;
+    return;
+  }
+
+  let html = '';
+  window.allBooks.forEach(book => {
+    const coverHtml = book.coverUrl 
+      ? `<img src="${book.coverUrl}" class="w-full aspect-[2/3] object-cover shadow-sm" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
+      : `<div class="w-full aspect-[2/3] bg-slate-200 flex items-center justify-center text-3xl shadow-sm">📗</div>`;
+
+    html += `
+      <div onclick="viewBook('${book.id}')" class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer card-enter border border-slate-100">
+        ${coverHtml}
+        <div class="p-3">
+          <h3 class="font-extrabold text-sm text-slate-800 line-clamp-1 truncate">${book.title}</h3>
+          <p class="text-xs font-semibold text-slate-400 mt-0.5 truncate">${book.author || '未知作者'}</p>
+          <div class="mt-2 flex items-center gap-1">
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${book.status === 'reading' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}">
+              ${book.status === 'reading' ? '閱讀中 📖' : '已讀完 ✅'}
+            </span>
+          </div>
+        </div>
+      </div>`;
+  });
+  grid.innerHTML = html;
+  lucide.createIcons();
+}
+
+function openAddBookModal() {
+  let html = `
+    <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
+      <h3 class="font-extrabold text-lg text-primary mb-4 flex items-center gap-2">➕ 新增閱讀記錄</h3>
+      
+      <div class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
+        <label class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 懶人專用：ISBN 自動抓取</label>
+        <div class="flex gap-2">
+          <input id="isbnInput" type="number" placeholder="輸入 ISBN" class="flex-1 border-2 border-orange-200 rounded-xl px-3 py-2 focus:border-orange-400 focus:outline-none text-sm font-bold bg-white text-slate-700" onkeypress="if(event.key === 'Enter') fetchBookByISBN()">
+          <button onclick="fetchBookByISBN()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm text-sm whitespace-nowrap flex items-center gap-1">
+            <i data-lucide="search" class="w-4 h-4"></i> 搜尋
+          </button>
+        </div>
+      </div>
+      
+      <div class="space-y-3">
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 *</label><input id="bookTitle" type="text" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">作者</label><input id="bookAuthor" type="text" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">封面圖片網址</label><input id="bookCover" type="url" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold text-sm"></div>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="text-xs font-bold text-slate-500 block mb-1">開始日期</label><input id="bookStartDate" type="date" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
+          <div><label class="text-xs font-bold text-slate-500 block mb-1">結束日期</label><input id="bookEndDate" type="date" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
+        </div>
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label><select id="bookStatus" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white"><option value="reading">📖 閱讀中</option><option value="finished">✅ 已讀完</option></select></div>
+        
+        <!-- 💡 獨立出「官方簡介」欄位 -->
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (可自動獲取)</label><textarea id="bookDesc" rows="3" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm"></textarea></div>
+        
+        <!-- 💡 個人首條筆記 -->
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">首條筆記 (選填)</label><textarea id="bookNotes" rows="2" placeholder="開始閱讀嘅心情..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-semibold text-sm"></textarea></div>
+      </div>
+
+      <button onclick="saveNewBook()" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">儲存書籍 💾</button>
+      <button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+    </div>
+  `;
+  showModal(html);
+  document.getElementById('bookStartDate').valueAsDate = new Date();
+  lucide.createIcons();
+}
+
+
+async function fetchBookByISBN() {
+  // 1. 清理輸入：移除所有橫線同空格，確保係純數字
+  const isbnInput = document.getElementById('isbnInput');
+  const isbn = isbnInput.value.trim().replace(/[- ]/g, ''); 
+  
+  if (!isbn) { 
+    showToast('請輸入 ISBN 號碼', 'error'); 
+    return; 
+  }
+
+  const btn = document.querySelector('button[onclick="fetchBookByISBN()"]');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true; 
+  btn.innerHTML = '🔍 搜尋中...';
+
+  try {
+    // 策略 A：嘗試精確搜尋 (ISBN 專屬欄位)
+    let response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+    let data = await response.json();
+
+    // 策略 B：如果精確搜尋冇結果，轉用模糊全文搜尋 (提高命中率)
+    if (!data.items || data.items.length === 0) {
+      console.log("精確搜尋失敗，轉用全文搜尋...");
+      response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${isbn}`);
+      data = await response.json();
+    }
+
+    if (data.items && data.items.length > 0) {
+      const info = data.items[0].volumeInfo;
+      
+      // 自動填寫：加入防呆檢查
+      if (info.title) document.getElementById('bookTitle').value = info.title;
+      if (info.authors) document.getElementById('bookAuthor').value = info.authors.join(', ');
+      
+      // 封面圖片優化：強制 HTTPS 並獲取較清晰版本
+      if (info.imageLinks && (info.imageLinks.thumbnail || info.imageLinks.smallThumbnail)) {
+        let imgUrl = info.imageLinks.thumbnail || info.imageLinks.smallThumbnail;
+        let secureUrl = imgUrl.replace('http:', 'https:').replace('zoom=1', 'zoom=2');
+        document.getElementById('bookCover').value = secureUrl;
+      }
+      
+      // 簡介自動抓取
+      if (info.description) {
+        document.getElementById('bookDesc').value = info.description;
+      }
+      
+      showToast('✅ 成功獲取書籍資料！', 'success');
+      if (navigator.vibrate) navigator.vibrate(50); // 加入輕微震動回饋
+      
+    } else {
+      showToast('找不到此書，請手動輸入', 'info');
+    }
+  } catch (error) {
+    console.error("Fetch error:", error);
+    showToast('搜尋失敗，請檢查網路', 'error');
+  } finally {
+    btn.disabled = false; 
+    btn.innerHTML = originalHtml;
+    lucide.createIcons();
+  }
+}
+
+async function saveNewBook() {
+  const title = document.getElementById('bookTitle').value.trim();
+  if (!title) { showToast('請填寫書名', 'error'); return; }
+  
+  const initialNoteText = document.getElementById('bookNotes').value.trim();
+  let notesArray = [];
+  if (initialNoteText) {
+    const now = new Date();
+    notesArray.push({
+      id: 'n_' + Date.now(),
+      date: `📅 ${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`,
+      text: initialNoteText
+    });
+  }
+
+  const bookData = {
+    title: title, 
+    author: document.getElementById('bookAuthor').value.trim(),
+    coverUrl: document.getElementById('bookCover').value.trim(),
+    startDate: document.getElementById('bookStartDate').value,
+    endDate: document.getElementById('bookEndDate').value,
+    status: document.getElementById('bookStatus').value,
+    description: document.getElementById('bookDesc').value.trim(), // 👈 獨立儲存簡介
+    notes: notesArray,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").add(bookData);
+    closeModal(); showToast('書籍已加入書架！', 'success');
+  } catch(e) { showToast('儲存失敗', 'error'); }
+}
+
+function viewBook(bookId) {
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (!book) return;
+
+  const coverHtml = book.coverUrl 
+      ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">`
+      : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-3xl shadow-sm">📗</div>`;
+
+  const dateStr = [book.startDate, book.endDate].filter(Boolean).join(' 至 ');
+  const dateDisplay = dateStr ? `<div class="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>${dateStr}</div>` : '';
+
+  // 💡 官方簡介區塊 (如果有先顯示)
+  const descHtml = book.description 
+    ? `<div class="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-100">
+         <h4 class="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1"><i data-lucide="info" class="w-4 h-4"></i>官方簡介</h4>
+         <p class="text-sm text-slate-600 whitespace-pre-wrap font-medium" style="word-break: break-word;">${book.description}</p>
+       </div>` 
+    : '';
+
+  let notesArray = [];
+  if (Array.isArray(book.notes)) {
+    notesArray = book.notes;
+  } else if (typeof book.notes === 'string' && book.notes.trim() !== '') {
+    notesArray = [{ id: 'legacy', date: '📅 舊版筆記', text: book.notes }];
+  }
+
+  let notesHtml = '';
+  if (notesArray.length > 0) {
+    notesArray.forEach(n => {
+      notesHtml += `
+        <div class="bg-white p-3 rounded-xl border border-sky-100 shadow-sm mb-2 relative">
+          <div id="noteDisplay_${n.id}">
+            <div class="flex justify-between items-center mb-2 border-b border-slate-50 pb-2">
+              <span class="text-[10px] font-bold text-sky-500">${n.date}</span>
+              <div class="flex gap-1.5">
+                <button onclick="editSingleNote('${n.id}')" class="text-[10px] font-bold text-sky-600 bg-sky-50 hover:bg-sky-100 px-2 py-1 rounded-md transition flex items-center gap-1 border border-sky-100">
+                  <i data-lucide="edit-2" class="w-3 h-3"></i>編輯
+                </button>
+                <button onclick="deleteSingleNote('${book.id}', '${n.id}')" class="text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition flex items-center gap-1 border border-red-100">
+                  <i data-lucide="trash" class="w-3 h-3"></i>刪除
+                </button>
+              </div>
+            </div>
+            <p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${n.text}</p>
+          </div>
+          <div id="noteEdit_${n.id}" class="hidden">
+            <textarea id="noteEditText_${n.id}" rows="3" class="w-full border-2 border-sky-200 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-sky-400 text-slate-700">${n.text}</textarea>
+            <div class="flex justify-end gap-2 mt-2">
+              <button onclick="cancelEditNote('${n.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition">取消</button>
+              <button onclick="saveEditedNote('${book.id}', '${n.id}')" class="text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition">儲存</button>
+            </div>
+          </div>
+        </div>`;
+    });
+  } else {
+    notesHtml = `<p class="text-sm text-slate-400 text-center py-4">暫時無筆記。</p>`;
+  }
+
+  let html = `
+    <div class="modal-box max-w-md text-left bg-slate-50" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
+      <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+        ${coverHtml}
+        <div class="flex-1 flex flex-col">
+          <h3 class="font-extrabold text-lg text-slate-800 leading-tight">${book.title}</h3>
+          <p class="text-sm font-semibold text-slate-500 mt-1">${book.author || '未知作者'}</p>
+          <div class="mt-auto pt-2">
+            <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${book.status === 'reading' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}">
+              ${book.status === 'reading' ? '閱讀中 📖' : '已讀完 ✅'}
+            </span>
+            ${dateDisplay}
+          </div>
+        </div>
+      </div>
+
+      <!-- 💡 插入官方簡介區塊 -->
+      ${descHtml}
+      
+      <div class="mb-4">
+        <div class="flex justify-between items-center mb-2 px-1">
+          <h4 class="text-xs font-bold text-slate-500 flex items-center gap-1"><i data-lucide="book-open" class="w-4 h-4"></i>閱讀筆記</h4>
+          <button onclick="toggleQuickNoteInput('${book.id}')" class="text-[10px] font-bold bg-sky-500 text-white px-3 py-1.5 rounded-full hover:bg-sky-600 transition flex items-center gap-1 shadow-sm">
+            <i data-lucide="plus" class="w-3 h-3"></i>新增筆記
+          </button>
+        </div>
+        
+        <div id="quickNoteContainer_${book.id}" class="hidden mb-3 bg-white p-3 rounded-xl border-2 border-sky-300 shadow-sm card-enter">
+           <textarea id="quickNoteText_${book.id}" rows="3" class="w-full border-none focus:ring-0 resize-none text-sm font-semibold text-slate-700 placeholder-slate-400 p-0" placeholder="輸入今日嘅心得..."></textarea>
+           <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-100">
+             <button onclick="toggleQuickNoteInput('${book.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition">取消</button>
+             <button onclick="saveQuickNote('${book.id}')" class="text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition">加入 📝</button>
+           </div>
+        </div>
+
+        <div class="space-y-2">
+          ${notesHtml}
+        </div>
+      </div>
+
+      <button onclick="editBookInfo('${book.id}')" class="w-full bg-sky-100 text-sky-600 font-bold py-2.5 rounded-xl hover:bg-sky-200 transition text-sm mb-2 flex items-center justify-center gap-1">
+        <i data-lucide="edit-3" class="w-4 h-4"></i>修改書本資料
+      </button>
+      
+      <button onclick="deleteBook('${book.id}')" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm mb-2 flex items-center justify-center gap-1">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>刪除此書
+      </button>
+      
+      <button onclick="closeModal()" class="w-full bg-white border border-slate-200 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-50 transition">關閉</button>
+    </div>`;
+  showModal(html);
+  lucide.createIcons();
+}
+
+function toggleQuickNoteInput(bookId) {
+  const container = document.getElementById(`quickNoteContainer_${bookId}`);
+  if (container.classList.contains('hidden')) {
+    container.classList.remove('hidden');
+    document.getElementById(`quickNoteText_${bookId}`).focus();
+  } else {
+    container.classList.add('hidden');
+    document.getElementById(`quickNoteText_${bookId}`).value = '';
+  }
+}
+
+async function saveQuickNote(bookId) {
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (!book) return;
+  const textArea = document.getElementById(`quickNoteText_${bookId}`);
+  const newText = textArea.value.trim();
+  if (!newText) { toggleQuickNoteInput(bookId); return; }
+
+  const btn = document.querySelector(`#quickNoteContainer_${bookId} button.bg-sky-500`);
+  btn.disabled = true; btn.textContent = '處理中...';
+
+  const now = new Date();
+  const dateStr = `📅 ${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  let notesArray = Array.isArray(book.notes) ? [...book.notes] : [];
+  if (typeof book.notes === 'string' && book.notes.trim() !== '') {
+    notesArray.push({ id: 'legacy', date: '📅 舊版筆記', text: book.notes });
+  }
+
+  notesArray.unshift({
+    id: 'n_' + Date.now(),
+    date: dateStr,
+    text: newText
+  });
+
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({ notes: notesArray });
+    showToast('筆記已追加！', 'success');
+    viewBook(bookId);
+  } catch(e) { showToast('新增失敗', 'error'); }
+}
+
+function editSingleNote(noteId) {
+  document.getElementById(`noteDisplay_${noteId}`).classList.add('hidden');
+  document.getElementById(`noteEdit_${noteId}`).classList.remove('hidden');
+}
+
+function cancelEditNote(noteId) {
+  document.getElementById(`noteDisplay_${noteId}`).classList.remove('hidden');
+  document.getElementById(`noteEdit_${noteId}`).classList.add('hidden');
+}
+
+async function saveEditedNote(bookId, noteId) {
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (!book) return;
+  const newText = document.getElementById(`noteEditText_${noteId}`).value.trim();
+  if (!newText) { showToast('筆記不能為空', 'error'); return; }
+
+  let notesArray = Array.isArray(book.notes) ? [...book.notes] : [];
+  if (typeof book.notes === 'string') {
+    notesArray = [{ id: 'legacy', date: '📅 舊版筆記', text: book.notes }];
+  }
+
+  const updatedNotes = notesArray.map(n => n.id === noteId ? { ...n, text: newText } : n);
+
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({ notes: updatedNotes });
+    showToast('筆記已更新', 'success');
+    viewBook(bookId);
+  } catch(e) { showToast('更新失敗', 'error'); }
+}
+
+async function deleteSingleNote(bookId, noteId) {
+  if(!confirm('確定刪除呢條筆記？')) return;
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (!book) return;
+
+  let notesArray = Array.isArray(book.notes) ? [...book.notes] : [];
+  if (typeof book.notes === 'string') {
+    notesArray = [{ id: 'legacy', date: '📅 舊版筆記', text: book.notes }];
+  }
+
+  const updatedNotes = notesArray.filter(n => n.id !== noteId);
+
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({ notes: updatedNotes });
+    showToast('筆記已刪除', 'info');
+    viewBook(bookId);
+  } catch(e) { showToast('刪除失敗', 'error'); }
+}
+
+function editBookInfo(bookId) {
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (!book) return;
+
+  let html = `
+    <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
+      <h3 class="font-extrabold text-lg text-primary mb-4 flex items-center gap-2"><i data-lucide="edit-3" class="w-5 h-5"></i>編輯書本資訊</h3>
+      
+      <div class="space-y-3">
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 *</label><input id="editBookTitle" type="text" value="${book.title || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">作者</label><input id="editBookAuthor" type="text" value="${book.author || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">封面圖片網址</label><input id="editBookCover" type="url" value="${book.coverUrl || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold text-sm"></div>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="text-xs font-bold text-slate-500 block mb-1">開始日期</label><input id="editBookStartDate" type="date" value="${book.startDate || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
+          <div><label class="text-xs font-bold text-slate-500 block mb-1">結束日期</label><input id="editBookEndDate" type="date" value="${book.endDate || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
+        </div>
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
+          <select id="editBookStatus" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white">
+            <option value="reading" ${book.status === 'reading' ? 'selected' : ''}>📖 閱讀中</option>
+            <option value="finished" ${book.status === 'finished' ? 'selected' : ''}>✅ 已讀完</option>
+          </select>
+        </div>
+        
+        <!-- 💡 編輯模式入面都加返修改簡介嘅欄位 -->
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介</label><textarea id="editBookDesc" rows="4" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm">${book.description || ''}</textarea></div>
+      </div>
+
+      <button onclick="confirmEditBookInfo('${book.id}')" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">儲存修改 💾</button>
+      <button onclick="viewBook('${book.id}')" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">返回</button>
+    </div>
+  `;
+  showModal(html);
+  lucide.createIcons();
+}
+
+async function confirmEditBookInfo(bookId) {
+  const title = document.getElementById('editBookTitle').value.trim();
+  if (!title) { showToast('請填寫書名', 'error'); return; }
+  
+  const updatedData = {
+    title: title,
+    author: document.getElementById('editBookAuthor').value.trim(),
+    coverUrl: document.getElementById('editBookCover').value.trim(),
+    startDate: document.getElementById('editBookStartDate').value,
+    endDate: document.getElementById('editBookEndDate').value,
+    status: document.getElementById('editBookStatus').value,
+    description: document.getElementById('editBookDesc').value.trim() // 👈 更新簡介
+  };
+
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update(updatedData);
+    showToast('資訊已更新！', 'success');
+    viewBook(bookId); 
+  } catch(e) { showToast('更新失敗', 'error'); }
+}
+
+async function deleteBook(bookId) {
+  if(!confirm('確定要從書架刪除呢本書？')) return;
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).delete();
+    closeModal(); showToast('已刪除書籍', 'info');
+  } catch(e) { showToast('刪除失敗', 'error'); }
+}
+
 </script>
 </body>
 </html>
