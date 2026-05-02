@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   
   <link rel="apple-touch-icon" href="icon.png">
-  <meta name="apple-mobile-web-app-title" content="Gymigogo">
+  <meta name="apple-mobile-web-app-title" content="Daily+">
+  <title>Daily+</title>
 
 <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
@@ -111,11 +112,11 @@ tailwind.config = {
  </nav>
   </div><!-- Login Screen -->
   <div id="loginScreen" class="h-full w-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-sky1 to-sky2">
-   <div class="float-anim text-7xl mb-4">
-    🦊🐰
+   <div class="float-anim text-7xl mb-4 drop-shadow-md">
+    ☀️📱
    </div>
-<h1 class="text-3xl font-extrabold text-primary mb-1">Gymigogo</h1>
-   <p class="text-white font-semibold mb-8">Work(out) Hard Play Hard✨</p>
+<h1 class="text-4xl font-extrabold text-primary mb-1 tracking-tight">Daily+</h1>
+   <p class="text-white font-bold mb-8 drop-shadow-sm">管理你的美好日常 ✨</p>
 <div class="bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm text-left">
 <div class="mb-4">
       <label class="block text-sm font-bold text-slate-600 mb-2">帳號 (ID)</label> 
@@ -158,12 +159,12 @@ tailwind.config = {
         <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-primary"></i>
       </button>
 
-      <!-- 選項 2：新功能區 (DailyPlus) -->
-      <button onclick="enterApp('newFeature')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-orange-300 group">
-        <div class="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center text-2xl group-hover:bg-orange-100 transition-colors">✨</div>
+      <!-- 選項 2：新功能區 (Daily+) -->
+      <button onclick="enterApp('reading')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-orange-300 group">
+        <div class="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center text-2xl group-hover:bg-orange-100 transition-colors">📚</div>
         <div class="flex-1">
-          <h2 class="font-extrabold text-lg text-orange-500">DailyPlus (開發中)</h2>
-          <p class="text-xs text-slate-500 mt-1">點擊進入新工具模塊</p>
+          <h2 class="font-extrabold text-lg text-orange-500">My Reading Record</h2>
+          <p class="text-xs text-slate-500 mt-1">你的專屬閱讀書架</p>
         </div>
         <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-orange-500"></i>
       </button>
@@ -175,12 +176,12 @@ tailwind.config = {
   </div>
 
 <!-- DailyPlus Read 書架容器 -->
-  <div id="newFeatureApp" class="h-full w-full bg-sky1 flex flex-col overflow-hidden" style="display:none;">
+  <div id="readingApp" class="h-full w-full bg-sky1 flex flex-col overflow-hidden" style="display:none;">
     <!-- 頂部導航 -->
     <header class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
       <div class="flex items-center gap-2">
         <span class="text-2xl">📚</span> 
-        <span class="font-extrabold text-orange-500 text-lg">DailyPlus Read</span>
+        <span class="font-extrabold text-orange-500 text-lg">Daily+ Read</span>
       </div>
 <button onclick="backToHub()" class="p-2 rounded-full bg-sky2 text-primary hover:bg-sky3 transition flex items-center justify-center shadow-sm active:scale-90" title="返回大堂">
   <i data-lucide="home" class="w-5 h-5"></i>
@@ -442,7 +443,7 @@ auth.onAuthStateChanged(async user => {
     // 💡 修改部分：隱藏登入畫面，顯示 Hub Screen，而唔係直接入運動 APP
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').style.display = 'none';
-    document.getElementById('newFeatureApp').style.display = 'none';
+    document.getElementById('readingApp').style.display = 'none';
     document.getElementById('hubScreen').style.display = 'flex';
     
     const displayId = user.displayName || user.email.split('@')[0];
@@ -456,7 +457,7 @@ auth.onAuthStateChanged(async user => {
       .onSnapshot(snapshot => {
         window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         // 如果目前畫面係開緊書架，就即時刷新
-        if(document.getElementById('newFeatureApp').style.display === 'flex') {
+        if(document.getElementById('readingApp').style.display === 'flex') {
           renderBooks();
         }
       });
@@ -562,16 +563,16 @@ function enterApp(appName) {
   if (appName === 'gymigogo') {
     document.getElementById('app').style.display = 'flex';
     lucide.createIcons();
-  } else if (appName === 'newFeature') {
-    document.getElementById('newFeatureApp').style.display = 'flex';
-    renderBooks(); // <-- 新增呢行：確保一入去就畫個書架出嚟
-  }
+} else if (appName === 'reading') {
+  document.getElementById('readingApp').style.display = 'flex';
+  renderBooks(); // <-- 確保一入去就畫個書架出嚟
+}
 }
 
 // 從子模塊返回大堂
 function backToHub() {
   document.getElementById('app').style.display = 'none';
-  document.getElementById('newFeatureApp').style.display = 'none';
+  document.getElementById('readingApp').style.display = 'none';
   document.getElementById('hubScreen').style.display = 'flex';
 }
 
