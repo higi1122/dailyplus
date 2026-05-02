@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- 溫暖手繪紙張底色 -->
+  <rect width="512" height="512" rx="116" fill="#FDF7EB"/>
+  
+  <!-- 圓潤的朝陽 (水彩橘色疊層感) -->
+  <circle cx="330" cy="200" r="64" fill="#F4A261" opacity="0.6"/>
+  <circle cx="310" cy="210" r="56" fill="#E76F51" opacity="0.3"/>
+  
+  <!-- 圓潤的 'D' 字母 (深暖啡色，代表 Daily) -->
+  <line x1="180" y1="160" x2="180" y2="352" stroke="#5C4A42" stroke-width="32" stroke-linecap="round"/>
+  <path d="M 180 160 h 60 c 60 0 100 45 100 96 c 0 51 -40 96 -100 96 h -60" fill="none" stroke="#5C4A42" stroke-width="32" stroke-linecap="round"/>
+  
+  <!-- 柔和的葉綠色 '+' 符號 (巧妙地融入 D 的空間內) -->
+  <line x1="250" y1="256" x2="310" y2="256" stroke="#8CB369" stroke-width="24" stroke-linecap="round"/>
+  <line x1="280" y1="226" x2="280" y2="286" stroke="#8CB369" stroke-width="24" stroke-linecap="round"/>
+</svg>
