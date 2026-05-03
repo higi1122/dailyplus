@@ -191,17 +191,23 @@ tailwind.config = {
 
     <!-- 書架主體 -->
     <main class="flex-1 overflow-y-auto p-4 relative" id="bookMainContent">
-      <!-- 數據概覽 -->
+     <!-- 數據概覽 -->
       <div class="bg-white rounded-2xl p-4 shadow-sm mb-4 flex justify-between items-center card-enter">
         <div>
           <div class="text-xs font-bold text-slate-400">總閱讀量</div>
           <div class="text-2xl font-extrabold text-primary"><span id="totalBooksCount">0</span> 本</div>
         </div>
-        <div class="text-4xl opacity-50">📖</div>
+        <div class="flex items-center gap-3">
+          <button onclick="exportBooksToCSV()" class="text-[11px] font-bold bg-green-50 text-green-600 px-2.5 py-1.5 rounded-lg hover:bg-green-100 transition shadow-sm flex items-center gap-1 border border-green-200 active:scale-95">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Excel
+          </button>
+          <!-- 🌟 將書本圖案變成開關按鈕 -->
+          <button onclick="toggleShelfToolbar()" class="text-4xl opacity-50 hover:opacity-100 transition-all active:scale-90 cursor-pointer" title="打開/收起搜尋工具">📖</button>
+        </div>
       </div>
 
-<!-- 🌟 新增：書架工具列 (搜尋 + 篩選 + 排序) -->
-<div class="bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white card-enter">
+<!-- 🌟 修改：書架工具列 (加入 id="shelfToolbar" 同預設 hidden) -->
+<div id="shelfToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white card-enter">
   <!-- 搜尋框 -->
   <div class="relative">
     <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
@@ -2783,6 +2789,18 @@ function renderBooks() {
   lucide.createIcons();
 }
 
+// 🌟 輔助：切換搜尋工具列顯示狀態
+window.toggleShelfToolbar = () => {
+  const toolbar = document.getElementById('shelfToolbar');
+  if (toolbar.classList.contains('hidden')) {
+    toolbar.classList.remove('hidden');
+    // 貼心 UX：打開工具列時，自動 Focus 去搜尋框
+    setTimeout(() => document.getElementById('shelfSearchInput').focus(), 100);
+  } else {
+    toolbar.classList.add('hidden');
+  }
+};
+
 // 🌟 輔助：當工具列有變動時重新渲染
 window.handleShelfChange = () => {
   renderBooks();
@@ -3570,6 +3588,89 @@ window.reFetchBookData = async (bookId) => {
     lucide.createIcons();
   }
 };
+
+// ========== 📥 匯出書架數據到 Excel (CSV) (筆記自動分開 15 格) ==========
+function exportBooksToCSV() {
+  if (!window.allBooks || window.allBooks.length === 0) {
+    showToast('書架仲未有記錄可以匯出', 'error');
+    return;
+  }
+
+  // 1. 準備 CSV 標題列 (基本資料 + 15 格筆記)
+  const baseHeaders = ['書名', '作者', '分類', '開始日期', '結束日期', '狀態', '官方簡介', '筆記數量'];
+  const noteHeaders = [];
+  for (let i = 1; i <= 15; i++) {
+    noteHeaders.push(`筆記 ${i}`);
+  }
+  const headers = [...baseHeaders, ...noteHeaders];
+  
+  // 🌟 加入 UTF-8 BOM (\uFEFF)，確保用 Excel 打開中文字唔會變亂碼
+  let csvContent = "\uFEFF" + headers.join(',') + '\n'; 
+
+  // 2. 轉換書籍數據
+  window.allBooks.forEach(book => {
+    // 處理基本資料 (防呆：處理雙引號)
+    const title = `"${(book.title || '').replace(/"/g, '""')}"`;
+    const author = `"${(book.author || '').replace(/"/g, '""')}"`;
+    const category = `"${(book.category || '').replace(/"/g, '""')}"`;
+    const startDate = `"${book.startDate || ''}"`;
+    const endDate = `"${book.endDate || ''}"`;
+    const status = book.status === 'reading' ? '"閱讀中"' : '"已讀完"';
+    const desc = `"${(book.description || '').replace(/"/g, '""')}"`;
+    
+    // 💡 處理筆記內容 (分配去 15 個獨立格)
+    let notesCount = 0;
+    // 預設 15 格空位，用 "" 代表 Excel 入面嘅吉格
+    let noteColumns = new Array(15).fill('""'); 
+
+    if (Array.isArray(book.notes) && book.notes.length > 0) {
+      notesCount = book.notes.length;
+      
+      // 處理頭 14 條筆記，獨立放入格仔
+      for (let i = 0; i < 14; i++) {
+        if (i < notesCount) {
+          const noteText = `[${book.notes[i].date}]\n${book.notes[i].text}`;
+          noteColumns[i] = `"${noteText.replace(/"/g, '""')}"`;
+        }
+      }
+      
+      // 處理第 15 條或以上嘅筆記 (如果有嘅話，全部合拼塞落第 15 格)
+      if (notesCount >= 15) {
+        // 將第 15 條 (index 14) 開始嘅所有筆記斬出嚟合拼
+        const overflowNotes = book.notes.slice(14);
+        const combinedText = overflowNotes.map(n => `[${n.date}]\n${n.text}`).join('\n\n---\n\n');
+        noteColumns[14] = `"${combinedText.replace(/"/g, '""')}"`;
+      }
+      
+    } else if (typeof book.notes === 'string' && book.notes.trim() !== '') {
+      // 支援極舊版嘅單一字串筆記，擺落第 1 格
+      notesCount = 1;
+      noteColumns[0] = `"${book.notes.replace(/"/g, '""')}"`;
+    }
+
+    // 將基本資料、筆記數量 同埋 15 格筆記 結合成一行
+    const row = [title, author, category, startDate, endDate, status, desc, notesCount, ...noteColumns];
+    csvContent += row.join(',') + '\n';
+  });
+
+  // 3. 建立並觸發下載檔案
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  
+  // 生成今日日期做檔名 (例如：DailyPlus_Reading_20260503.csv)
+  const today = new Date();
+  const dateString = `${today.getFullYear()}${String(today.getMonth()+1).padStart(2,'0')}${String(today.getDate()).padStart(2,'0')}`;
+  
+  link.setAttribute('href', url);
+  link.setAttribute('download', `DailyPlus_Reading_${dateString}.csv`);
+  document.body.appendChild(link);
+  link.click(); // 模擬點擊下載
+  document.body.removeChild(link);
+  
+  showToast('✅ 成功下載 Excel 檔案！', 'success');
+}
+
 </script>
 </body>
 </html>
