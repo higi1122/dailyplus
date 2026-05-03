@@ -2970,11 +2970,11 @@ function openAddBookModal() {
     <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       <h3 class="font-extrabold text-lg text-primary mb-4 flex items-center gap-2">➕ 新增閱讀記錄</h3>
       
-      <div class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
-  <label class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 萬能搜尋：書名 / 作者 / ISBN</label>
+      <div id="searchThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
+  <label id="searchThemeLabel" class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 萬能搜尋：書名 / 作者 / ISBN</label>
   <div class="flex gap-2">
     <input id="bookSearchInput" type="text" placeholder="例如：原子習慣 或 978986..." class="flex-1 border-2 border-orange-200 rounded-xl px-3 py-2 focus:border-orange-400 focus:outline-none text-sm font-bold bg-white text-slate-700" onkeypress="if(event.key === 'Enter') fetchBookData()">
-    <button onclick="fetchBookData()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm text-sm whitespace-nowrap flex items-center gap-1">
+    <button id="searchThemeBtn" onclick="fetchBookData()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm text-sm whitespace-nowrap flex items-center gap-1">
       <i data-lucide="search" class="w-4 h-4"></i> 搜尋
     </button>
   </div>
@@ -3012,7 +3012,15 @@ function openAddBookModal() {
     </div>
   `;
   showModal(html);
-  document.getElementById('bookStartDate').valueAsDate = new Date();
+  
+  // 💡 智能判斷：如果喺「有興趣」頁面新增，清空開始日期
+  if (currentReadPage === 'wishlist') {
+    document.getElementById('bookStartDate').value = '';
+  } else {
+    document.getElementById('bookStartDate').valueAsDate = new Date();
+  }
+  
+  window.updateModalTheme('bookStatus'); // 確保一打開就變色
   lucide.createIcons();
 }
 
@@ -3397,9 +3405,9 @@ function editBookInfo(bookId) {
       
       <div class="space-y-3">
         <!-- 🌟 新增：一鍵更新按鈕 -->
-        <div class="bg-orange-50 rounded-xl p-3 mb-2 border border-orange-100 shadow-inner flex items-center justify-between">
-          <span class="text-[11px] font-extrabold text-orange-600">想重新抓取資料？</span>
-          <button onclick="reFetchBookData('${bookId}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-sm text-[11px] flex items-center gap-1">
+        <div id="editThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-2 border border-orange-100 shadow-inner flex items-center justify-between">
+          <span id="editThemeLabel" class="text-[11px] font-extrabold text-orange-600">想重新抓取資料？</span>
+          <button id="editThemeBtn" onclick="reFetchBookData('${bookId}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-sm text-[11px] flex items-center gap-1">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 一鍵更新
           </button>
         </div>
@@ -3432,6 +3440,7 @@ function editBookInfo(bookId) {
     </div>
   `;
   showModal(html);
+  window.updateModalTheme('editBookStatus'); // 確保編輯嗰陣一打開就變色
   lucide.createIcons();
 }
 
@@ -3486,6 +3495,55 @@ window.toggleDescription = (bookId, btn) => {
   lucide.createIcons();
 };
 
+// ========== 🎨 智能主題顏色自動切換 ==========
+window.updateModalTheme = (statusSelectId) => {
+  const statusSelect = document.getElementById(statusSelectId);
+  if (!statusSelect) return;
+  const status = statusSelect.value;
+  
+  // 1. 一般輸入框 (只換邊框色)
+  const elements = document.querySelectorAll('.modal-box input:not(#bookSearchInput), .modal-box select, .modal-box textarea');
+  elements.forEach(el => {
+    el.classList.remove('border-sky2', 'focus:border-primary', 'border-orange-300', 'focus:border-orange-500', 'border-green-300', 'focus:border-green-500', 'border-pink-300', 'focus:border-pink-500');
+    if (status === 'reading') el.classList.add('border-orange-300', 'focus:border-orange-500');
+    else if (status === 'finished') el.classList.add('border-green-300', 'focus:border-green-500');
+    else if (status === 'wishlist') el.classList.add('border-pink-300', 'focus:border-pink-500');
+    else el.classList.add('border-sky2', 'focus:border-primary'); // 預設藍色
+  });
+
+  // 2. 萬能搜尋 / 重新抓取區塊 (換底色、邊框色、文字色、按鈕色)
+  const isEdit = statusSelectId === 'editBookStatus';
+  const container = document.getElementById(isEdit ? 'editThemeContainer' : 'searchThemeContainer');
+  const label = document.getElementById(isEdit ? 'editThemeLabel' : 'searchThemeLabel');
+  const btn = document.getElementById(isEdit ? 'editThemeBtn' : 'searchThemeBtn');
+  const searchInput = document.getElementById('bookSearchInput');
+
+  if (container) {
+    container.classList.remove('bg-orange-50', 'border-orange-100', 'bg-green-50', 'border-green-100', 'bg-pink-50', 'border-pink-100');
+    if (status === 'reading') container.classList.add('bg-orange-50', 'border-orange-100');
+    else if (status === 'finished') container.classList.add('bg-green-50', 'border-green-100');
+    else if (status === 'wishlist') container.classList.add('bg-pink-50', 'border-pink-100');
+  }
+  if (label) {
+    label.classList.remove('text-orange-600', 'text-green-600', 'text-pink-600');
+    if (status === 'reading') label.classList.add('text-orange-600');
+    else if (status === 'finished') label.classList.add('text-green-600');
+    else if (status === 'wishlist') label.classList.add('text-pink-600');
+  }
+  if (btn) {
+    btn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-green-500', 'hover:bg-green-600', 'bg-pink-500', 'hover:bg-pink-600');
+    if (status === 'reading') btn.classList.add('bg-orange-500', 'hover:bg-orange-600');
+    else if (status === 'finished') btn.classList.add('bg-green-500', 'hover:bg-green-600');
+    else if (status === 'wishlist') btn.classList.add('bg-pink-500', 'hover:bg-pink-600');
+  }
+  if (searchInput) {
+    searchInput.classList.remove('border-orange-200', 'focus:border-orange-400', 'border-green-200', 'focus:border-green-400', 'border-pink-200', 'focus:border-pink-400');
+    if (status === 'reading') searchInput.classList.add('border-orange-200', 'focus:border-orange-400');
+    else if (status === 'finished') searchInput.classList.add('border-green-200', 'focus:border-green-400');
+    else if (status === 'wishlist') searchInput.classList.add('border-pink-200', 'focus:border-pink-400');
+  }
+};
+
 // ========== 🔄 閱讀狀態與日期雙向智能聯動 ==========
 window.syncDateAndStatus = (source, dateInputId, statusSelectId) => {
   const dateInput = document.getElementById(dateInputId);
@@ -3496,27 +3554,35 @@ window.syncDateAndStatus = (source, dateInputId, statusSelectId) => {
     if (dateInput.value) {
       statusSelect.value = 'finished';
     } else if (statusSelect.value === 'finished') {
-      statusSelect.value = 'reading'; // 淨係喺原本係 finished 嘅情況下清空日期，先轉返 reading
+      statusSelect.value = 'reading';
     }
   } else if (source === 'status') {
     // 當用家修改「狀態」選單
     if (statusSelect.value === 'finished' && !dateInput.value) {
-      // 如果轉做已讀完，但未有結束日期，自動填寫今日
+      // 轉為已讀完 -> 自動填入今日作為結束日期
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
       dateInput.value = todayStr;
     } else if (statusSelect.value === 'reading' || statusSelect.value === 'wishlist') {
-      // 如果轉做閱讀中或有興趣，自動清空結束日期
+      // 轉為閱讀中或有興趣 -> 清空結束日期
       dateInput.value = '';
       
-      // 💡 如果轉做「有興趣」，順便清空埋「開始日期」
+      // 💡 修正：如果轉為「有興趣」，連帶清空「開始日期」
       if (statusSelect.value === 'wishlist') {
-        const startDateInputId = dateInputId.replace('End', 'Start');
-        const startDateInput = document.getElementById(startDateInputId);
-        if (startDateInput) startDateInput.value = '';
+        let startDateInputId = '';
+        if (dateInputId === 'bookEndDate') startDateInputId = 'bookStartDate';
+        else if (dateInputId === 'editBookEndDate') startDateInputId = 'editBookStartDate';
+        
+        if (startDateInputId) {
+          const startDateInput = document.getElementById(startDateInputId);
+          if (startDateInput) startDateInput.value = '';
+        }
       }
     }
   }
+  
+  // 💡 狀態轉完之後，觸發換色
+  window.updateModalTheme(statusSelectId);
 };
 
 // ========== ⏪ 快捷還原為閱讀中 ==========
@@ -3720,6 +3786,7 @@ window.switchReadPage = (page) => {
   pages.forEach(p => {
     document.getElementById('read-page-'+p).classList.add('hidden');
     document.getElementById('read-page-'+p).classList.remove('block');
+    // 底部導覽列保持原汁原味嘅橙色
     document.getElementById('read-nav-'+p).className = `flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all ${p === page ? 'text-orange-500 bg-orange-50' : 'text-slate-400'}`;
   });
   
@@ -3727,13 +3794,23 @@ window.switchReadPage = (page) => {
   document.getElementById('read-page-'+page).classList.add('block');
   
   // 處理 FAB 按鈕顯示與頁面渲染
+  const fab = document.getElementById('readFab');
   if(page === 'settings') {
-     document.getElementById('readFab').classList.add('hidden');
+     fab.classList.add('hidden');
      window.renderReadSettings();
   } else {
-     document.getElementById('readFab').classList.remove('hidden');
-     if(page === 'shelf') renderBooks();
-     if(page === 'wishlist') window.renderWishlist();
+     fab.classList.remove('hidden');
+     
+     // 💡 淨係幫呢粒「＋」號動態換色
+     fab.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-pink-500', 'hover:bg-pink-600');
+     
+     if(page === 'shelf') {
+       fab.classList.add('bg-orange-500', 'hover:bg-orange-600');
+       renderBooks();
+     } else if(page === 'wishlist') {
+       fab.classList.add('bg-pink-500', 'hover:bg-pink-600');
+       window.renderWishlist();
+     }
   }
   lucide.createIcons();
 };
