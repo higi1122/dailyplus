@@ -184,9 +184,19 @@ tailwind.config = {
         <span class="text-2xl">📚</span> 
         <span class="font-extrabold text-orange-500 text-lg">Daily+ Read</span>
       </div>
-<button onclick="backToHub()" class="p-2 rounded-full bg-sky2 text-primary hover:bg-sky3 transition flex items-center justify-center shadow-sm active:scale-90" title="返回大堂">
-  <i data-lucide="home" class="w-5 h-5"></i>
-</button>
+      <div class="flex items-center gap-2">
+        <!-- 🌟 新增：書友與分享按鈕 -->
+        <button onclick="window.switchReadPage('friends')" class="relative p-2 rounded-full bg-orange-100 text-orange-500 hover:bg-orange-200 transition flex items-center justify-center shadow-sm active:scale-90" title="書友推介">
+          <i data-lucide="users" class="w-5 h-5"></i>
+          <span id="readFriendNotif" class="absolute -top-1 -right-1 flex h-3 w-3 hidden">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+          </span>
+        </button>
+        <button onclick="backToHub()" class="p-2 rounded-full bg-orange-100 text-orange-500 hover:bg-orange-200 transition flex items-center justify-center shadow-sm active:scale-90" title="返回大堂">
+          <i data-lucide="home" class="w-5 h-5"></i>
+        </button>
+      </div>
     </header>
 
 <!-- 書架主體 (改為多頁面架構) -->
@@ -234,7 +244,8 @@ tailwind.config = {
 
       <!-- ⚙️ 頁面 3：設定 -->
       <div id="read-page-settings" class="page-slide p-4 pb-24 hidden"></div>
-
+<!-- 👥 頁面 4：書友 -->
+      <div id="read-page-friends" class="page-slide p-4 pb-24 hidden"></div>
       <!-- 懸浮新增按鈕 (FAB) -->
       <button id="readFab" onclick="openAddBookModal()" class="fixed bottom-20 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 hover:scale-105 transition-all z-20">
         <i data-lucide="plus" class="w-8 h-8"></i>
@@ -255,7 +266,7 @@ tailwind.config = {
     </nav>
 
   </div>
-  </div>
+
    <script>
     
 // ========== STATE ==========
@@ -554,7 +565,17 @@ auth.onAuthStateChanged(async user => {
       updateNotif(); // 有新挑戰就閃紅點
       if(currentPage === 'friends') renderFriends();
     });
-
+// 💡 新增：監聽有無人 Send 好書畀你
+    if(window.bookSharesUnsubscribe) window.bookSharesUnsubscribe();
+    window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
+      window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
+      const notif = document.getElementById('readFriendNotif');
+      if(notif) {
+        if(window.myBookShares.length > 0) notif.classList.remove('hidden');
+        else notif.classList.add('hidden');
+      }
+      if(currentReadPage === 'friends') window.renderReadFriends();
+    });
     switchPage('calendar');
     lucide.createIcons();
 } else {
@@ -2480,20 +2501,27 @@ function renderFriends() {
     <div id="searchFriendResult" class="mt-3"></div>
   </div>`;
 
-  // 4. 我的好友列表
-  html += `<div class="bg-white rounded-2xl shadow-sm p-4 card-enter mb-6">
-    <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="users" class="w-4 h-4"></i> 我的好友 (${window.myFriends.length})</h3>`;
+  // 4. 我的好友列表 (過濾只顯示健身朋友)
+  const gymFriends = window.myFriends.filter(f => f.isGym !== false);
 
-  if (window.myFriends.length === 0) {
-     html += `<p class="text-slate-400 text-sm text-center py-6">仲未有朋友，快啲搜尋 ID 加人啦！</p>`;
+  html += `<div class="bg-white rounded-2xl shadow-sm p-4 card-enter mb-6">
+    <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="users" class="w-4 h-4"></i> 健身好友 (${gymFriends.length})</h3>`;
+
+  if (gymFriends.length === 0) {
+     html += `<p class="text-slate-400 text-sm text-center py-6">仲未有健身朋友，快啲搜尋 ID 加人啦！</p>`;
   } else {
-     window.myFriends.forEach(f => {
-        html += `<div class="flex items-center justify-between bg-sky1 hover:bg-sky2 transition p-3 rounded-xl mb-2 cursor-pointer shadow-sm" onclick="viewFriendProfile('${f.uid}', '${f.displayName}')">
-          <div class="flex items-center gap-3">
+     gymFriends.forEach(f => {
+        html += `<div class="flex items-center justify-between bg-sky1 hover:bg-sky2 transition p-3 rounded-xl mb-2 shadow-sm group">
+          <div class="flex items-center gap-3 flex-1 cursor-pointer" onclick="viewFriendProfile('${f.uid}', '${f.displayName}')">
             <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-lg shadow-inner">${f.displayName.charAt(0).toUpperCase()}</div>
             <div class="font-bold text-sm text-slate-700">${f.displayName}</div>
           </div>
-          <i data-lucide="chevron-right" class="w-5 h-5 text-primary opacity-50"></i>
+          <div class="flex items-center gap-1 pl-2">
+            <i data-lucide="chevron-right" class="w-5 h-5 text-primary opacity-50 cursor-pointer" onclick="viewFriendProfile('${f.uid}', '${f.displayName}')"></i>
+            <button onclick="event.stopPropagation(); window.promptDeleteFriend('${f.uid}', '${f.displayName}')" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-white transition" title="解除好友">
+              <i data-lucide="user-x" class="w-4 h-4"></i>
+            </button>
+          </div>
         </div>`;
      });
   }
@@ -2510,51 +2538,100 @@ window.searchFriend = async () => {
   if(!input) return;
 
   const email = input.includes('@') ? input : `${input.toLowerCase()}@gymigogo.com`;
-  if(email === currentUser.email) {
-    resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg">呢個係你自己喎！</p>`; return;
-  }
+  if(email === currentUser.email) { resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg">呢個係你自己喎！</p>`; return; }
 
   resDiv.innerHTML = `<p class="text-slate-500 text-xs text-center">搜尋中...</p>`;
   try {
     const snap = await db.collection("users").where("email", "==", email).get();
-    if(snap.empty) {
-      resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg text-center">找不到此用戶，請檢查帳號。</p>`; return;
-    }
+    if(snap.empty) { resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg text-center">找不到此用戶，請檢查帳號。</p>`; return; }
     const targetUser = snap.docs[0];
     const tUid = targetUser.id;
     const tName = targetUser.data().displayId || targetUser.data().email.split('@')[0];
 
-    if(window.myFriends.find(f => f.uid === tUid)) {
-       resDiv.innerHTML = `<div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-         <span class="font-bold text-sm text-slate-700">${tName}</span><span class="text-xs text-slate-400 font-bold">已是好友</span>
-       </div>`; return;
+    const existingFriend = window.myFriends.find(f => f.uid === tUid);
+    if(existingFriend) {
+       const hasGym = existingFriend.isGym !== false;
+       const hasRead = existingFriend.isRead === true;
+
+       if (hasGym && hasRead) {
+         resDiv.innerHTML = `<div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center"><span class="font-bold text-sm text-slate-700">${tName}</span><span class="text-xs text-slate-400 font-bold">已是雙棲好友</span></div>`; 
+         return;
+       }
+       
+       let btnHtml = '';
+       if (!hasRead) btnHtml = `<button onclick="window.sendSpecificReq('${tUid}', '${tName.replace(/'/g,"\\'")}', false, true)" class="bg-pink-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-pink-600 transition">邀請成為書友</button>`;
+       else if (!hasGym) btnHtml = `<button onclick="window.sendSpecificReq('${tUid}', '${tName.replace(/'/g,"\\'")}', true, false)" class="bg-primary text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-primaryDk transition">邀請成為健身好友</button>`;
+
+       resDiv.innerHTML = `<div class="bg-sky-50 p-3 rounded-xl border border-sky-200 flex justify-between items-center shadow-sm"><span class="font-bold text-sm text-slate-700">${tName}</span>${btnHtml}</div>`; 
+       return;
     }
 
-    resDiv.innerHTML = `<div class="flex items-center justify-between bg-sky-50 p-3 rounded-xl border border-sky-200 shadow-sm">
-      <span class="font-bold text-sm text-primary">${tName}</span>
-      <button onclick="sendFriendReq('${tUid}', '${tName}')" class="bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm hover:bg-primaryDk transition">加為好友</button>
+    resDiv.innerHTML = `<div class="bg-sky-50 p-3 rounded-xl border border-sky-200 shadow-sm mt-2">
+      <span class="font-bold text-sm text-primary block mb-2">${tName}</span>
+      <div class="flex gap-4 mb-3 px-1">
+        <label class="flex items-center gap-1 text-xs font-bold text-slate-600"><input type="checkbox" id="addAsGym" checked class="w-4 h-4 accent-primary"> 💪 健身朋友</label>
+        <label class="flex items-center gap-1 text-xs font-bold text-slate-600"><input type="checkbox" id="addAsRead" class="w-4 h-4 accent-primary"> 📚 閱讀書友</label>
+      </div>
+      <button onclick="window.sendFriendReq('${tUid}', '${tName}')" class="w-full bg-primary text-white text-sm font-bold py-2 rounded-xl shadow-sm hover:bg-primaryDk transition">發送邀請</button>
     </div>`;
   } catch(e) { resDiv.innerHTML = `<p class="text-red-500 text-xs text-center">搜尋出錯，請重試。</p>`; }
 };
 
 window.sendFriendReq = async (targetUid, targetName) => {
+  const isGym = document.getElementById('addAsGym')?.checked || false;
+  const isRead = document.getElementById('addAsRead')?.checked || false;
+  if (!isGym && !isRead) { showToast('請至少選擇一種朋友類型', 'error'); return; }
+try {
+    const myName = currentUser.displayName || currentUser.email.split('@')[0];
+    await db.collection("users").doc(targetUid).collection("friend_requests").doc(currentUser.uid).set({
+      uid: currentUser.uid, email: currentUser.email, displayName: myName, timestamp: new Date().toISOString(), isGym, isRead
+    });
+    showToast('已發送邀請！', 'success');
+  } catch(e) {
+    // 👈 補返 catch block 同埋錯誤處理
+    console.error("發送邀請失敗:", e);
+    showToast('發送失敗', 'error');
+  }
+};
+    // ========== 📩 針對單一身份發送好友邀請 ==========
+window.sendSpecificReq = async (targetUid, targetName, reqGym, reqRead) => {
   try {
     const myName = currentUser.displayName || currentUser.email.split('@')[0];
     await db.collection("users").doc(targetUid).collection("friend_requests").doc(currentUser.uid).set({
-      uid: currentUser.uid, email: currentUser.email, displayName: myName, timestamp: new Date().toISOString()
+      uid: currentUser.uid, email: currentUser.email, displayName: myName, timestamp: new Date().toISOString(), isGym: reqGym, isRead: reqRead
     });
     showToast('已發送邀請！', 'success');
-    document.getElementById('searchFriendResult').innerHTML = `<p class="text-green-600 text-xs font-bold bg-green-50 p-2 rounded-lg text-center">邀請已發送給 ${targetName}！</p>`;
-  } catch(e) { showToast('發送失敗', 'error'); }
+    
+    const resMsg = `<p class="text-green-600 text-xs font-bold bg-green-50 p-2 rounded-lg text-center mt-2">邀請已發送給 ${targetName}！</p>`;
+    const res1 = document.getElementById('searchFriendResult');
+    if(res1 && res1.innerHTML !== '') res1.innerHTML = resMsg;
+    const res2 = document.getElementById('readSearchFriendResult');
+    if(res2 && res2.innerHTML !== '') res2.innerHTML = resMsg;
+  } catch(e) { 
+    console.error(e);
+    showToast('發送失敗', 'error'); 
+  }
 };
 
 window.acceptFriend = async (reqUid, reqName) => {
   try {
+    const reqDoc = window.myRequests.find(r => r.uid === reqUid);
+    const reqGym = reqDoc && reqDoc.isGym !== undefined ? reqDoc.isGym : true; 
+    const reqRead = reqDoc && reqDoc.isRead !== undefined ? reqDoc.isRead : false;
+
+    // 💡 智能合併：如果本身已經係某種朋友，保留原本嘅身分，確保唔會被新邀請洗走
+    const existingMyFriend = window.myFriends.find(f => f.uid === reqUid);
+    const finalGym = (existingMyFriend && existingMyFriend.isGym !== false) || reqGym;
+    const finalRead = (existingMyFriend && existingMyFriend.isRead === true) || reqRead;
+
     const myName = currentUser.displayName || currentUser.email.split('@')[0];
     const now = new Date().toISOString();
-    await db.collection("users").doc(currentUser.uid).collection("friends").doc(reqUid).set({ uid: reqUid, displayName: reqName, addedAt: now });
-    await db.collection("users").doc(reqUid).collection("friends").doc(currentUser.uid).set({ uid: currentUser.uid, displayName: myName, addedAt: now });
+    
+    // 💡 加入 { merge: true }
+    await db.collection("users").doc(currentUser.uid).collection("friends").doc(reqUid).set({ uid: reqUid, displayName: reqName, addedAt: now, isGym: finalGym, isRead: finalRead }, { merge: true });
+    await db.collection("users").doc(reqUid).collection("friends").doc(currentUser.uid).set({ uid: currentUser.uid, displayName: myName, addedAt: now, isGym: finalGym, isRead: finalRead }, { merge: true });
     await db.collection("users").doc(currentUser.uid).collection("friend_requests").doc(reqUid).delete();
+    
     showToast(`已加 ${reqName} 為好友！`, 'success');
   } catch(e) { showToast('操作失敗', 'error'); }
 };
@@ -2562,7 +2639,7 @@ window.acceptFriend = async (reqUid, reqName) => {
 window.rejectFriend = async (reqUid) => { await db.collection("users").doc(currentUser.uid).collection("friend_requests").doc(reqUid).delete(); };
 window.deleteChallenge = async (id) => { await db.collection("users").doc(currentUser.uid).collection("challenges").doc(id).delete(); };
 
-// --- 查看好友記錄及發起挑戰 ---
+// --- 查看好友記錄及發起挑戰 (Gymigogo 專用) ---
 window.viewFriendProfile = async (fUid, fName) => {
   showModal(`<div class="modal-box text-center" onclick="event.stopPropagation()">
     <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mb-2"></div>
@@ -2570,18 +2647,11 @@ window.viewFriendProfile = async (fUid, fName) => {
   </div>`);
 
   try {
-    // 1. 先攞晒所有運動記錄出嚟
-    const snap = await db.collection("users").doc(fUid).collection("records")
-      .where("record_type", "==", "workout").get();
-
+    const snap = await db.collection("users").doc(fUid).collection("records").where("record_type", "==", "workout").get();
     let recs = snap.docs.map(d => d.data());
-    
-    // 2. 智能過濾：剔除「計劃中 (planned)」，剩下嘅（包括舊版無標籤嘅記錄）全部分類為已完成
     recs = recs.filter(r => r.status !== 'planned');
-    
-    // 3. 排序及限制數量
     recs.sort((a,b) => (b.timestamp || b.date).localeCompare(a.timestamp || a.date));
-    recs = recs.slice(0, 10); // 顯示最新 10 條
+    recs = recs.slice(0, 10); 
 
     let html = `<div class="modal-box max-w-md text-left flex flex-col" onclick="event.stopPropagation()" style="max-height:85vh;">
       <div class="flex items-center justify-between mb-4 flex-shrink-0">
@@ -2616,7 +2686,7 @@ window.viewFriendProfile = async (fUid, fName) => {
 
     html += `</div>
       <div class="flex flex-col gap-2 flex-shrink-0">
-         <button onclick="openChallengeModal('${fUid}', '${fName}')" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold py-3 rounded-xl shadow-md hover:from-orange-500 hover:to-orange-600 transition flex items-center justify-center gap-1">
+         <button onclick="window.openChallengeModal('${fUid}', '${fName}')" class="w-full bg-gradient-to-r from-orange-400 to-orange-500 text-white font-bold py-3 rounded-xl shadow-md hover:from-orange-500 hover:to-orange-600 transition flex items-center justify-center gap-1">
            🔥 發起挑戰 / 留言
          </button>
          <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">關閉</button>
@@ -2635,7 +2705,7 @@ window.openChallengeModal = (fUid, fName) => {
      <h3 class="font-extrabold text-lg text-orange-500 mb-2 text-center">向 ${fName} 發起挑戰！</h3>
      <p class="text-xs text-slate-500 mb-4 text-center font-semibold">話俾佢知你做咗咩，挑下佢機！</p>
      <textarea id="challengeMsg" rows="3" class="w-full border-2 border-orange-200 rounded-xl px-3 py-3 focus:border-orange-500 focus:outline-none text-sm font-semibold mb-4 bg-orange-50/50" placeholder="例如：我今日做咗 30分鐘 HIIT，大汗疊細汗！你今日郁咗未？😎"></textarea>
-     <button onclick="submitChallenge('${fUid}', '${fName}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition mb-2 shadow-sm">發送挑戰 🚀</button>
+     <button onclick="window.submitChallenge('${fUid}', '${fName}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition mb-2 shadow-sm">發送挑戰 🚀</button>
      <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
    </div>`);
 };
@@ -3781,36 +3851,29 @@ let currentReadPage = 'shelf';
 
 window.switchReadPage = (page) => {
   currentReadPage = page;
-  const pages = ['shelf', 'wishlist', 'settings'];
+  const pages = ['shelf', 'wishlist', 'settings', 'friends']; // 👈 加入 friends
   
   pages.forEach(p => {
     document.getElementById('read-page-'+p).classList.add('hidden');
     document.getElementById('read-page-'+p).classList.remove('block');
-    // 底部導覽列保持原汁原味嘅橙色
-    document.getElementById('read-nav-'+p).className = `flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all ${p === page ? 'text-orange-500 bg-orange-50' : 'text-slate-400'}`;
+    if (document.getElementById('read-nav-'+p)) {
+      document.getElementById('read-nav-'+p).className = `flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all ${p === page ? 'text-orange-500 bg-orange-50' : 'text-slate-400'}`;
+    }
   });
   
   document.getElementById('read-page-'+page).classList.remove('hidden');
   document.getElementById('read-page-'+page).classList.add('block');
   
-  // 處理 FAB 按鈕顯示與頁面渲染
   const fab = document.getElementById('readFab');
-  if(page === 'settings') {
+  if(page === 'settings' || page === 'friends') {
      fab.classList.add('hidden');
-     window.renderReadSettings();
+     if(page === 'settings') window.renderReadSettings();
+     if(page === 'friends') window.renderReadFriends();
   } else {
      fab.classList.remove('hidden');
-     
-     // 💡 淨係幫呢粒「＋」號動態換色
      fab.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-pink-500', 'hover:bg-pink-600');
-     
-     if(page === 'shelf') {
-       fab.classList.add('bg-orange-500', 'hover:bg-orange-600');
-       renderBooks();
-     } else if(page === 'wishlist') {
-       fab.classList.add('bg-pink-500', 'hover:bg-pink-600');
-       window.renderWishlist();
-     }
+     if(page === 'shelf') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600'); renderBooks(); } 
+     else if(page === 'wishlist') { fab.classList.add('bg-pink-500', 'hover:bg-pink-600'); window.renderWishlist(); }
   }
   lucide.createIcons();
 };
@@ -4033,6 +4096,296 @@ window.menuMoveToWishlist = async (bookId) => {
     showToast('已移回有興趣清單 🧐', 'info');
   } catch(e) {
     showToast('更新失敗，請檢查網絡', 'error');
+  }
+};
+// ========== 📤 分享書籍畀朋友 ==========
+// 1. 喺長按選單度加「分享」按鈕
+const originalShowBookMenu = window.showBookMenu;
+window.showBookMenu = (e, bookId) => {
+  originalShowBookMenu(e, bookId);
+  // 巧妙地用 JS 插入按鈕，唔洗搞亂原本嘅 HTML
+  const menuDiv = document.querySelector('.modal-box .space-y-2');
+  if (menuDiv) {
+    const shareBtn = document.createElement('button');
+    shareBtn.className = "w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm order-first mb-2";
+    shareBtn.innerHTML = `<i data-lucide="share-2" class="w-5 h-5"></i> 分享推介畀書友`;
+    shareBtn.onclick = () => { closeModal(); window.openShareBookModal(bookId); };
+    menuDiv.insertBefore(shareBtn, menuDiv.firstChild);
+    lucide.createIcons();
+  }
+};
+
+window.openShareBookModal = (bookId) => {
+  const book = window.allBooks.find(b=>b.id===bookId);
+  const readFriends = window.myFriends.filter(f => f.isRead === true);
+  
+  let html = `<div class="modal-box text-left" onclick="event.stopPropagation()">
+    <h3 class="font-extrabold text-lg text-primary mb-1">推介好書</h3>
+    <p class="text-sm text-slate-500 mb-4 truncate">《${book.title}》</p>`;
+    
+  if(readFriends.length === 0) {
+    html += `<div class="text-center bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100"><p class="text-sm font-bold text-slate-500">你仲未有閱讀書友喎！</p><p class="text-xs text-slate-400 mt-1">去大堂朋友區，搜尋 ID 兼剔選「📚閱讀書友」啦</p></div>`;
+  } else {
+    html += `<div class="space-y-2 mb-4 max-h-48 overflow-y-auto">`;
+    readFriends.forEach(f => {
+       html += `<button onclick="window.sendShareBook('${book.id}', '${f.uid}', '${f.displayName}')" class="w-full bg-sky-50 hover:bg-sky-100 text-slate-700 font-bold py-3 rounded-xl transition flex items-center justify-between px-4 border border-sky-100 shadow-sm">
+         <span class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px]">${f.displayName.charAt(0)}</div> ${f.displayName}</span> 
+         <i data-lucide="send" class="w-4 h-4 text-primary"></i>
+       </button>`;
+    });
+    html += `</div>`;
+  }
+  html += `<button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button></div>`;
+  showModal(html);
+  lucide.createIcons();
+};
+
+window.sendShareBook = async (bookId, friendUid, friendName) => {
+  const btn = document.querySelector('.modal-box button:active');
+  if(btn) btn.style.opacity = '0.5';
+  const book = window.allBooks.find(b=>b.id===bookId);
+  const myName = currentUser.displayName || currentUser.email.split('@')[0];
+  try {
+    await db.collection("users").doc(friendUid).collection("book_shares").add({
+      fromUid: currentUser.uid, fromName: myName, timestamp: new Date().toISOString(),
+      bookData: { title: book.title||'', author: book.author||'', category: book.category||'', coverUrl: book.coverUrl||'', description: book.description||'' }
+    });
+    closeModal(); showToast(`已推介畀 ${friendName}！🚀`, 'success');
+  } catch(e) { showToast('分享失敗', 'error'); }
+  if(btn) btn.style.opacity = '1';
+};
+
+// ========== 👥 書友分頁與 Inbox 渲染 ==========
+window.renderReadFriends = () => {
+  const container = document.getElementById('read-page-friends');
+  const readFriends = window.myFriends.filter(f => f.isRead === true);
+  const shares = window.myBookShares || [];
+
+  let html = `<h2 class="font-extrabold text-xl text-primary mb-4">👥 閱讀書友</h2>`;
+
+  // 1. Inbox (收到嘅好書)
+  if(shares.length > 0) {
+    html += `<div class="bg-gradient-to-r from-blue-400 to-primary rounded-2xl p-4 mb-4 shadow-sm text-white card-enter">
+      <h3 class="font-bold text-sm mb-3 flex items-center gap-1"><i data-lucide="inbox" class="w-5 h-5"></i> 收到嘅好書推介 (${shares.length})</h3>
+      <div class="space-y-2 max-h-64 overflow-y-auto pr-1">`;
+    shares.forEach(s => {
+      html += `<div onclick="window.viewSharedBook('${s.id}')" class="bg-white/20 p-3 rounded-xl cursor-pointer hover:bg-white/30 transition shadow-sm border border-white/20">
+        <div class="font-bold text-[11px] mb-1 opacity-90">${s.fromName} 推介咗一本書畀你：</div>
+        <div class="text-sm font-extrabold leading-tight">《${s.bookData.title}》</div>
+        <div class="text-[10px] opacity-70 mt-2 flex justify-between items-center">
+          <span>${new Date(s.timestamp).toLocaleDateString('zh-HK')}</span>
+          <span class="font-bold bg-white text-primary px-2 py-0.5 rounded-full">查看 👀</span>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // 🌟 新增：2. 好友邀請 (Requests)
+  if (window.myRequests.length > 0) {
+     html += `<div class="bg-yellow-50 rounded-2xl p-4 mb-4 shadow-sm border border-yellow-200 card-enter">
+       <h3 class="font-bold text-sm text-yellow-700 mb-3 flex items-center gap-1"><i data-lucide="bell" class="w-4 h-4"></i> 新好友邀請</h3>`;
+     window.myRequests.forEach(req => {
+        html += `<div class="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm mb-2">
+          <div class="font-bold text-sm text-slate-700">${req.displayName || req.email}</div>
+          <div class="flex gap-2">
+            <button onclick="acceptFriend('${req.uid}', '${req.displayName||req.email}')" class="bg-green-500 hover:bg-green-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition">接受</button>
+            <button onclick="rejectFriend('${req.uid}')" class="bg-slate-200 hover:bg-slate-300 text-slate-600 text-xs font-bold px-3 py-2 rounded-lg transition">拒絕</button>
+          </div>
+        </div>`;
+     });
+     html += `</div>`;
+  }
+
+  // 🌟 新增：3. 搜尋新書友
+  html += `<div class="bg-white rounded-2xl shadow-sm p-4 mb-4 card-enter">
+    <h3 class="font-bold text-sm text-primary mb-3">🔍 尋找書友</h3>
+    <div class="flex gap-2">
+      <input id="readSearchFriendInput" type="text" placeholder="輸入好友帳號 (ID)..." class="flex-1 border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none text-sm font-semibold">
+      <button onclick="searchReadFriend()" class="bg-primary hover:bg-primaryDk text-white font-bold px-4 py-2 rounded-xl transition shadow-sm">搜尋</button>
+    </div>
+    <div id="readSearchFriendResult" class="mt-3"></div>
+  </div>`;
+
+  // 4. 書友列表
+  html += `<div class="bg-white rounded-2xl shadow-sm p-4 card-enter mb-6">
+    <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="users" class="w-4 h-4"></i> 書友列表 (${readFriends.length})</h3>`;
+  if(readFriends.length === 0) {
+    html += `<p class="text-slate-400 text-sm text-center py-6">仲未有書友。快啲搜尋 ID 搵人一齊閱讀啦！</p>`;
+  } else {
+    readFriends.forEach(f => {
+      html += `<div class="flex items-center justify-between bg-sky-50 p-3 rounded-xl mb-2 border border-sky-100 shadow-sm">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-lg shadow-inner">${f.displayName.charAt(0).toUpperCase()}</div>
+          <div class="font-bold text-sm text-slate-700">${f.displayName}</div>
+        </div>
+        <button onclick="window.promptDeleteFriend('${f.uid}', '${f.displayName}')" class="p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-white transition border border-transparent hover:border-red-100" title="解除好友">
+          <i data-lucide="user-x" class="w-4 h-4"></i>
+        </button>
+      </div>`;
+    });
+  }
+  html += `</div>`;
+  container.innerHTML = html;
+  lucide.createIcons();
+};
+
+// 🌟 新增：閱讀專屬搜尋與發送邏輯
+window.searchReadFriend = async () => {
+  const input = document.getElementById('readSearchFriendInput').value.trim();
+  const resDiv = document.getElementById('readSearchFriendResult');
+  if(!input) return;
+
+  const email = input.includes('@') ? input : `${input.toLowerCase()}@gymigogo.com`;
+  if(email === currentUser.email) { resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg">呢個係你自己喎！</p>`; return; }
+
+  resDiv.innerHTML = `<p class="text-slate-500 text-xs text-center">搜尋中...</p>`;
+  try {
+    const snap = await db.collection("users").where("email", "==", email).get();
+    if(snap.empty) { resDiv.innerHTML = `<p class="text-red-500 text-xs font-bold bg-red-50 p-2 rounded-lg text-center">找不到此用戶，請檢查帳號。</p>`; return; }
+    const targetUser = snap.docs[0];
+    const tUid = targetUser.id;
+    const tName = targetUser.data().displayId || targetUser.data().email.split('@')[0];
+
+    const existingFriend = window.myFriends.find(f => f.uid === tUid);
+    if(existingFriend) {
+       const hasGym = existingFriend.isGym !== false;
+       const hasRead = existingFriend.isRead === true;
+
+       if (hasGym && hasRead) {
+         resDiv.innerHTML = `<div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex justify-between items-center"><span class="font-bold text-sm text-slate-700">${tName}</span><span class="text-xs text-slate-400 font-bold">已是雙棲好友</span></div>`; 
+         return;
+       }
+       
+       let btnHtml = '';
+       if (!hasRead) btnHtml = `<button onclick="window.sendSpecificReq('${tUid}', '${tName.replace(/'/g,"\\'")}', false, true)" class="bg-pink-500 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-pink-600 transition">邀請成為書友</button>`;
+       else if (!hasGym) btnHtml = `<button onclick="window.sendSpecificReq('${tUid}', '${tName.replace(/'/g,"\\'")}', true, false)" class="bg-primary text-white text-[11px] font-bold px-3 py-1.5 rounded-lg shadow-sm hover:bg-primaryDk transition">邀請成為健身好友</button>`;
+
+       resDiv.innerHTML = `<div class="bg-sky-50 p-3 rounded-xl border border-sky-200 flex justify-between items-center shadow-sm"><span class="font-bold text-sm text-slate-700">${tName}</span>${btnHtml}</div>`; 
+       return;
+    }
+
+    resDiv.innerHTML = `<div class="bg-sky-50 p-3 rounded-xl border border-sky-200 shadow-sm mt-2">
+      <span class="font-bold text-sm text-primary block mb-2">${tName}</span>
+      <div class="flex gap-4 mb-3 px-1">
+        <label class="flex items-center gap-1 text-xs font-bold text-slate-600"><input type="checkbox" id="readAddAsGym" class="w-4 h-4 accent-primary"> 💪 健身</label>
+        <label class="flex items-center gap-1 text-xs font-bold text-slate-600"><input type="checkbox" id="readAddAsRead" checked class="w-4 h-4 accent-primary"> 📚 閱讀</label>
+      </div>
+      <button onclick="window.sendReadFriendReq('${tUid}', '${tName}')" class="w-full bg-primary text-white text-sm font-bold py-2 rounded-xl shadow-sm hover:bg-primaryDk transition">發送邀請</button>
+    </div>`;
+  } catch(e) { resDiv.innerHTML = `<p class="text-red-500 text-xs text-center">搜尋出錯，請重試。</p>`; }
+};
+
+window.sendReadFriendReq = async (targetUid, targetName) => {
+  const isGym = document.getElementById('readAddAsGym')?.checked || false;
+  const isRead = document.getElementById('readAddAsRead')?.checked || false;
+  if (!isGym && !isRead) { showToast('請至少選擇一種朋友類型', 'error'); return; }
+  try {
+    const myName = currentUser.displayName || currentUser.email.split('@')[0];
+    await db.collection("users").doc(targetUid).collection("friend_requests").doc(currentUser.uid).set({
+      uid: currentUser.uid, email: currentUser.email, displayName: myName, timestamp: new Date().toISOString(), isGym, isRead
+    });
+    showToast('已發送邀請！', 'success');
+    document.getElementById('readSearchFriendResult').innerHTML = `<p class="text-green-600 text-xs font-bold bg-green-50 p-2 rounded-lg text-center">邀請已發送給 ${targetName}！</p>`;
+  } catch(e) { showToast('發送失敗', 'error'); }
+};
+
+window.viewSharedBook = (shareId) => {
+  const s = window.myBookShares.find(x => x.id === shareId);
+  if(!s) return;
+  const b = s.bookData;
+  let html = `<div class="modal-box text-left" onclick="event.stopPropagation()">
+    <div class="flex items-center gap-2 mb-3">
+      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">${s.fromName.charAt(0)}</div>
+      <div class="text-sm font-bold text-slate-600">${s.fromName} 嘅好書推介</div>
+    </div>
+    
+    <div class="flex gap-4 mb-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+      ${b.coverUrl ? `<img src="${b.coverUrl}" class="w-20 aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">` : `<div class="w-20 aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-2xl shadow-sm">📗</div>`}
+      <div class="flex-1">
+        <h3 class="font-extrabold text-base text-slate-800 leading-tight">${b.title}</h3>
+        <p class="text-[11px] font-semibold text-slate-500 mt-1">${b.author || '未知作者'}</p>
+        ${b.category ? `<span class="inline-block mt-1 text-[9px] bg-sky-100 text-sky-600 px-1.5 py-0.5 rounded border border-sky-200">${b.category}</span>` : ''}
+      </div>
+    </div>
+    
+    <button onclick="window.acceptSharedBook('${shareId}')" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl transition shadow-sm mb-2 flex items-center justify-center gap-1">
+      <i data-lucide="heart" class="w-4 h-4"></i> 加入有興趣清單
+    </button>
+    <button onclick="window.deleteSharedBook('${shareId}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-2.5 rounded-xl transition mb-2">刪除推介</button>
+    <button onclick="closeModal()" class="w-full bg-white border border-slate-200 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-50 transition">關閉</button>
+  </div>`;
+  showModal(html);
+  lucide.createIcons();
+};
+
+window.acceptSharedBook = async (shareId) => {
+  const s = window.myBookShares.find(x => x.id === shareId);
+  if(!s) return;
+  const b = s.bookData;
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").add({
+      title: b.title, author: b.author, category: b.category, coverUrl: b.coverUrl, description: b.description,
+      status: 'wishlist', startDate: '', endDate: '', notes: [], timestamp: new Date().toISOString()
+    });
+    await db.collection("users").doc(currentUser.uid).collection("book_shares").doc(shareId).delete();
+    closeModal(); showToast('已加入有興趣清單！🌸', 'success');
+  } catch(e) { showToast('加入失敗', 'error'); }
+};
+
+window.deleteSharedBook = async (shareId) => {
+  if(!confirm('確定刪除呢個推介？')) return;
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("book_shares").doc(shareId).delete();
+    closeModal(); showToast('已刪除推介', 'info');
+  } catch(e) { showToast('刪除失敗', 'error'); }
+};
+// ========== ❌ 解除好友關係功能 ==========
+window.promptDeleteFriend = (friendUid, friendName) => {
+  let html = `
+    <div class="modal-box text-left" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="w-8 h-8 rounded-full bg-red-100 text-red-500 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="user-x" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-extrabold text-lg text-slate-800">解除好友關係？</h3>
+      </div>
+      
+      <div class="bg-slate-50 p-3 rounded-xl mb-4 border border-slate-100">
+        <p class="text-sm font-semibold text-slate-600">確定要將 <span class="text-primary font-extrabold">${friendName}</span> 從你的好友名單中移除嗎？</p>
+        <p class="text-[11px] font-bold text-slate-400 mt-2">此操作無法復原，對方亦無法再傳送挑戰或好書推介畀你。</p>
+      </div>
+      
+      <button onclick="window.confirmDeleteFriend('${friendUid}')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition shadow-sm mb-2 flex items-center justify-center gap-1">
+        確認刪除
+      </button>
+      <button onclick="closeModal()" class="w-full bg-white border border-slate-200 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-50 transition">
+        取消
+      </button>
+    </div>
+  `;
+  showModal(html);
+  lucide.createIcons();
+};
+
+window.confirmDeleteFriend = async (friendUid) => {
+  const btn = document.querySelector('.modal-box button.bg-red-500');
+  if(btn) { 
+    btn.disabled = true; 
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 處理中...'; 
+  }
+  lucide.createIcons();
+  
+  try {
+    // 💡 執行雙向刪除 (將自己從對方名單移除，同時將對方從自己名單移除)
+    await db.collection("users").doc(currentUser.uid).collection("friends").doc(friendUid).delete();
+    await db.collection("users").doc(friendUid).collection("friends").doc(currentUser.uid).delete();
+    
+    closeModal();
+    showToast('已解除好友關係', 'info');
+  } catch(e) {
+    console.error(e);
+    showToast('刪除失敗，請檢查網絡', 'error');
   }
 };
 </script>
