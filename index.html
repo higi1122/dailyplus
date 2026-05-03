@@ -189,62 +189,71 @@ tailwind.config = {
 </button>
     </header>
 
-    <!-- 書架主體 -->
-    <main class="flex-1 overflow-y-auto p-4 relative" id="bookMainContent">
-     <!-- 數據概覽 -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm mb-4 flex justify-between items-center card-enter">
-        <div>
-          <div class="text-xs font-bold text-slate-400">總閱讀量</div>
-          <div class="text-2xl font-extrabold text-primary"><span id="totalBooksCount">0</span> 本</div>
-        </div>
-        <div class="flex items-center gap-3">
-          <button onclick="exportBooksToCSV()" class="text-[11px] font-bold bg-green-50 text-green-600 px-2.5 py-1.5 rounded-lg hover:bg-green-100 transition shadow-sm flex items-center gap-1 border border-green-200 active:scale-95">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i> Excel
-          </button>
-          <!-- 🌟 將書本圖案變成開關按鈕 -->
+<!-- 書架主體 (改為多頁面架構) -->
+    <main class="flex-1 overflow-y-auto relative bg-sky1" id="bookMainContent">
+      
+      <!-- 📖 頁面 1：書架 (原本的內容) -->
+      <div id="read-page-shelf" class="page-slide p-4 pb-24 block">
+        <!-- 數據概覽 -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm mb-4 flex justify-between items-center card-enter">
+          <div>
+            <div class="text-xs font-bold text-slate-400">總閱讀量</div>
+            <div class="text-2xl font-extrabold text-primary"><span id="totalBooksCount">0</span> 本</div>
+          </div>
           <button onclick="toggleShelfToolbar()" class="text-4xl opacity-50 hover:opacity-100 transition-all active:scale-90 cursor-pointer" title="打開/收起搜尋工具">📖</button>
         </div>
+
+        <!-- 書架工具列 -->
+        <div id="shelfToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white card-enter">
+          <div class="relative">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+            <input id="shelfSearchInput" type="text" oninput="handleShelfChange()" placeholder="搜尋書名或作者..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold focus:outline-none focus:border-primary focus:ring-2 focus:ring-sky-100 transition-all">
+          </div>
+          <div class="flex gap-2">
+            <div class="flex-1 relative">
+              <select id="shelfCategoryFilter" onchange="handleShelfChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none"><option value="all">所有分類</option></select>
+              <i data-lucide="chevron-down" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+            </div>
+            <div class="flex-1 relative">
+              <select id="shelfSortOrder" onchange="handleShelfChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+                <option value="recent">最近讀完</option>
+                <option value="oldest">最舊讀完</option>
+                <option value="title">書名 (A-Z)</option>
+              </select>
+              <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 書籍列表 Grid -->
+        <div id="bookshelfGrid" class="grid grid-cols-2 gap-4 pb-6"></div>
       </div>
 
-<!-- 🌟 修改：書架工具列 (加入 id="shelfToolbar" 同預設 hidden) -->
-<div id="shelfToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white card-enter">
-  <!-- 搜尋框 -->
-  <div class="relative">
-    <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-    <input id="shelfSearchInput" type="text" oninput="handleShelfChange()" placeholder="搜尋書名或作者..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold focus:outline-none focus:border-primary focus:ring-2 focus:ring-sky-100 transition-all">
-  </div>
-  
-  <div class="flex gap-2">
-    <!-- 分類篩選 -->
-    <div class="flex-1 relative">
-      <select id="shelfCategoryFilter" onchange="handleShelfChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
-        <option value="all">所有分類</option>
-      </select>
-      <i data-lucide="chevron-down" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
-    </div>
-    
-    <!-- 排序方式 -->
-    <div class="flex-1 relative">
-      <select id="shelfSortOrder" onchange="handleShelfChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
-        <option value="recent">最近讀完 (時間軸)</option>
-        <option value="oldest">最舊讀完</option>
-        <option value="title">書名排序 (A-Z)</option>
-      </select>
-      <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
-    </div>
-  </div>
-</div>
+      <!-- 🧐 頁面 2：有興趣 -->
+      <div id="read-page-wishlist" class="page-slide p-4 pb-24 hidden"></div>
 
-      <!-- 書籍列表 Grid -->
-      <div id="bookshelfGrid" class="grid grid-cols-2 gap-4 pb-24">
-        <!-- 書籍卡片會喺度動態生成 -->
-      </div>
+      <!-- ⚙️ 頁面 3：設定 -->
+      <div id="read-page-settings" class="page-slide p-4 pb-24 hidden"></div>
 
       <!-- 懸浮新增按鈕 (FAB) -->
-      <button onclick="openAddBookModal()" class="fixed bottom-6 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 hover:scale-105 transition-all z-20">
+      <button id="readFab" onclick="openAddBookModal()" class="fixed bottom-20 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-orange-600 hover:scale-105 transition-all z-20">
         <i data-lucide="plus" class="w-8 h-8"></i>
       </button>
     </main>
+
+    <!-- 🌟 新增：底部導覽列 -->
+    <nav class="bg-white border-t border-sky2 flex justify-around items-center py-2 flex-shrink-0 z-20 relative shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+      <button onclick="window.switchReadPage('shelf')" id="read-nav-shelf" class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all text-orange-500 bg-orange-50">
+        <i data-lucide="library" class="w-5 h-5"></i><span class="text-xs font-semibold">書架</span>
+      </button>
+      <button onclick="window.switchReadPage('wishlist')" id="read-nav-wishlist" class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all text-slate-400">
+        <i data-lucide="heart" class="w-5 h-5"></i><span class="text-xs font-semibold">有興趣</span>
+      </button>
+      <button onclick="window.switchReadPage('settings')" id="read-nav-settings" class="flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all text-slate-400">
+        <i data-lucide="settings" class="w-5 h-5"></i><span class="text-xs font-semibold">設定</span>
+      </button>
+    </nav>
+
   </div>
   </div>
    <script>
@@ -2865,13 +2874,23 @@ function renderSingleBookCard(book) {
     : '';
 
   return `
-    <div onclick="viewBook('${book.id}')" class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative">
+    <div 
+      ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
+      ontouchend="window.handleBookPressEnd()" 
+      ontouchmove="window.handleBookPressEnd()" 
+      onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+      onmouseup="window.handleBookPressEnd()" 
+      onmouseleave="window.handleBookPressEnd()" 
+      onclick="window.handleBookClick(event, '${book.id}')" 
+      oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
+      class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative"
+      style="-webkit-touch-callout: none; user-select: none;">
       <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
         <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
         ${coverHtml}
       </div>
       <div class="p-3 flex-1 flex flex-col bg-white">
-        <h3 class="font-extrabold text-sm text-slate-800 line-clamp-2 leading-snug mb-1">${book.title}</h3>
+        <h3 class="font-extrabold text-sm text-slate-800 truncate mb-1">${book.title}</h3>
         <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
         ${categoryTagHtml}
         <div class="mt-auto pt-3 flex items-center">
@@ -2973,10 +2992,11 @@ function openAddBookModal() {
             <input id="bookEndDate" type="date" onchange="syncDateAndStatus('date', 'bookEndDate', 'bookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700">
           </div>
         </div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
+<div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
           <select id="bookStatus" onchange="syncDateAndStatus('status', 'bookEndDate', 'bookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white">
-            <option value="reading">📖 閱讀中</option>
+            <option value="reading" ${currentReadPage !== 'wishlist' ? 'selected' : ''}>📖 閱讀中</option>
             <option value="finished">✅ 已讀完</option>
+            <option value="wishlist" ${currentReadPage === 'wishlist' ? 'selected' : ''}>🧐 有興趣</option>
           </select>
         </div>
         
@@ -3209,6 +3229,17 @@ function viewBook(bookId) {
     ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100 mt-1"><i data-lucide="tag" class="w-3 h-3"></i>${book.category}</span>` 
     : '';
 
+  // 💡 修正：動態判斷 3 種狀態嘅顏色同文字
+  let statusBadgeClass = 'bg-green-100 text-green-600';
+  let statusBadgeText = '已讀完 ✅';
+  if (book.status === 'reading') {
+    statusBadgeClass = 'bg-orange-100 text-orange-600';
+    statusBadgeText = '閱讀中 📖';
+  } else if (book.status === 'wishlist') {
+    statusBadgeClass = 'bg-pink-100 text-pink-600'; 
+    statusBadgeText = '有興趣 🧐';
+  }
+
   let html = `
     <div class="modal-box max-w-md text-left bg-slate-50" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
@@ -3218,8 +3249,9 @@ function viewBook(bookId) {
           <p class="text-sm font-semibold text-slate-500 mt-1">${book.author || '未知作者'}</p>
           <div class="mb-1">${categoryBadge}</div>
           <div class="mt-auto pt-2">
-            <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${book.status === 'reading' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}">
-              ${book.status === 'reading' ? '閱讀中 📖' : '已讀完 ✅'}
+            <!-- 🌟 套用返上面判斷好嘅 Class 同 Text -->
+            <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md ${statusBadgeClass}">
+              ${statusBadgeText}
             </span>
             ${dateDisplay}
           </div>
@@ -3383,10 +3415,11 @@ function editBookInfo(bookId) {
             <input id="editBookEndDate" type="date" value="${book.endDate || ''}" onchange="syncDateAndStatus('date', 'editBookEndDate', 'editBookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700">
           </div>
         </div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
+       <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
           <select id="editBookStatus" onchange="syncDateAndStatus('status', 'editBookEndDate', 'editBookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white">
             <option value="reading" ${book.status === 'reading' ? 'selected' : ''}>📖 閱讀中</option>
             <option value="finished" ${book.status === 'finished' ? 'selected' : ''}>✅ 已讀完</option>
+            <option value="wishlist" ${book.status === 'wishlist' ? 'selected' : ''}>🧐 有興趣</option>
           </select>
         </div>
         
@@ -3462,19 +3495,26 @@ window.syncDateAndStatus = (source, dateInputId, statusSelectId) => {
     // 當用家修改「結束日期」
     if (dateInput.value) {
       statusSelect.value = 'finished';
-    } else {
-      statusSelect.value = 'reading';
+    } else if (statusSelect.value === 'finished') {
+      statusSelect.value = 'reading'; // 淨係喺原本係 finished 嘅情況下清空日期，先轉返 reading
     }
   } else if (source === 'status') {
     // 當用家修改「狀態」選單
     if (statusSelect.value === 'finished' && !dateInput.value) {
-      // 如果轉做已讀完，但未有日期，自動填寫今日
+      // 如果轉做已讀完，但未有結束日期，自動填寫今日
       const today = new Date();
       const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
       dateInput.value = todayStr;
-    } else if (statusSelect.value === 'reading') {
-      // 如果轉做閱讀中，自動清空結束日期
+    } else if (statusSelect.value === 'reading' || statusSelect.value === 'wishlist') {
+      // 如果轉做閱讀中或有興趣，自動清空結束日期
       dateInput.value = '';
+      
+      // 💡 如果轉做「有興趣」，順便清空埋「開始日期」
+      if (statusSelect.value === 'wishlist') {
+        const startDateInputId = dateInputId.replace('End', 'Start');
+        const startDateInput = document.getElementById(startDateInputId);
+        if (startDateInput) startDateInput.value = '';
+      }
     }
   }
 };
@@ -3670,7 +3710,254 @@ function exportBooksToCSV() {
   
   showToast('✅ 成功下載 Excel 檔案！', 'success');
 }
+// ========== 🧭 閱讀模塊導航控制 ==========
+let currentReadPage = 'shelf';
 
+window.switchReadPage = (page) => {
+  currentReadPage = page;
+  const pages = ['shelf', 'wishlist', 'settings'];
+  
+  pages.forEach(p => {
+    document.getElementById('read-page-'+p).classList.add('hidden');
+    document.getElementById('read-page-'+p).classList.remove('block');
+    document.getElementById('read-nav-'+p).className = `flex flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all ${p === page ? 'text-orange-500 bg-orange-50' : 'text-slate-400'}`;
+  });
+  
+  document.getElementById('read-page-'+page).classList.remove('hidden');
+  document.getElementById('read-page-'+page).classList.add('block');
+  
+  // 處理 FAB 按鈕顯示與頁面渲染
+  if(page === 'settings') {
+     document.getElementById('readFab').classList.add('hidden');
+     window.renderReadSettings();
+  } else {
+     document.getElementById('readFab').classList.remove('hidden');
+     if(page === 'shelf') renderBooks();
+     if(page === 'wishlist') window.renderWishlist();
+  }
+  lucide.createIcons();
+};
+
+// ========== 🧐 渲染「有興趣」清單 ==========
+window.renderWishlist = () => {
+  const container = document.getElementById('read-page-wishlist');
+  const wishlistBooks = window.allBooks.filter(b => b.status === 'wishlist').sort((a,b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+  
+  let html = `<div class="flex items-center gap-2 mb-4 px-1"><span class="w-2 h-2 rounded-full bg-pink-500"></span><h2 class="font-extrabold text-slate-800 text-base">有興趣清單 (${wishlistBooks.length})</h2></div>`;
+  
+  if(wishlistBooks.length === 0) {
+     html += `<div class="text-center py-12 text-slate-400 card-enter"><div class="text-5xl mb-3">🧐</div><p class="font-bold">仲未有心水好書</p></div>`;
+  } else {
+     html += `<div class="grid grid-cols-2 gap-4 pb-6">`;
+     html += wishlistBooks.map(book => {
+        const coverHtml = book.coverUrl 
+          ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
+          : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
+        
+        return `
+        <div 
+          ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
+          ontouchend="window.handleBookPressEnd()" 
+          ontouchmove="window.handleBookPressEnd()" 
+          onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+          onmouseup="window.handleBookPressEnd()" 
+          onmouseleave="window.handleBookPressEnd()" 
+          onclick="window.handleBookClick(event, '${book.id}')" 
+          oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
+          class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative card-enter"
+          style="-webkit-touch-callout: none; user-select: none;">
+          <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
+            <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
+            ${coverHtml}
+          </div>
+          <div class="p-3 flex-1 flex flex-col bg-white">
+            <h3 class="font-extrabold text-sm text-slate-800 truncate mb-1">${book.title}</h3>
+            <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
+            <div class="mt-auto pt-3 flex items-center">
+               <button onclick="event.stopPropagation(); promptStartReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-[11px] font-bold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-sm relative z-20">
+                 <i data-lucide="play-circle" class="w-3.5 h-3.5"></i> 開始閱讀
+               </button>
+            </div>
+          </div>
+        </div>`;
+     }).join('');
+     html += `</div>`;
+  }
+  container.innerHTML = html;
+  lucide.createIcons();
+};
+
+// 🌟 從「有興趣」轉移到「書架 (閱讀中)」的確認畫面
+window.promptStartReading = (bookId, title) => {
+  let html = `
+    <div class="modal-box text-left" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-2 mb-1">
+        <div class="w-8 h-8 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="play-circle" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-extrabold text-lg text-slate-800">確認開始閱讀？</h3>
+      </div>
+      
+      <p class="text-sm font-bold text-slate-500 mb-4 truncate line-clamp-1">《${title}》</p>
+      
+      <div class="bg-slate-50 p-3 rounded-xl mb-4 border border-slate-100">
+        <p class="text-[11px] font-bold text-slate-500 text-center">本書將會移至書架，並記錄今日為開始日期。</p>
+      </div>
+      
+      <button onclick="confirmStartReading('${bookId}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition shadow-sm mb-2 flex items-center justify-center gap-1">
+        開始閱讀 📖
+      </button>
+      <button onclick="closeModal()" class="w-full bg-white border border-slate-200 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-50 transition">
+        取消
+      </button>
+    </div>
+  `;
+  showModal(html);
+  lucide.createIcons();
+};
+
+window.confirmStartReading = async (bookId) => {
+  const btn = document.querySelector('.modal-box button.bg-orange-500');
+  if(btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 處理中...'; }
+  lucide.createIcons();
+  
+  const todayStr = toDateStr(new Date());
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({
+      status: 'reading',
+      startDate: todayStr
+    });
+    closeModal();
+    showToast('已轉移至書架，開始閱讀！📚', 'success');
+  } catch(e) {
+    console.error(e);
+    showToast('更新失敗，請檢查網絡', 'error');
+  }
+};
+
+// ========== ⚙️ 渲染設定頁面 ==========
+window.renderReadSettings = () => {
+  const container = document.getElementById('read-page-settings');
+  // 我將之前寫好嘅 Export Excel 功能搬咗嚟呢度！
+  let html = `<h2 class="font-extrabold text-xl text-primary mb-4">⚙️ 閱讀設定</h2>
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
+      <h3 class="font-bold text-sm text-primary mb-3">📥 數據管理</h3>
+      <p class="text-xs text-slate-500 mb-4">你可以將整個書架嘅記錄（包含所有筆記內容）匯出成 Excel (CSV) 檔案備份。</p>
+      <button onclick="exportBooksToCSV()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2">
+        <i data-lucide="download" class="w-5 h-5"></i> 下載全部數據
+      </button>
+    </div>`;
+  container.innerHTML = html;
+  lucide.createIcons();
+};
+
+// 🛠️ 最後修補：攔截書架唔好顯示「有興趣」嘅書
+const originalRenderBooks = renderBooks;
+renderBooks = function() {
+  // 將 window.allBooks 臨時偷龍轉鳳，過濾掉 'wishlist'，等原本個 renderBooks 照常運作
+  const backup = window.allBooks;
+  window.allBooks = backup.filter(b => b.status !== 'wishlist');
+  originalRenderBooks(); // 行返你本身寫好嘅邏輯
+  window.allBooks = backup; // 復原
+  
+  // 更新實時監聽 (解決切換頁面可能冇 Refresh 嘅問題)
+  if(document.getElementById('readingApp').style.display === 'flex') {
+    if(currentReadPage === 'wishlist') window.renderWishlist();
+  }
+};
+
+// ========== 📱 書本長按 / 右鍵選單 ==========
+let bookPressTimer = null;
+let isBookLongPress = false;
+
+window.handleBookPressStart = (e, bookId) => {
+  isBookLongPress = false;
+  if (bookPressTimer) clearTimeout(bookPressTimer);
+  bookPressTimer = setTimeout(() => {
+    isBookLongPress = true;
+    if (navigator.vibrate) navigator.vibrate(50); // 觸發手機微震動回饋
+    window.showBookMenu(e, bookId);
+  }, 500); // 500ms 當作長按
+};
+
+window.handleBookPressEnd = () => {
+  if (bookPressTimer) {
+    clearTimeout(bookPressTimer);
+    bookPressTimer = null;
+  }
+};
+
+window.handleBookClick = (e, bookId) => {
+  // 如果判斷為長按，就攔截一般點擊，避免又開選單又入詳情頁
+  if (isBookLongPress) {
+    e.preventDefault();
+    e.stopPropagation();
+    return;
+  }
+  viewBook(bookId);
+};
+
+window.showBookMenu = (e, bookId) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const book = window.allBooks.find(b => b.id === bookId);
+  if(!book) return;
+
+  let html = `<div class="modal-box" onclick="event.stopPropagation()">
+    <h3 class="font-bold text-lg text-primary mb-4 text-center truncate px-2">《${book.title}》</h3>
+    <div class="space-y-2">`;
+  
+  // 智能選項 1：標記為已讀完 (如果目前唔係 finished)
+  if (book.status !== 'finished') {
+    // 💡 巧妙地重用咗你之前寫落嘅 quickFinishBook，佢會自動彈出問你結束日期
+    html += `<button onclick="closeModal(); quickFinishBook('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+      <i data-lucide="check-circle" class="w-5 h-5"></i> 標記為已讀完
+    </button>`;
+  }
+  
+  // 智能選項 2：移至閱讀中 或 開始閱讀 (根據目前狀態區分)
+  if (book.status === 'finished') {
+    html += `<button onclick="closeModal(); promptRevertToReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-orange-400 hover:bg-orange-500 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+      <i data-lucide="rotate-ccw" class="w-5 h-5"></i> 移至閱讀中
+    </button>`;
+  } else if (book.status === 'wishlist') {
+    html += `<button onclick="closeModal(); promptStartReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+      <i data-lucide="play-circle" class="w-5 h-5"></i> 開始閱讀
+    </button>`;
+  }
+
+  // 智能選項 3：移回有興趣 (如果目前唔係 wishlist)
+  if (book.status !== 'wishlist') {
+    html += `<button onclick="window.menuMoveToWishlist('${book.id}')" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
+      <i data-lucide="heart" class="w-5 h-5"></i> 移回有興趣
+    </button>`;
+  }
+
+  // 刪除與取消
+  html += `
+      <button onclick="closeModal(); deleteBook('${book.id}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="trash-2" class="w-5 h-5"></i> 刪除此書
+      </button>
+      <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition mt-2">取消</button>
+    </div>
+  </div>`;
+  
+  showModal(html);
+  lucide.createIcons();
+};
+
+window.menuMoveToWishlist = async (bookId) => {
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({
+      status: 'wishlist',
+      endDate: '' // 清除可能殘留嘅結束日期
+    });
+    closeModal();
+    showToast('已移回有興趣清單 🧐', 'info');
+  } catch(e) {
+    showToast('更新失敗，請檢查網絡', 'error');
+  }
+};
 </script>
 </body>
 </html>
