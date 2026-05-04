@@ -3894,6 +3894,11 @@ window.renderWishlist = () => {
           ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
           : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
         
+        // 🌟 新增：加入分類 Badge 嘅 HTML
+        const categoryTagHtml = book.category 
+          ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
+          : '';
+
         return `
         <div 
           ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
@@ -3913,6 +3918,7 @@ window.renderWishlist = () => {
           <div class="p-3 flex-1 flex flex-col bg-white">
             <h3 class="font-extrabold text-sm text-slate-800 truncate mb-1">${book.title}</h3>
             <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
+            ${categoryTagHtml}
             <div class="mt-auto pt-3 flex items-center">
                <button onclick="event.stopPropagation(); promptStartReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-[11px] font-bold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-sm relative z-20">
                  <i data-lucide="play-circle" class="w-3.5 h-3.5"></i> 開始閱讀
