@@ -205,12 +205,18 @@ tailwind.config = {
       <!-- 📖 頁面 1：書架 (原本的內容) -->
       <div id="read-page-shelf" class="page-slide p-4 pb-24 block">
         <!-- 數據概覽 -->
-        <div class="bg-white rounded-2xl p-4 shadow-sm mb-4 flex justify-between items-center card-enter">
+        <div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center card-enter border border-slate-50">
           <div>
-            <div class="text-xs font-bold text-slate-400">總閱讀量</div>
-            <div class="text-2xl font-extrabold text-primary"><span id="totalBooksCount">0</span> 本</div>
+            <div class="text-[11px] font-bold text-slate-400 mb-0.5">總閱讀量</div>
+            <div class="text-primary flex items-baseline gap-1">
+              <span id="totalBooksCount" class="text-xl font-extrabold">0</span> 
+              <span class="text-xs font-bold text-slate-400">本</span>
+            </div>
           </div>
-          <button onclick="toggleShelfToolbar()" class="text-4xl opacity-50 hover:opacity-100 transition-all active:scale-90 cursor-pointer" title="打開/收起搜尋工具">📖</button>
+          <!-- 🌟 換咗做實色放大鏡按鈕 -->
+          <button onclick="toggleShelfToolbar()" class="p-2 bg-sky-50 text-primary rounded-lg border border-sky-100 hover:bg-sky-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
+            <i data-lucide="search" class="w-5 h-5"></i>
+          </button>
         </div>
 
         <!-- 書架工具列 -->
@@ -3236,9 +3242,10 @@ function viewBook(bookId) {
   const book = window.allBooks.find(b => b.id === bookId);
   if (!book) return;
 
+  // 🌟 加入 flex-shrink-0 同 self-start 防止圖片拉長
   const coverHtml = book.coverUrl 
-      ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">`
-      : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-3xl shadow-sm">📗</div>`;
+      ? `<img src="${book.coverUrl}" class="w-24 flex-shrink-0 self-start aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">`
+      : `<div class="w-24 flex-shrink-0 self-start aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-3xl shadow-sm">📗</div>`;
 
   const dateStr = [book.startDate, book.endDate].filter(Boolean).join(' 至 ');
   const dateDisplay = dateStr ? `<div class="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>${dateStr}</div>` : '';
@@ -3322,7 +3329,8 @@ function viewBook(bookId) {
     <div class="modal-box max-w-md text-left bg-slate-50" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
         ${coverHtml}
-        <div class="flex-1 flex flex-col">
+        <!-- 🌟 加入 min-w-0 確保過長嘅連續英文字都識得換行 -->
+        <div class="flex-1 flex flex-col min-w-0">
           <h3 class="font-extrabold text-lg text-slate-800 leading-tight">${book.title}</h3>
           <p class="text-sm font-semibold text-slate-500 mt-1">${book.author || '未知作者'}</p>
           <div class="mb-1">${categoryBadge}</div>
@@ -3881,57 +3889,167 @@ window.switchReadPage = (page) => {
 // ========== 🧐 渲染「有興趣」清單 ==========
 window.renderWishlist = () => {
   const container = document.getElementById('read-page-wishlist');
-  const wishlistBooks = window.allBooks.filter(b => b.status === 'wishlist').sort((a,b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
   
-  let html = `<div class="flex items-center gap-2 mb-4 px-1"><span class="w-2 h-2 rounded-full bg-pink-500"></span><h2 class="font-extrabold text-slate-800 text-base">有興趣清單 (${wishlistBooks.length})</h2></div>`;
-  
-  if(wishlistBooks.length === 0) {
-     html += `<div class="text-center py-12 text-slate-400 card-enter"><div class="text-5xl mb-3">🧐</div><p class="font-bold">仲未有心水好書</p></div>`;
-  } else {
-     html += `<div class="grid grid-cols-2 gap-4 pb-6">`;
-     html += wishlistBooks.map(book => {
-        const coverHtml = book.coverUrl 
-          ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
-          : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
+  // 💡 如果尚未建立骨架，先注入固定 HTML
+  if (!document.getElementById('wishlistGrid')) {
+    container.innerHTML = `
+      <!-- 數據概覽 (粉紅主題) -->
+      <div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center card-enter border border-slate-50">
+        <div class="flex items-center gap-2">
         
-        // 🌟 新增：加入分類 Badge 嘅 HTML
-        const categoryTagHtml = book.category 
-          ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
-          : '';
-
-        return `
-        <div 
-          ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
-          ontouchend="window.handleBookPressEnd()" 
-          ontouchmove="window.handleBookPressEnd()" 
-          onmousedown="window.handleBookPressStart(event, '${book.id}')" 
-          onmouseup="window.handleBookPressEnd()" 
-          onmouseleave="window.handleBookPressEnd()" 
-          onclick="window.handleBookClick(event, '${book.id}')" 
-          oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
-          class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative card-enter"
-          style="-webkit-touch-callout: none; user-select: none;">
-          <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
-            <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
-            ${coverHtml}
-          </div>
-          <div class="p-3 flex-1 flex flex-col bg-white">
-            <h3 class="font-extrabold text-sm text-slate-800 truncate mb-1">${book.title}</h3>
-            <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
-            ${categoryTagHtml}
-            <div class="mt-auto pt-3 flex items-center">
-               <button onclick="event.stopPropagation(); promptStartReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-[11px] font-bold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-sm relative z-20">
-                 <i data-lucide="play-circle" class="w-3.5 h-3.5"></i> 開始閱讀
-               </button>
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 mb-0.5">有興趣清單</div>
+            <div class="text-pink-500 flex items-baseline gap-1">
+              <span id="totalWishlistCount" class="text-xl font-extrabold">0</span> 
+              <span class="text-xs font-bold text-slate-400">本</span>
             </div>
           </div>
-        </div>`;
-     }).join('');
-     html += `</div>`;
+        </div>
+        <button onclick="toggleWishlistToolbar()" class="p-2 bg-pink-50 text-pink-500 rounded-lg border border-pink-100 hover:bg-pink-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
+          <i data-lucide="search" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- 搜尋工具列 -->
+      <div id="wishlistToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white card-enter">
+        <div class="relative">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+          <input id="wishlistSearchInput" type="text" oninput="handleWishlistChange()" placeholder="搜尋書名或作者..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition-all">
+        </div>
+        <div class="flex gap-2">
+          <div class="flex-1 relative">
+            <select id="wishlistCategoryFilter" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+              <option value="all">所有分類</option>
+            </select>
+            <i data-lucide="chevron-down" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+          </div>
+          <div class="flex-1 relative">
+            <select id="wishlistSortOrder" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+              <option value="recent">最近加入</option>
+              <option value="oldest">最舊加入</option>
+              <option value="title">書名 (A-Z)</option>
+            </select>
+            <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- 書籍列表 Grid -->
+      <div id="wishlistGrid" class="relative"></div>
+    `;
   }
-  container.innerHTML = html;
+
+  const grid = document.getElementById('wishlistGrid');
+  const searchVal = document.getElementById('wishlistSearchInput')?.value.toLowerCase() || '';
+  const categoryVal = document.getElementById('wishlistCategoryFilter')?.value || 'all';
+  const sortVal = document.getElementById('wishlistSortOrder')?.value || 'recent';
+
+  const rawWishlist = window.allBooks.filter(b => b.status === 'wishlist');
+  
+  // 更新頂部總數
+  const countEl = document.getElementById('totalWishlistCount');
+  if (countEl) countEl.textContent = rawWishlist.length;
+
+  // 動態更新分類選單
+  updateWishlistCategoryDropdown(rawWishlist);
+
+  // 執行搜尋與過濾
+  let filtered = rawWishlist.filter(book => {
+    const title = (book.title || '').toLowerCase();
+    const author = (book.author || '').toLowerCase();
+    const matchesSearch = title.includes(searchVal) || author.includes(searchVal);
+    const matchesCategory = categoryVal === 'all' || book.category === categoryVal;
+    return matchesSearch && matchesCategory;
+  });
+
+  // 執行排序
+  if (sortVal === 'recent') {
+    filtered.sort((a,b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+  } else if (sortVal === 'oldest') {
+    filtered.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+  } else {
+    filtered.sort((a,b) => (a.title || '').localeCompare(b.title || '', 'zh-HK'));
+  }
+
+  if (rawWishlist.length === 0) {
+    grid.innerHTML = `<div class="text-center py-12 text-slate-400 card-enter"><div class="text-5xl mb-3">🧐</div><p class="font-bold">仲未有心水好書</p></div>`;
+  } else if (filtered.length === 0) {
+    grid.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">搵唔到符合條件嘅書 🔍</div>`;
+  } else {
+    let html = `<div class="grid grid-cols-2 gap-4 pb-6">`;
+    html += filtered.map(book => {
+      const coverHtml = book.coverUrl 
+        ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
+        : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
+      
+      const categoryTagHtml = book.category 
+        ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
+        : '';
+
+      return `
+      <div 
+        ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
+        ontouchend="window.handleBookPressEnd()" 
+        ontouchmove="window.handleBookPressEnd()" 
+        onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+        onmouseup="window.handleBookPressEnd()" 
+        onmouseleave="window.handleBookPressEnd()" 
+        onclick="window.handleBookClick(event, '${book.id}')" 
+        oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
+        class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative card-enter"
+        style="-webkit-touch-callout: none; user-select: none;">
+        <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
+          <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
+          ${coverHtml}
+        </div>
+        <div class="p-3 flex-1 flex flex-col bg-white">
+          <h3 class="font-extrabold text-sm text-slate-800 truncate mb-1">${book.title}</h3>
+          <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
+          ${categoryTagHtml}
+          <div class="mt-auto pt-3 flex items-center">
+             <button onclick="event.stopPropagation(); promptStartReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-[11px] font-bold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-sm relative z-20">
+               <i data-lucide="play-circle" class="w-3.5 h-3.5"></i> 開始閱讀
+             </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    html += `</div>`;
+    grid.innerHTML = html;
+  }
   lucide.createIcons();
 };
+
+// 🌟 輔助：切換「有興趣」搜尋工具列
+window.toggleWishlistToolbar = () => {
+  const toolbar = document.getElementById('wishlistToolbar');
+  if (toolbar.classList.contains('hidden')) {
+    toolbar.classList.remove('hidden');
+    setTimeout(() => document.getElementById('wishlistSearchInput').focus(), 100);
+  } else {
+    toolbar.classList.add('hidden');
+  }
+};
+
+window.handleWishlistChange = () => {
+  renderWishlist();
+};
+
+function updateWishlistCategoryDropdown(wishlistBooks) {
+  const select = document.getElementById('wishlistCategoryFilter');
+  if(!select) return;
+  const currentSelection = select.value;
+  
+  // 只抽取出「有興趣」清單內現有嘅分類
+  const categories = [...new Set(wishlistBooks.map(b => b.category).filter(Boolean))].sort();
+  
+  let options = `<option value="all">所有分類</option>`;
+  categories.forEach(cat => {
+    options += `<option value="${cat}" ${currentSelection === cat ? 'selected' : ''}>${cat}</option>`;
+  });
+  
+  select.innerHTML = options;
+}
 
 // 🌟 從「有興趣」轉移到「書架 (閱讀中)」的確認畫面
 window.promptStartReading = (bookId, title) => {
@@ -4364,11 +4482,12 @@ window.viewSharedBook = (shareId) => {
       <div class="text-sm font-bold text-slate-700">${s.fromName} 嘅好書推介</div>
     </div>
     
-    <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
-      ${b.coverUrl ? `<img src="${b.coverUrl}" class="w-20 aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">` : `<div class="w-20 aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-2xl shadow-sm">📗</div>`}
-      <div class="flex-1">
+   <div class="flex gap-4 mb-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+      <!-- 🌟 同樣加入 flex-shrink-0 同 self-start -->
+      ${b.coverUrl ? `<img src="${b.coverUrl}" class="w-20 flex-shrink-0 self-start aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">` : `<div class="w-20 flex-shrink-0 self-start aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-2xl shadow-sm">📗</div>`}
+      <div class="flex-1 min-w-0">
         <h3 class="font-extrabold text-base text-slate-800 leading-tight">${b.title}</h3>
-        <p class="text-[11px] font-semibold text-slate-500 mt-1">${b.author || '未知作者'}</p>
+                <p class="text-[11px] font-semibold text-slate-500 mt-1">${b.author || '未知作者'}</p>
         ${b.category ? `<span class="inline-block mt-1 text-[9px] bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100"><i data-lucide="tag" class="w-2.5 h-2.5 inline-block align-text-top mr-0.5"></i>${b.category}</span>` : ''}
       </div>
     </div>
