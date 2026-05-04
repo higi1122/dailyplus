@@ -4128,9 +4128,10 @@ window.openShareBookModal = (bookId) => {
   } else {
     html += `<div class="space-y-2 mb-4 max-h-48 overflow-y-auto">`;
     readFriends.forEach(f => {
-       html += `<button onclick="window.sendShareBook('${book.id}', '${f.uid}', '${f.displayName}')" class="w-full bg-sky-50 hover:bg-sky-100 text-slate-700 font-bold py-3 rounded-xl transition flex items-center justify-between px-4 border border-sky-100 shadow-sm">
-         <span class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px]">${f.displayName.charAt(0)}</div> ${f.displayName}</span> 
-         <i data-lucide="send" class="w-4 h-4 text-primary"></i>
+       // 💡 防呆：替換單引號，防止朋友名有符號搞到報錯
+       html += `<button onclick="window.sendShareBook('${book.id}', '${f.uid}', '${f.displayName.replace(/'/g,"\\'")}')" class="w-full bg-sky-50 hover:bg-sky-100 text-slate-700 font-bold py-3 rounded-xl transition flex items-center justify-between px-4 border border-sky-100 shadow-sm">
+         <span class="flex items-center gap-2 truncate"><div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] flex-shrink-0">${f.displayName.charAt(0)}</div> <span class="truncate">${f.displayName}</span></span> 
+         <i data-lucide="send" class="w-4 h-4 text-primary flex-shrink-0"></i>
        </button>`;
     });
     html += `</div>`;
@@ -4142,17 +4143,60 @@ window.openShareBookModal = (bookId) => {
 
 window.sendShareBook = async (bookId, friendUid, friendName) => {
   const btn = document.querySelector('.modal-box button:active');
-  if(btn) btn.style.opacity = '0.5';
+  if(btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
+  
   const book = window.allBooks.find(b=>b.id===bookId);
+  if(!book) {
+    showToast('書本資料異常，請重試', 'error');
+    if(btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    return;
+  }
+
   const myName = currentUser.displayName || currentUser.email.split('@')[0];
   try {
     await db.collection("users").doc(friendUid).collection("book_shares").add({
-      fromUid: currentUser.uid, fromName: myName, timestamp: new Date().toISOString(),
-      bookData: { title: book.title||'', author: book.author||'', category: book.category||'', coverUrl: book.coverUrl||'', description: book.description||'' }
+      fromUid: currentUser.uid, 
+      fromName: myName, 
+      timestamp: new Date().toISOString(),
+      bookData: { 
+        title: book.title || '無書名', 
+        author: book.author || '未知作者', 
+        category: book.category || '未分類', 
+        coverUrl: book.coverUrl || '', 
+        description: book.description || '' 
+      }
     });
-    closeModal(); showToast(`已推介畀 ${friendName}！🚀`, 'success');
-  } catch(e) { showToast('分享失敗', 'error'); }
-  if(btn) btn.style.opacity = '1';
+    
+    // 🌟 升級：成功後顯示包含 WhatsApp 捷徑嘅畫面
+    const waText = `我啱啱喺 Daily+ 推介咗好書《${book.title}》畀你，快啲去「閱讀書友」Inbox 睇吓啦！📚✨`;
+    const waLink = `https://wa.me/?text=${encodeURIComponent(waText)}`;
+    
+    let successHtml = `
+      <div class="modal-box text-center" onclick="event.stopPropagation()">
+        <div class="text-6xl mb-3 float-anim">🚀</div>
+        <h3 class="font-extrabold text-xl text-green-500 mb-2">已送出推介！</h3>
+        <p class="text-sm font-semibold text-slate-500 mb-6">《${book.title}》已經成功送入 <span class="text-primary">${friendName}</span> 嘅 Inbox 啦！</p>
+        
+        <a href="${waLink}" target="_blank" onclick="closeModal()" class="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-3 rounded-xl transition shadow-sm mb-3 flex items-center justify-center gap-2">
+          <i data-lucide="message-circle" class="w-5 h-5"></i> WhatsApp 通知對方
+        </a>
+        <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">完成</button>
+      </div>
+    `;
+    showModal(successHtml);
+    lucide.createIcons();
+    
+    if(navigator.vibrate) navigator.vibrate(50); // 輕震一下提示成功
+    
+  } catch(e) { 
+    console.error("Share error:", e);
+    if (e.code === 'permission-denied') {
+      showToast('分享失敗：對方無開放接收權限', 'error');
+    } else {
+      showToast('分享失敗，請檢查網絡', 'error'); 
+    }
+    if(btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
 };
 
 // ========== 👥 書友分頁與 Inbox 渲染 ==========
@@ -4294,23 +4338,39 @@ window.viewSharedBook = (shareId) => {
   const s = window.myBookShares.find(x => x.id === shareId);
   if(!s) return;
   const b = s.bookData;
-  let html = `<div class="modal-box text-left" onclick="event.stopPropagation()">
-    <div class="flex items-center gap-2 mb-3">
-      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">${s.fromName.charAt(0)}</div>
-      <div class="text-sm font-bold text-slate-600">${s.fromName} 嘅好書推介</div>
+
+  // 💡 官方簡介區塊 (加入 5 行截斷與展開功能)
+  let descHtml = '';
+  if (b.description) {
+    const isLongDesc = b.description.length > 120;
+    descHtml = `
+      <div class="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-100">
+         <h4 class="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1"><i data-lucide="info" class="w-4 h-4"></i>官方簡介</h4>
+         <p id="bookDescText_${shareId}" class="text-sm text-slate-600 whitespace-pre-wrap font-medium line-clamp-5 transition-all" style="word-break: break-word;">${b.description}</p>
+         ${isLongDesc ? `<button onclick="toggleDescription('${shareId}', this)" class="mt-2 w-full flex items-center justify-center gap-1 text-xs font-bold text-sky-500 bg-sky-50 hover:bg-sky-100 py-1.5 rounded-lg transition-colors"><span>展開閱讀</span> <i data-lucide="chevron-down" class="w-3 h-3"></i></button>` : ''}
+      </div>`;
+  }
+
+  // 💡 Modal 加入了 max-height 同 overflow-y-auto 防止簡介太長爆 Mon
+  let html = `<div class="modal-box text-left bg-slate-50" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
+    <div class="flex items-center gap-2 mb-3 px-1">
+      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-inner">${s.fromName.charAt(0)}</div>
+      <div class="text-sm font-bold text-slate-700">${s.fromName} 嘅好書推介</div>
     </div>
     
-    <div class="flex gap-4 mb-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+    <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
       ${b.coverUrl ? `<img src="${b.coverUrl}" class="w-20 aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">` : `<div class="w-20 aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-2xl shadow-sm">📗</div>`}
       <div class="flex-1">
         <h3 class="font-extrabold text-base text-slate-800 leading-tight">${b.title}</h3>
         <p class="text-[11px] font-semibold text-slate-500 mt-1">${b.author || '未知作者'}</p>
-        ${b.category ? `<span class="inline-block mt-1 text-[9px] bg-sky-100 text-sky-600 px-1.5 py-0.5 rounded border border-sky-200">${b.category}</span>` : ''}
+        ${b.category ? `<span class="inline-block mt-1 text-[9px] bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100"><i data-lucide="tag" class="w-2.5 h-2.5 inline-block align-text-top mr-0.5"></i>${b.category}</span>` : ''}
       </div>
     </div>
     
+    ${descHtml}
+    
     <button onclick="window.acceptSharedBook('${shareId}')" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl transition shadow-sm mb-2 flex items-center justify-center gap-1">
-      <i data-lucide="heart" class="w-4 h-4"></i> 加入有興趣清單
+      <i data-lucide="heart" class="w-5 h-5"></i> 加入有興趣清單
     </button>
     <button onclick="window.deleteSharedBook('${shareId}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-2.5 rounded-xl transition mb-2">刪除推介</button>
     <button onclick="closeModal()" class="w-full bg-white border border-slate-200 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-50 transition">關閉</button>
