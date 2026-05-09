@@ -205,7 +205,7 @@ tailwind.config = {
       <!-- 📖 頁面 1：書架 (原本的內容) -->
       <div id="read-page-shelf" class="page-slide p-4 pb-24 block">
         <!-- 數據概覽 -->
-        <div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center card-enter border border-slate-50">
+<div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center card-enter border border-slate-50">
           <div>
             <div class="text-[11px] font-bold text-slate-400 mb-0.5">總閱讀量</div>
             <div class="text-primary flex items-baseline gap-1">
@@ -213,10 +213,14 @@ tailwind.config = {
               <span class="text-xs font-bold text-slate-400">本</span>
             </div>
           </div>
-          <!-- 🌟 換咗做實色放大鏡按鈕 -->
-          <button onclick="toggleShelfToolbar()" class="p-2 bg-sky-50 text-primary rounded-lg border border-sky-100 hover:bg-sky-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
-            <i data-lucide="search" class="w-5 h-5"></i>
-          </button>
+          <div class="flex gap-2">
+            <button onclick="window.toggleShelfMode()" class="p-2 bg-indigo-50 text-indigo-500 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="切換顯示模式">
+              <i data-lucide="layout-grid" id="shelfModeIcon" class="w-5 h-5"></i>
+            </button>
+            <button onclick="toggleShelfToolbar()" class="p-2 bg-sky-50 text-primary rounded-lg border border-sky-100 hover:bg-sky-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
+              <i data-lucide="search" class="w-5 h-5"></i>
+            </button>
+          </div>
         </div>
 
         <!-- 書架工具列 -->
@@ -2798,7 +2802,17 @@ window.generateStarHTML = (prefix, currentRating = 0) => {
   return html;
 };
 
-// ========== 📚 書架渲染功能 (進化版：全方位時間軸支援) ==========
+// ========== 📚 書架渲染功能 (進化版：支援清單及立體書櫃模式) ==========
+
+// 狀態管理：記憶你上次用緊咩模式
+window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'list';
+
+window.toggleShelfMode = () => {
+  window.shelfDisplayMode = window.shelfDisplayMode === 'list' ? 'shelf' : 'list';
+  localStorage.setItem('gq_shelf_mode', window.shelfDisplayMode);
+  renderBooks();
+};
+
 function renderBooks() {
   const grid = document.getElementById('bookshelfGrid');
   const searchVal = document.getElementById('shelfSearchInput')?.value.toLowerCase() || '';
@@ -2807,7 +2821,13 @@ function renderBooks() {
   
   document.getElementById('totalBooksCount').textContent = window.allBooks.length;
   
-  // 保持垂直佈局以支援月份分組
+  // 💡 更新模式 Icon (書櫃 vs 清單)
+  const modeIcon = document.getElementById('shelfModeIcon');
+  if (modeIcon) {
+    modeIcon.setAttribute('data-lucide', window.shelfDisplayMode === 'shelf' ? 'list' : 'layout-grid');
+  }
+
+  // 保持佈局穩定
   grid.className = "flex flex-col gap-6 pb-24 relative"; 
 
   if (window.allBooks.length === 0) {
@@ -2817,6 +2837,7 @@ function renderBooks() {
         <p class="font-bold">書架仲係空空如也</p>
         <p class="text-xs mt-1">撳右下角新增第一本書啦！</p>
       </div>`;
+    lucide.createIcons();
     return;
   }
 
@@ -2838,76 +2859,127 @@ function renderBooks() {
 
   let html = '';
 
-  // 🚀 A. 渲染「正在閱讀」區塊
-  if (readingBooks.length > 0) {
-    html += `
-      <div class="card-enter">
-        <div class="flex items-center gap-2 mb-4 px-1">
-          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
-          <h2 class="font-extrabold text-slate-800 text-base">正在閱讀</h2>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          ${readingBooks.map(book => renderSingleBookCard(book)).join('')}
-        </div>
-      </div>`;
-  }
-
-  // 🚀 B. 渲染「已讀完」區塊 (處理時間軸排序)
-  const isTimelineMode = (sortVal === 'recent' || sortVal === 'oldest');
-
-  if (isTimelineMode) {
-    // 💡 時間軸模式：按月分組
-    const monthlyGroups = {};
-    finishedBooks.forEach(book => {
-      const month = book.endDate ? book.endDate.substring(0, 7) : '日期不詳';
-      if (!monthlyGroups[month]) monthlyGroups[month] = [];
-      monthlyGroups[month].push(book);
-    });
-
-    // 排序月份清單
-    let sortedMonths = Object.keys(monthlyGroups).sort(); // 預設 ASC (舊至新)
-    if (sortVal === 'recent') sortedMonths.reverse(); // 最近讀完則 DESC (新至舊)
-
-    sortedMonths.forEach(month => {
-      const groupBooks = monthlyGroups[month];
+  // 🌟 判斷是否為「書櫃模式」
+  if (window.shelfDisplayMode === 'shelf') {
+    
+    // 定義書櫃渲染組件
+    const renderWoodenShelf = (books, title, badgeColor) => {
+      if (books.length === 0) return '';
       
-      // 🌟 重要：同月內的書也要跟隨排序方向
-      groupBooks.sort((a, b) => {
-        const dateA = a.endDate || '';
-        const dateB = b.endDate || '';
-        return sortVal === 'recent' ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+      let shelfHtml = `
+        <div class="card-enter mb-4">
+          <div class="flex items-center gap-2 mb-3 px-1">
+            <span class="w-2 h-2 rounded-full ${badgeColor}"></span>
+            <h2 class="font-extrabold text-slate-800 text-base">${title} (${books.length})</h2>
+          </div>
+          
+          <div class="bg-[#f4ebe1] p-5 rounded-xl shadow-inner border-[3px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
+            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 142px, #8b6e4e 142px, #8b6e4e 144px);"></div>
+            
+            <div class="flex flex-wrap gap-x-5 gap-y-8 justify-start relative z-10">`;
+            
+      books.forEach(book => {
+        // 如果無封面，顯示書名等佢唔會變一塊吉石
+        const coverHtml = book.coverUrl 
+          ? `<img src="${book.coverUrl}" class="w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10">`
+          : `<div class="w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden">${book.title}</div>`;
+          
+        shelfHtml += `
+          <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
+               ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
+               ontouchend="window.handleBookPressEnd()" 
+               ontouchmove="window.handleBookPressEnd()" 
+               onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+               onmouseup="window.handleBookPressEnd()" 
+               onmouseleave="window.handleBookPressEnd()" 
+               onclick="window.handleBookClick(event, '${book.id}')" 
+               oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
+            ${coverHtml}
+            <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
+          </div>`;
       });
+      
+      shelfHtml += `</div></div></div>`;
+      return shelfHtml;
+    };
 
-      const parts = month.split('-');
-      const displayMonth = month === '日期不詳' ? month : `${parts[0]}年 ${parseInt(parts[1])}月`;
+    // 書櫃模式下，只分開「正在閱讀」同「已讀完」，忽略月份時間軸令排版更統一
+    html += renderWoodenShelf(readingBooks, '正在閱讀', 'bg-orange-500 animate-pulse');
+    
+    // 如果有排序需求，先排序再渲染
+    if (sortVal === 'recent') finishedBooks.sort((a,b) => (b.endDate||'').localeCompare(a.endDate||''));
+    else if (sortVal === 'oldest') finishedBooks.sort((a,b) => (a.endDate||'').localeCompare(b.endDate||''));
+    else finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
+    
+    html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
 
+  } else {
+    // 🚀 原本嘅「列表視圖」邏輯 (清單模式)
+    
+    if (readingBooks.length > 0) {
       html += `
-        <div class="card-enter mb-2">
-          <div class="flex items-center gap-3 mb-4 px-1">
-            <div class="bg-white px-3 py-1 rounded-full shadow-sm border border-slate-100 flex items-center gap-1.5">
-              <i data-lucide="${sortVal === 'recent' ? 'calendar' : 'history'}" class="w-3.5 h-3.5 text-primary"></i>
-              <h2 class="font-extrabold text-primary text-sm">${displayMonth}</h2>
-            </div>
-            <div class="h-[1px] flex-1 bg-slate-200/60"></div>
+        <div class="card-enter">
+          <div class="flex items-center gap-2 mb-4 px-1">
+            <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+            <h2 class="font-extrabold text-slate-800 text-base">正在閱讀</h2>
           </div>
           <div class="grid grid-cols-2 gap-4">
-            ${groupBooks.map(book => renderSingleBookCard(book)).join('')}
+            ${readingBooks.map(book => renderSingleBookCard(book)).join('')}
           </div>
         </div>`;
-    });
-  } else {
-    // 💡 書名 A-Z 模式：純列表顯示
-    finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
-    html += `
-      <div class="card-enter">
-        <div class="flex items-center gap-2 mb-4 px-1">
-          <i data-lucide="sort-asc" class="w-4 h-4 text-slate-400"></i>
-          <h2 class="font-extrabold text-slate-800 text-base">按書名 A-Z 排序</h2>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          ${finishedBooks.map(book => renderSingleBookCard(book)).join('')}
-        </div>
-      </div>`;
+    }
+
+    const isTimelineMode = (sortVal === 'recent' || sortVal === 'oldest');
+
+    if (isTimelineMode) {
+      const monthlyGroups = {};
+      finishedBooks.forEach(book => {
+        const month = book.endDate ? book.endDate.substring(0, 7) : '日期不詳';
+        if (!monthlyGroups[month]) monthlyGroups[month] = [];
+        monthlyGroups[month].push(book);
+      });
+
+      let sortedMonths = Object.keys(monthlyGroups).sort(); 
+      if (sortVal === 'recent') sortedMonths.reverse(); 
+
+      sortedMonths.forEach(month => {
+        const groupBooks = monthlyGroups[month];
+        groupBooks.sort((a, b) => {
+          const dateA = a.endDate || '';
+          const dateB = b.endDate || '';
+          return sortVal === 'recent' ? dateB.localeCompare(dateA) : dateA.localeCompare(dateB);
+        });
+
+        const parts = month.split('-');
+        const displayMonth = month === '日期不詳' ? month : `${parts[0]}年 ${parseInt(parts[1])}月`;
+
+        html += `
+          <div class="card-enter mb-2">
+            <div class="flex items-center gap-3 mb-4 px-1">
+              <div class="bg-white px-3 py-1 rounded-full shadow-sm border border-slate-100 flex items-center gap-1.5">
+                <i data-lucide="${sortVal === 'recent' ? 'calendar' : 'history'}" class="w-3.5 h-3.5 text-primary"></i>
+                <h2 class="font-extrabold text-primary text-sm">${displayMonth}</h2>
+              </div>
+              <div class="h-[1px] flex-1 bg-slate-200/60"></div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              ${groupBooks.map(book => renderSingleBookCard(book)).join('')}
+            </div>
+          </div>`;
+      });
+    } else {
+      finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
+      html += `
+        <div class="card-enter">
+          <div class="flex items-center gap-2 mb-4 px-1">
+            <i data-lucide="sort-asc" class="w-4 h-4 text-slate-400"></i>
+            <h2 class="font-extrabold text-slate-800 text-base">按書名 A-Z 排序</h2>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            ${finishedBooks.map(book => renderSingleBookCard(book)).join('')}
+          </div>
+        </div>`;
+    }
   }
 
   grid.innerHTML = html || `<div class="text-center py-10 text-slate-400 font-bold">搵唔到符合條件嘅書 🔍</div>`;
