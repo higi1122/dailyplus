@@ -4493,7 +4493,7 @@ window.getSharedWAMessage = (bookId) => {
   const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
   const searchTerm = isCjk ? book.title.substring(0, 10) : book.title.substring(0, 30);
   const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
-  return `我啱啱喺 Daily+ 推介咗好書《${book.title}》畀你，快啲去「閱讀書友」Inbox 睇吓啦！📚✨\n\nZ-Library 搜尋連結：${zUrl}`;
+  return `向你介紹一本好書：《${book.title}》，你睇吓啦！📚✨\n\nZ-Library 搜尋連結：${zUrl}`;
 };
 
 window.shareDirectToWA = (bookId) => {
