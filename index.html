@@ -5003,16 +5003,37 @@ window.renderReadCalendar = () => {
           stars += `</div>`;
         }
         contentHtml = `<div class="flex flex-col items-center mt-0.5 w-full h-full cursor-pointer hover:scale-105 transition-transform" onclick="viewBook('${b.id}')">${cover}${stars}</div>`;
-  } else {
-        // 💡 多於一本書：點擊直接開啟第一本，並帶入當日所有書嘅 ID 陣列供切換
+} else {
+        // 💡 多於一本書：立體疊疊樂效果 (最多疊 3 本)
         const allDayIds = dayBooks.map(b => b.id).join(',');
-        contentHtml = `<div class="flex flex-wrap gap-0.5 justify-center mt-1 w-full cursor-pointer hover:opacity-80 transition-opacity" onclick="viewBook('${dayBooks[0].id}', '${allDayIds}')" title="此日讀完 ${dayBooks.length} 本書">`;      dayBooks.slice(0,4).forEach(b => {
-          contentHtml += b.coverUrl ? `<img src="${b.coverUrl}" class="w-[20px] h-[28px] object-cover rounded-[2px] shadow-sm border border-slate-200 pointer-events-none">` : `<div class="w-[20px] h-[28px] bg-slate-200 rounded-[2px] border border-slate-200 pointer-events-none"></div>`;
-        });
-        contentHtml += `</div>`;
-        if(dayBooks.length > 4) contentHtml += `<div class="text-[8px] text-slate-400 font-bold mt-0.5 pointer-events-none">+${dayBooks.length-4}</div>`;
-      }
-    }
+        
+        contentHtml = `<div class="flex flex-col items-center mt-0.5 w-full h-full cursor-pointer hover:scale-105 transition-transform" onclick="window.viewBook('${dayBooks[0].id}', '${allDayIds}')" title="此日讀完 ${dayBooks.length} 本書">`;
+        
+        // 疊疊樂相對定位容器 (預留 6px 偏移空間)
+        contentHtml += `<div class="relative w-[48px] h-[66px]">`;
+        
+        const maxStack = Math.min(dayBooks.length, 3);
+        // 倒轉迴圈：確保最底嗰本先畫，第一本最後畫喺最面
+        for(let i = maxStack - 1; i >= 0; i--) {
+           const b = dayBooks[i];
+           const zIndex = 30 - i * 10;
+           const offsetLeft = i * 3; // 每本向右偏 3px
+           const offsetTop = i * 3;  // 每本向下偏 3px
+           // 後面嘅書稍微調暗，營造前後立體感
+           const brightness = i > 0 ? 'brightness-[0.85]' : ''; 
+           
+           const cover = b.coverUrl 
+             ? `<img src="${b.coverUrl}" class="absolute w-[42px] h-[60px] object-cover rounded shadow-sm border border-slate-300 pointer-events-none ${brightness}" style="z-index:${zIndex}; top:${offsetTop}px; left:${offsetLeft}px;">` 
+             : `<div class="absolute w-[42px] h-[60px] bg-slate-200 rounded text-[8px] flex items-center justify-center p-1 text-center font-bold text-slate-500 shadow-sm border border-slate-300 truncate leading-tight pointer-events-none ${brightness}" style="z-index:${zIndex}; top:${offsetTop}px; left:${offsetLeft}px;">📗</div>`;
+           
+           contentHtml += cover;
+        }
+        
+        // 右上角加入粉紅色總數提示徽章
+        contentHtml += `<div class="absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full z-40 border-[1.5px] border-white shadow-sm pointer-events-none">${dayBooks.length}</div>`;
+        
+        contentHtml += `</div></div>`;
+      }    }
 
     const dateColor = isToday ? 'bg-indigo-500 text-white w-4 h-4 rounded-full flex items-center justify-center -mr-0.5 -mt-0.5 shadow-sm' : 'text-slate-500';
 
