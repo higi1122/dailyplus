@@ -530,10 +530,26 @@ auth.onAuthStateChanged(async user => {
     if(!globalExerciseData) globalExerciseData = JSON.parse(JSON.stringify(defaultExerciseData));
     if(!globalRewardsData) globalRewardsData = JSON.parse(JSON.stringify(defaultRewards));
 
-    // --- 2. 載入個人專屬自訂清單及專屬商店 ---
+// --- 2. 載入個人專屬自訂清單及專屬商店 ---
+    window.defaultStartupApp = 'hub'; // 預設大堂
     db.collection("users").doc(user.uid).collection("settings").doc("preferences").get().then(doc => {
-      if (doc.exists && doc.data().exerciseData) exerciseData = doc.data().exerciseData;
-      else exerciseData = JSON.parse(JSON.stringify(globalExerciseData)); // 繼承系統預設
+      if (doc.exists) {
+        if (doc.data().exerciseData) exerciseData = doc.data().exerciseData;
+        else exerciseData = JSON.parse(JSON.stringify(globalExerciseData)); // 繼承系統預設
+        
+        // 🌟 載入進階偏好設定 (Firebase 會覆蓋本地預設)
+        if (doc.data().defaultStartupApp) window.defaultStartupApp = doc.data().defaultStartupApp;
+        if (doc.data().shelfDisplayMode) window.shelfDisplayMode = doc.data().shelfDisplayMode;
+        
+        // 🌟 自動跳轉到預設 App 首頁
+        if (window.defaultStartupApp === 'gymigogo') {
+          enterApp('gymigogo');
+        } else if (window.defaultStartupApp === 'reading') {
+          enterApp('reading');
+        }
+      } else {
+        exerciseData = JSON.parse(JSON.stringify(globalExerciseData)); // 繼承系統預設
+      }
     });
 
     db.collection("users").doc(user.uid).collection("settings").doc("rewards").get().then(doc => {
@@ -2809,13 +2825,21 @@ window.generateStarHTML = (prefix, currentRating = 0) => {
 
 // ========== 📚 書架渲染功能 (進化版：支援清單及立體書櫃模式) ==========
 
-// 狀態管理：記憶你上次用緊咩模式
 window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'list';
 
-window.toggleShelfMode = () => {
+window.toggleShelfMode = async () => {
   window.shelfDisplayMode = window.shelfDisplayMode === 'list' ? 'shelf' : 'list';
   localStorage.setItem('gq_shelf_mode', window.shelfDisplayMode);
   renderBooks();
+  
+  // 🌟 同步上 Firebase，等換裝置都記得
+  if (currentUser) {
+    try {
+      await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").set({
+        shelfDisplayMode: window.shelfDisplayMode
+      }, { merge: true });
+    } catch(e) { console.error("設定同步失敗", e); }
+  }
 };
 
 function renderBooks() {
@@ -4328,10 +4352,32 @@ window.confirmStartReading = async (bookId) => {
 // ========== ⚙️ 渲染設定頁面 ==========
 window.renderReadSettings = () => {
   const container = document.getElementById('read-page-settings');
-  // 我將之前寫好嘅 Export Excel 功能搬咗嚟呢度！
+  
   let html = `<h2 class="font-extrabold text-xl text-primary mb-4">⚙️ 閱讀設定</h2>
+  
     <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
-      <h3 class="font-bold text-sm text-primary mb-3">📥 數據管理</h3>
+      <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="monitor-smartphone" class="w-4 h-4"></i> 顯示與啟動設定</h3>
+      
+      <div class="mb-3">
+        <label class="text-xs font-bold text-slate-500 block mb-1">登入後預設顯示畫面</label>
+        <select id="settingDefaultApp" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
+          <option value="hub" ${window.defaultStartupApp === 'hub' ? 'selected' : ''}>🏠 應用大堂 (選擇畫面)</option>
+          <option value="reading" ${window.defaultStartupApp === 'reading' ? 'selected' : ''}>📚 Daily+ Read (閱讀)</option>
+          <option value="gymigogo" ${window.defaultStartupApp === 'gymigogo' ? 'selected' : ''}>🦊 Gymigogo (健身)</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="text-xs font-bold text-slate-500 block mb-1">書架預設模式</label>
+        <select id="settingShelfMode" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
+          <option value="list" ${window.shelfDisplayMode === 'list' ? 'selected' : ''}>📄 列表模式</option>
+          <option value="shelf" ${window.shelfDisplayMode === 'shelf' ? 'selected' : ''}>🗄️ 立體書櫃模式</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
+      <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="database" class="w-4 h-4"></i> 數據管理</h3>
       <p class="text-xs text-slate-500 mb-4">你可以將整個書架嘅記錄（包含所有筆記內容）匯出成 Excel (CSV) 檔案備份。</p>
       <button onclick="exportBooksToCSV()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2">
         <i data-lucide="download" class="w-5 h-5"></i> 下載全部數據
@@ -4339,6 +4385,34 @@ window.renderReadSettings = () => {
     </div>`;
   container.innerHTML = html;
   lucide.createIcons();
+};
+
+// 🌟 新增：儲存設定上 Firebase
+window.saveReadSettings = async () => {
+  const defaultApp = document.getElementById('settingDefaultApp').value;
+  const shelfMode = document.getElementById('settingShelfMode').value;
+  
+  window.defaultStartupApp = defaultApp;
+  window.shelfDisplayMode = shelfMode;
+  
+  // 同時更新 LocalStorage
+  localStorage.setItem('gq_shelf_mode', shelfMode);
+  
+  // 立即套用模式 (如果有開書架嘅話)
+  if (currentReadPage === 'shelf') renderBooks();
+  
+  if(currentUser) {
+    try {
+      await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").set({
+        defaultStartupApp: defaultApp,
+        shelfDisplayMode: shelfMode
+      }, { merge: true });
+      showToast('⚙️ 設定已儲存同步！', 'success');
+    } catch(e) {
+      console.error(e);
+      showToast('儲存失敗', 'error');
+    }
+  }
 };
 
 // 🛠️ 最後修補：攔截書架唔好顯示「有興趣」嘅書
