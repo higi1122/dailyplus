@@ -3491,9 +3491,25 @@ function viewBook(bookId) {
     `;
   }
 
+ // 🌟 計算 Z-Library 搜尋連結
+  const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
+  const searchTerm = isCjk ? book.title.substring(0, 10) : book.title.substring(0, 30);
+  const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
+  const safeTitle = book.title.replace(/'/g, "\\'");
+
   let html = `
     <div class="modal-box max-w-md text-left bg-slate-50 relative pt-10" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       
+      <button 
+        onclick="window.open('${zUrl}', '_blank')" 
+        oncontextmenu="event.preventDefault(); window.copyZLink('${safeTitle}'); return false;"
+        ontouchstart="window.zTimer = setTimeout(() => { window.copyZLink('${safeTitle}'); window.zIsLong = true; }, 700)"
+        ontouchend="clearTimeout(window.zTimer); if(window.zIsLong) { window.zIsLong=false; event.preventDefault(); }"
+        class="absolute top-3 right-11 text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-full w-7 h-7 flex items-center justify-center transition-all z-50 font-black text-xs shadow-sm border border-indigo-100 active:scale-90" 
+        title="Z-Library 搜尋 (長按複製連結)">
+        Z
+      </button>
+
       <button onclick="closeModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 bg-slate-200/50 hover:bg-slate-200 rounded-full p-1.5 transition-colors z-50">
         <i data-lucide="x" class="w-4 h-4"></i>
       </button>
@@ -4582,6 +4598,29 @@ window.viewSentShare = (shareId) => {
   lucide.createIcons();
 };
 
+    // 🌟 輔助：複製 Z-Library 連結
+window.copyZLink = (title) => {
+  const isCjk = /[\u4e00-\u9fa5]/.test(title);
+  const searchTerm = isCjk ? title.substring(0, 10) : title.substring(0, 30);
+  const url = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('🔗 已複製 Z-Lib 搜尋連結', 'success');
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
+  } else {
+    // 備用方案
+    const el = document.createElement('textarea');
+    el.value = url;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('🔗 已複製 Z-Lib 搜尋連結', 'success');
+  }
+};
+    
 // ========== 👥 書友分頁與 Inbox 渲染 ==========
 window.renderReadFriends = () => {
   const container = document.getElementById('read-page-friends');
