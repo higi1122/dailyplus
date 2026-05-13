@@ -5010,7 +5010,7 @@ window.confirmDeleteFriend = async (friendUid) => {
   }
 };
 
-// ========== 📅 閱讀日曆渲染模塊 ==========
+// ========== 📅 閱讀日曆渲染模塊 (精緻比例版) ==========
 let readCalYear = new Date().getFullYear();
 let readCalMonth = new Date().getMonth();
 
@@ -5030,32 +5030,31 @@ window.renderReadCalendar = () => {
   const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const daysInMonth = new Date(readCalYear, readCalMonth + 1, 0).getDate();
 
-  // 🌟 計算第一日偏移量 (預設 0 = 星期日, 1 = 星期一... 完全符合星期日排第一嘅要求)
+  // 🌟 計算第一日偏移量 (預設 0 = 星期日, 1 = 星期一)
   const firstDay = new Date(readCalYear, readCalMonth, 1).getDay();
 
   let html = `
-    <div class="flex items-center justify-between mb-4 card-enter bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-      <button onclick="readCalMonth--; if(readCalMonth<0){readCalMonth=11;readCalYear--;} window.renderReadCalendar();" class="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition text-slate-600 active:scale-90"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-      <div class="font-extrabold text-lg text-slate-800 tracking-wide">${readCalYear} 年 ${monthNames[readCalMonth]}</div>
-      <button onclick="readCalMonth++; if(readCalMonth>11){readCalMonth=0;readCalYear++;} window.renderReadCalendar();" class="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition text-slate-600 active:scale-90"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+    <div class="flex items-center justify-between mb-2 card-enter bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+      <button onclick="readCalMonth--; if(readCalMonth<0){readCalMonth=11;readCalYear--;} window.renderReadCalendar();" class="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition text-slate-600 active:scale-90"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+      <div class="font-extrabold text-base text-slate-800 tracking-wide">${readCalYear} 年 ${monthNames[readCalMonth]}</div>
+      <button onclick="readCalMonth++; if(readCalMonth>11){readCalMonth=0;readCalYear++;} window.renderReadCalendar();" class="p-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition text-slate-600 active:scale-90"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
     </div>
   `;
 
-  // 🌟 星期標題 (星期日排第一)
-  html += '<div class="grid grid-cols-7 gap-1 mb-2 text-center">';
+  // 星期標題
+  html += '<div class="grid grid-cols-7 gap-1 mb-1.5 text-center">';
   ['日','一','二','三','四','五','六'].forEach((d, i) => {
-     // 星期日(0) 同 星期六(6) 顯示紅色
      const color = (i === 0 || i === 6) ? 'text-red-400' : 'text-slate-400';
-     html += `<div class="text-[11px] font-extrabold ${color}">${d}</div>`;
+     html += `<div class="text-[10px] font-extrabold ${color}">${d}</div>`;
   });
   html += '</div>';
 
-  // 日曆格仔本體
-  html += '<div class="grid grid-cols-7 gap-1.5">';
+  // 日曆格仔本體 (縮小 gap)
+  html += '<div class="grid grid-cols-7 gap-1">';
 
-  // 補齊前面的空白格
+  // 補齊前面的空白格 (高度降至 80px)
   for(let i = 0; i < firstDay; i++) {
-     html += `<div class="h-[105px] bg-white/40 rounded-xl border border-dashed border-slate-200/50"></div>`;
+     html += `<div class="h-[80px] bg-white/40 rounded-lg border border-dashed border-slate-200/50"></div>`;
   }
 
   // 填寫每一日
@@ -5067,54 +5066,52 @@ window.renderReadCalendar = () => {
     let contentHtml = '';
     if (dayBooks.length > 0) {
       if (dayBooks.length === 1) {
-        // 💡 只有一本書：顯示精緻封面 + 星星
+        // 💡 只有一本書：縮細封面至 32x46
         const b = dayBooks[0];
-        const cover = b.coverUrl ? `<img src="${b.coverUrl}" class="w-[42px] h-[60px] object-cover rounded shadow-sm border border-slate-200 pointer-events-none">` : `<div class="w-[42px] h-[60px] bg-slate-200 rounded text-[8px] flex items-center justify-center p-1 text-center font-bold text-slate-500 shadow-sm border border-slate-200 truncate leading-tight pointer-events-none">📗</div>`;
+        const cover = b.coverUrl 
+          ? `<img src="${b.coverUrl}" class="w-[32px] h-[46px] object-cover rounded-[2px] shadow-sm border border-slate-200 pointer-events-none">` 
+          : `<div class="w-[32px] h-[46px] bg-slate-200 rounded-[2px] text-[7px] flex items-center justify-center p-0.5 text-center font-bold text-slate-500 shadow-sm border border-slate-200 truncate leading-tight pointer-events-none">📗</div>`;
         
         let stars = '';
         if (b.rating > 0) {
-          stars = `<div class="flex gap-[1px] mt-1 justify-center pointer-events-none">`;
-          for(let s=1; s<=5; s++) stars += `<svg class="w-[7px] h-[7px] ${s<=b.rating?'text-warm3 fill-current':'text-slate-200 fill-current'}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+          stars = `<div class="flex gap-[1px] mt-0.5 justify-center pointer-events-none">`;
+          for(let s=1; s<=5; s++) stars += `<svg class="w-[6px] h-[6px] ${s<=b.rating?'text-warm3 fill-current':'text-slate-200 fill-current'}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
           stars += `</div>`;
         }
-        contentHtml = `<div class="flex flex-col items-center mt-0.5 w-full h-full cursor-pointer hover:scale-105 transition-transform" onclick="viewBook('${b.id}')">${cover}${stars}</div>`;
-} else {
-        // 💡 多於一本書：立體疊疊樂效果 (最多疊 3 本)
+        contentHtml = `<div class="flex flex-col items-center mt-0.5 w-full h-full cursor-pointer hover:scale-105 transition-transform" onclick="window.viewBook('${b.id}')">${cover}${stars}</div>`;
+      } else {
+        // 💡 多於一本書：疊疊樂比例縮細
         const allDayIds = dayBooks.map(b => b.id).join(',');
-        
         contentHtml = `<div class="flex flex-col items-center mt-0.5 w-full h-full cursor-pointer hover:scale-105 transition-transform" onclick="window.viewBook('${dayBooks[0].id}', '${allDayIds}')" title="此日讀完 ${dayBooks.length} 本書">`;
         
-        // 疊疊樂相對定位容器 (預留 6px 偏移空間)
-        contentHtml += `<div class="relative w-[48px] h-[66px]">`;
+        // 縮細疊疊樂容器
+        contentHtml += `<div class="relative w-[38px] h-[52px]">`;
         
         const maxStack = Math.min(dayBooks.length, 3);
-        // 倒轉迴圈：確保最底嗰本先畫，第一本最後畫喺最面
         for(let i = maxStack - 1; i >= 0; i--) {
            const b = dayBooks[i];
            const zIndex = 30 - i * 10;
-           const offsetLeft = i * 3; // 每本向右偏 3px
-           const offsetTop = i * 3;  // 每本向下偏 3px
-           // 後面嘅書稍微調暗，營造前後立體感
+           const offsetLeft = i * 2.5; 
+           const offsetTop = i * 2.5;  
            const brightness = i > 0 ? 'brightness-[0.85]' : ''; 
            
            const cover = b.coverUrl 
-             ? `<img src="${b.coverUrl}" class="absolute w-[42px] h-[60px] object-cover rounded shadow-sm border border-slate-300 pointer-events-none ${brightness}" style="z-index:${zIndex}; top:${offsetTop}px; left:${offsetLeft}px;">` 
-             : `<div class="absolute w-[42px] h-[60px] bg-slate-200 rounded text-[8px] flex items-center justify-center p-1 text-center font-bold text-slate-500 shadow-sm border border-slate-300 truncate leading-tight pointer-events-none ${brightness}" style="z-index:${zIndex}; top:${offsetTop}px; left:${offsetLeft}px;">📗</div>`;
-           
+             ? `<img src="${b.coverUrl}" class="absolute w-[32px] h-[46px] object-cover rounded-[2px] shadow-sm border border-slate-300 pointer-events-none ${brightness}" style="z-index:${zIndex}; top:${offsetTop}px; left:${offsetLeft}px;">` 
+             : `<div class="absolute w-[32px] h-[46px] bg-slate-200 rounded-[2px] text-[7px] flex items-center justify-center p-0.5 text-center font-bold text-slate-500 shadow-sm border border-slate-300 truncate leading-tight pointer-events-none ${brightness}" style="z-index:${zIndex}; top:${offsetTop}px; left:${offsetLeft}px;">📗</div>`;
            contentHtml += cover;
         }
-        
-        // 右上角加入粉紅色總數提示徽章
-        contentHtml += `<div class="absolute -top-1 -right-1 bg-pink-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full z-40 border-[1.5px] border-white shadow-sm pointer-events-none">${dayBooks.length}</div>`;
-        
+        // 縮細數字提示
+        contentHtml += `<div class="absolute -top-1 -right-1.5 bg-pink-500 text-white text-[8px] font-black w-3.5 h-3.5 flex items-center justify-center rounded-full z-40 border-[1px] border-white shadow-sm pointer-events-none">${dayBooks.length}</div>`;
         contentHtml += `</div></div>`;
-      }    }
+      }
+    }
 
-    const dateColor = isToday ? 'bg-indigo-500 text-white w-4 h-4 rounded-full flex items-center justify-center -mr-0.5 -mt-0.5 shadow-sm' : 'text-slate-500';
+    // 縮細日期數字
+    const dateColor = isToday ? 'bg-indigo-500 text-white w-3.5 h-3.5 rounded-full flex items-center justify-center shadow-sm' : 'text-slate-500';
 
     html += `
-      <div class="h-[105px] bg-white rounded-xl border border-slate-100 p-1 flex flex-col items-center relative shadow-sm hover:shadow-md transition-shadow" style="-webkit-touch-callout: none; user-select: none;">
-         <div class="text-[10px] font-extrabold self-end mb-0.5 pointer-events-none ${dateColor}">${d}</div>
+      <div class="h-[80px] bg-white rounded-lg border border-slate-100 p-0.5 flex flex-col items-center relative shadow-sm hover:shadow-md transition-shadow" style="-webkit-touch-callout: none; user-select: none;">
+         <div class="text-[9px] font-extrabold self-end mb-0.5 pointer-events-none ${dateColor}">${d}</div>
          ${contentHtml}
       </div>
     `;
@@ -5124,28 +5121,28 @@ window.renderReadCalendar = () => {
   const totalCells = firstDay + daysInMonth;
   const remainingCells = (7 - (totalCells % 7)) % 7;
   for(let i=0; i<remainingCells; i++) {
-     html += `<div class="h-[105px] bg-white/40 rounded-xl border border-dashed border-slate-200/50"></div>`;
+     html += `<div class="h-[80px] bg-white/40 rounded-lg border border-dashed border-slate-200/50"></div>`;
   }
 
   html += '</div>';
   
-  // 📊 底部當月統計
+  // 📊 縮細底部當月統計
   const currentMonthCount = finishedBooks.filter(b => b.endDate && b.endDate.startsWith(`${readCalYear}-${String(readCalMonth+1).padStart(2,'0')}`)).length;
   html += `
-    <div class="mt-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between shadow-sm card-enter">
+    <div class="mt-3 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-3 flex items-center justify-between shadow-sm card-enter">
       <div>
-        <div class="text-xs font-bold text-indigo-400 mb-1">本月閱讀成就</div>
-        <div class="text-2xl font-extrabold text-indigo-600 flex items-baseline gap-1">
-          ${currentMonthCount} <span class="text-sm font-bold text-indigo-400">本</span>
+        <div class="text-[11px] font-bold text-indigo-400 mb-0.5">本月閱讀成就</div>
+        <div class="text-xl font-extrabold text-indigo-600 flex items-baseline gap-1">
+          ${currentMonthCount} <span class="text-xs font-bold text-indigo-400">本</span>
         </div>
       </div>
-      <div class="text-4xl float-anim">🏆</div>
+      <div class="text-3xl float-anim">🏆</div>
     </div>
   `;
 
   container.innerHTML = html;
   lucide.createIcons();
-};    
+};
 </script>
 </body>
 </html>
