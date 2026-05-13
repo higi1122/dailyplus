@@ -4446,21 +4446,34 @@ window.showBookMenu = (e, bookId) => {
   }
 };
 
+// ========== 📤 打開推介視窗 ==========
 window.openShareBookModal = (bookId) => {
   const book = window.allBooks.find(b=>b.id===bookId);
   const readFriends = window.myFriends.filter(f => f.isRead === true);
   
   let html = `<div class="modal-box text-left" onclick="event.stopPropagation()">
     <h3 class="font-extrabold text-lg text-primary mb-1">推介好書</h3>
-    <p class="text-sm text-slate-500 mb-4 truncate">《${book.title}》</p>`;
+    <p class="text-sm text-slate-500 mb-4 truncate">《${book.title}》</p>
+    
+    <div class="mb-4">
+      <button 
+        onclick="window.shareDirectToWA('${bookId}')" 
+        oncontextmenu="event.preventDefault(); window.copyWAMessage('${bookId}'); return false;"
+        class="w-full bg-[#25D366] hover:bg-[#128C7E] text-white font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm">
+        <i data-lucide="message-circle" class="w-5 h-5"></i> WhatsApp 分享 (輕按發送 / 長按複製)
+      </button>
+    </div>
+    `;
     
   if(readFriends.length === 0) {
     html += `<div class="text-center bg-slate-50 p-4 rounded-xl mb-4 border border-slate-100"><p class="text-sm font-bold text-slate-500">你仲未有閱讀書友喎！</p><p class="text-xs text-slate-400 mt-1">去大堂朋友區，搜尋 ID 兼剔選「📚閱讀書友」啦</p></div>`;
   } else {
-    html += `<div class="space-y-2 mb-4 max-h-48 overflow-y-auto">`;
+    html += `<p class="text-[11px] font-bold text-slate-400 mb-2 px-1">推介畀 Daily+ 書友：</p>
+             <div class="space-y-2 mb-4 max-h-48 overflow-y-auto">`;
     readFriends.forEach(f => {
        // 💡 防呆：替換單引號，防止朋友名有符號搞到報錯
-       html += `<button onclick="window.sendShareBook('${book.id}', '${f.uid}', '${f.displayName.replace(/'/g,"\\'")}')" class="w-full bg-sky-50 hover:bg-sky-100 text-slate-700 font-bold py-3 rounded-xl transition flex items-center justify-between px-4 border border-sky-100 shadow-sm">
+       const safeName = f.displayName.replace(/'/g,"\\'");
+       html += `<button onclick="window.sendShareBook('${book.id}', '${f.uid}', '${safeName}')" class="w-full bg-sky-50 hover:bg-sky-100 text-slate-700 font-bold py-3 rounded-xl transition flex items-center justify-between px-4 border border-sky-100 shadow-sm">
          <span class="flex items-center gap-2 truncate"><div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-[10px] flex-shrink-0">${f.displayName.charAt(0)}</div> <span class="truncate">${f.displayName}</span></span> 
          <i data-lucide="send" class="w-4 h-4 text-primary flex-shrink-0"></i>
        </button>`;
@@ -4471,6 +4484,44 @@ window.openShareBookModal = (bookId) => {
   showModal(html);
   lucide.createIcons();
 };
+
+
+// ========== 🌟 輔助函數：WhatsApp 生成、發送與複製 ==========
+window.getSharedWAMessage = (bookId) => {
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (!book) return "";
+  const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
+  const searchTerm = isCjk ? book.title.substring(0, 10) : book.title.substring(0, 30);
+  const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
+  return `我啱啱喺 Daily+ 推介咗好書《${book.title}》畀你，快啲去「閱讀書友」Inbox 睇吓啦！📚✨\n\nZ-Library 搜尋連結：${zUrl}`;
+};
+
+window.shareDirectToWA = (bookId) => {
+  const msg = window.getSharedWAMessage(bookId);
+  if (!msg) return;
+  const waLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+  window.open(waLink, '_blank');
+};
+
+window.copyWAMessage = (bookId) => {
+  const msg = window.getSharedWAMessage(bookId);
+  if (!msg) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(msg).then(() => {
+      showToast('📋 已複製 WhatsApp 訊息內容', 'success');
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
+  } else {
+    const el = document.createElement('textarea');
+    el.value = msg;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('📋 已複製 WhatsApp 訊息內容', 'success');
+  }
+};
+
 
 // ========== 📤 分享書籍畀朋友 (結構修正版) ==========
 window.sendShareBook = async (bookId, friendUid, friendName) => {
@@ -4510,8 +4561,12 @@ window.sendShareBook = async (bookId, friendUid, friendName) => {
     // 2. 寫入自己嘅「送出記錄」
     await db.collection("users").doc(currentUser.uid).collection("sent_shares").doc(shareId).set(shareData);
     
-    // 3. 顯示成功畫面與 WhatsApp 捷徑
-    const waText = `我啱啱喺 Daily+ 推介咗好書《${book.title}》畀你，快啲去「閱讀書友」Inbox 睇吓啦！📚✨`;
+    // 🌟 3. 顯示成功畫面與 WhatsApp 捷徑 (包含 Z-Lib)
+    const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
+    const searchTerm = isCjk ? book.title.substring(0, 10) : book.title.substring(0, 30);
+    const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
+    
+    const waText = `我啱啱喺 Daily+ 推介咗好書《${book.title}》畀你，快啲去「閱讀書友」Inbox 睇吓啦！📚✨\n\nZ-Library 搜尋連結：${zUrl}`;
     const waLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(waText)}`;
     
     let successHtml = `
