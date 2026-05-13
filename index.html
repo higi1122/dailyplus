@@ -3510,6 +3510,7 @@ window.viewBook = (bookId, groupIdsStr = '') => {
     `;
   }
 
+// 🌟 修正：中文字取 10 位，並強化長按判斷邏輯
   const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
   const searchTerm = isCjk ? book.title.substring(0, 15) : book.title.substring(0, 30);
   const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
@@ -3519,10 +3520,10 @@ window.viewBook = (bookId, groupIdsStr = '') => {
     <div class="modal-box max-w-md text-left bg-slate-50 relative pt-12" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       
       <button 
-        onclick="window.open('${zUrl}', '_blank')" 
+        onclick="if(window.zIsLong) { window.zIsLong=false; return; } window.open('${zUrl}', '_blank')" 
         oncontextmenu="event.preventDefault(); window.copyZLink('${safeTitle}'); return false;"
-        ontouchstart="window.zTimer = setTimeout(() => { window.copyZLink('${safeTitle}'); window.zIsLong = true; }, 700)"
-        ontouchend="clearTimeout(window.zTimer); if(window.zIsLong) { window.zIsLong=false; event.preventDefault(); }"
+        ontouchstart="window.zIsLong = false; window.zTimer = setTimeout(() => { window.copyZLink('${safeTitle}'); window.zIsLong = true; if(navigator.vibrate) navigator.vibrate(50); }, 700)"
+        ontouchend="clearTimeout(window.zTimer);"
         class="absolute top-3 right-11 text-indigo-500 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-full w-7 h-7 flex items-center justify-center transition-all z-50 font-black text-xs shadow-sm border border-indigo-100 active:scale-90" 
         title="Z-Library 搜尋 (長按複製連結)">
         Z
@@ -4511,7 +4512,7 @@ window.getSharedWAMessage = (bookId) => {
   const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
   const searchTerm = isCjk ? book.title.substring(0, 10) : book.title.substring(0, 30);
   const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
-  return `向你介紹一本好書：《${book.title}》，你睇吓啦！📚✨\n\nZ-Library 搜尋連結：${zUrl}`;
+  return `向你介紹一本好書：《${book.title}》，你睇吓啦！📚✨\n\n搜尋連結：${zUrl}`;
 };
 
 window.shareDirectToWA = (bookId) => {
@@ -4584,7 +4585,7 @@ window.sendShareBook = async (bookId, friendUid, friendName) => {
     const searchTerm = isCjk ? book.title.substring(0, 10) : book.title.substring(0, 30);
     const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
     
-    const waText = `我啱啱喺 Daily+ 推介咗好書《${book.title}》畀你，快啲去「閱讀書友」Inbox 睇吓啦！📚✨\n\nZ-Library 搜尋連結：${zUrl}`;
+    const waText = `我啱啱喺 Daily+ 推介咗好書《${book.title}》畀你，快啲去「閱讀書友」Inbox 睇吓啦！📚✨\n\n搜尋連結：${zUrl}`;
     const waLink = `https://api.whatsapp.com/send?text=${encodeURIComponent(waText)}`;
     
     let successHtml = `
