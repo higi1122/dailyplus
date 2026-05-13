@@ -2885,7 +2885,7 @@ function renderBooks() {
           
         shelfHtml += `
           <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
-               style="-webkit-touch-callout: none; user-select: none;"
+               style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
                ontouchstart="window.handleBookPressStart(event, '${book.id}')"
                ontouchend="window.handleBookPressEnd()" 
                ontouchmove="window.handleBookPressEnd()" 
@@ -3082,7 +3082,7 @@ function renderSingleBookCard(book) {
       onclick="window.handleBookClick(event, '${book.id}')" 
       oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
       class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative"
-      style="-webkit-touch-callout: none; user-select: none;">
+      style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
       <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
         <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
         ${coverHtml}
@@ -4188,7 +4188,7 @@ window.renderWishlist = () => {
         onclick="window.handleBookClick(event, '${book.id}')" 
         oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
         class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative card-enter"
-        style="-webkit-touch-callout: none; user-select: none;">
+        style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
         <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
           <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
           ${coverHtml}
