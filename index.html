@@ -3273,15 +3273,26 @@ function openAddBookModal() {
     <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       <h3 class="font-extrabold text-lg text-primary mb-4 flex items-center gap-2">➕ 新增閱讀記錄</h3>
       
-      <div id="searchThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
-  <label id="searchThemeLabel" class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 萬能搜尋：書名 / 作者 / ISBN</label>
-  <div class="flex gap-2">
-    <input id="bookSearchInput" type="text" placeholder="例如：原子習慣 或 978986..." class="flex-1 border-2 border-orange-200 rounded-xl px-3 py-2 focus:border-orange-400 focus:outline-none text-sm font-bold bg-white text-slate-700" onkeypress="if(event.key === 'Enter') fetchBookData()">
-    <button id="searchThemeBtn" onclick="fetchBookData()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm text-sm whitespace-nowrap flex items-center gap-1">
-      <i data-lucide="search" class="w-4 h-4"></i> 搜尋
-    </button>
-  </div>
-</div>
+ <div id="searchThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
+        <label id="searchThemeLabel" class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 選擇搜尋方式並輸入內容</label>
+        
+        <div class="flex gap-1.5">
+          <select id="bookSearchType" class="border-2 border-orange-200 rounded-xl px-2 py-2 focus:border-orange-400 focus:outline-none text-sm font-bold bg-white text-slate-700 w-[72px] flex-shrink-0 text-center">
+            <option value="auto">綜合</option>
+            <option value="intitle">書名</option>
+            <option value="inauthor">作者</option>
+            <option value="isbn">ISBN</option>
+          </select>
+          
+          <input id="bookSearchInput" type="text" placeholder="書名 / 作者 / 978..." class="flex-1 border-2 border-orange-200 rounded-xl px-3 py-2 focus:border-orange-400 focus:outline-none text-sm font-bold bg-white text-slate-700 min-w-0" onkeypress="if(event.key === 'Enter') fetchBookData()">
+          
+          <button id="searchThemeBtn" onclick="fetchBookData()" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm text-sm whitespace-nowrap flex items-center justify-center gap-1 flex-shrink-0">
+            <i data-lucide="search" class="w-4 h-4"></i>
+          </button>
+        </div>
+        
+        <div id="bookSearchResults" class="hidden mt-3 space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+      </div>
       
       <div class="space-y-3">
         <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 *</label><input id="bookTitle" type="text" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
@@ -3340,104 +3351,131 @@ function openAddBookModal() {
 // 🔑 你的 Google Books API Key (申請後貼喺度，保留引號)
 const GOOGLE_BOOKS_API_KEY = 'AIzaSyAV4z0YN0lZVZe1BEg_uIQXcKlFNLYA2sQ'; 
 
+// 🌟 升級版：支援「書名 / 作者 / ISBN」精準搜尋
 async function fetchBookData() {
   const searchInput = document.getElementById('bookSearchInput');
+  const searchType = document.getElementById('bookSearchType').value; // 讀取下拉選單
   const query = searchInput.value.trim();
+  const resultsContainer = document.getElementById('bookSearchResults');
 
   if (!query) {
-    showToast('請先輸入書名或 ISBN', 'error');
+    showToast('請輸入搜尋內容', 'error');
     return;
   }
 
-  // 智能判斷：係咪 ISBN
-  const isISBN = /^[0-9\-]+$/.test(query);
-  const cleanISBN = isISBN ? query.replace(/[- ]/g, '') : '';
-
-  // UX 設計：轉換按鈕為 Loading 狀態
-  const searchBtn = searchInput.nextElementSibling;
+  // UX: Loading 狀態
+  const searchBtn = document.getElementById('searchThemeBtn');
   const originalBtnHTML = searchBtn.innerHTML;
-  searchBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 處理中`;
+  searchBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>`;
   searchBtn.disabled = true;
   lucide.createIcons();
 
   try {
-    let bookFound = false;
-    let bookData = { title: '', author: '', desc: '', cover: '' };
+    let gbQuery = '';
 
-    // 構建 Google Books API 網址
-    const gbQuery = isISBN ? `isbn:${cleanISBN}` : encodeURIComponent(query);
-    let apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${gbQuery}&maxResults=1`;
-    
-    // 如果有輸入 API Key，就加落條 URL 度解鎖限制
+    // 💡 根據用戶選擇，組合 Google Books 專用語法
+    if (searchType === 'isbn' || (searchType === 'auto' && /^[0-9\-]+$/.test(query))) {
+      // 處理 ISBN
+      const cleanISBN = query.replace(/[- ]/g, '');
+      gbQuery = `isbn:${cleanISBN}`;
+    } else if (searchType === 'intitle') {
+      // 明確指定搜尋「書名」
+      gbQuery = `intitle:${encodeURIComponent(query)}`;
+    } else if (searchType === 'inauthor') {
+      // 明確指定搜尋「作者」
+      gbQuery = `inauthor:${encodeURIComponent(query)}`;
+    } else {
+      // 綜合搜尋 (兜底)
+      gbQuery = encodeURIComponent(query);
+    }
+
+    // 發送請求
+    let apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${gbQuery}&maxResults=5`;
     if (GOOGLE_BOOKS_API_KEY && GOOGLE_BOOKS_API_KEY.trim() !== '') {
       apiUrl += `&key=${GOOGLE_BOOKS_API_KEY}`;
     }
 
     const gbResponse = await fetch(apiUrl);
 
-    // 🚨 UX 防呆：攔截 Google 嘅「限流」封鎖 (HTTP 429)
     if (gbResponse.status === 429) {
-      showToast('⚠️ Google 搜尋太頻繁被限制，請稍後再試或加入 API Key', 'error');
-      // 復原按鈕狀態
+      showToast('⚠️ Google 搜尋太頻繁被限制，請稍後再試', 'error');
       searchBtn.innerHTML = originalBtnHTML;
       searchBtn.disabled = false;
       lucide.createIcons();
-      return; // 終止執行
+      return;
     }
 
     const gbData = await gbResponse.json();
 
     if (gbData.totalItems > 0 && gbData.items) {
-      const info = gbData.items[0].volumeInfo;
-      bookData.title = info.title || '';
-      bookData.author = info.authors ? info.authors.join(', ') : '';
-      bookData.desc = info.description || '';
-      bookData.category = info.categories && info.categories.length > 0 ? info.categories[0] : '';
-      if (info.imageLinks && info.imageLinks.thumbnail) {
-        // 優化圖片網址：轉 https 並移除奇怪捲角特效
-        bookData.cover = info.imageLinks.thumbnail.replace(/^http:\/\//i, 'https://').replace('&edge=curl', '');
-      }
-      bookFound = true;
-    }
+      resultsContainer.innerHTML = ''; 
+      resultsContainer.classList.remove('hidden');
 
-    // 🎨 UI/UX 處理結果
-    if (bookFound) {
-      document.getElementById('bookTitle').value = bookData.title;
-      document.getElementById('bookAuthor').value = bookData.author;
-      document.getElementById('bookDesc').value = bookData.desc;
-      document.getElementById('bookCover').value = bookData.cover;
-      document.getElementById('bookCategory').value = bookData.category; // 🌟 補返呢行：自動填寫分類
+      gbData.items.forEach(item => {
+        const info = item.volumeInfo;
+        const bookData = {
+          title: info.title || '',
+          author: info.authors ? info.authors.join(', ') : '未知作者',
+          desc: info.description || '',
+          category: info.categories && info.categories.length > 0 ? info.categories[0] : '',
+          cover: (info.imageLinks && info.imageLinks.thumbnail) ? info.imageLinks.thumbnail.replace(/^http:\/\//i, 'https://').replace('&edge=curl', '') : ''
+        };
 
-      showToast('🎉 成功從 Google Books 搵到資料！', 'success');
+        const encodedData = encodeURIComponent(JSON.stringify(bookData));
 
-      // UX：綠色高光閃爍提示 (加埋 bookCategory)
-      ['bookTitle', 'bookAuthor', 'bookCategory', 'bookCover', 'bookDesc'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.value) {
-          el.classList.add('bg-green-50', 'ring-2', 'ring-green-400');
-          setTimeout(() => el.classList.remove('bg-green-50', 'ring-2', 'ring-green-400'), 1200);
-        }
+        resultsContainer.innerHTML += `
+          <div class="bg-white p-2 rounded-xl border border-orange-100 shadow-sm flex gap-3 items-center cursor-pointer hover:bg-orange-50 transition active:scale-95" onclick="window.selectBookFromResult('${encodedData}')">
+            ${bookData.cover ? `<img src="${bookData.cover}" class="w-10 h-14 object-cover rounded shadow-sm border border-slate-100 flex-shrink-0">` : `<div class="w-10 h-14 bg-slate-200 rounded flex items-center justify-center text-xs border border-slate-100 flex-shrink-0">📗</div>`}
+            <div class="flex-1 min-w-0">
+              <h4 class="font-bold text-sm text-slate-800 truncate leading-tight">${bookData.title}</h4>
+              <p class="text-[11px] font-semibold text-slate-500 truncate mt-0.5">${bookData.author}</p>
+            </div>
+            <button class="bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0 hover:bg-orange-200 transition">選擇</button>
+          </div>
+        `;
       });
+      showToast('搵到喇！請揀選正確嘅版本 👇', 'info');
     } else {
-      showToast('Google 書庫搵唔到呢本書呀，麻煩自己入一入 🥲', 'error');
-      // UX：自動聚焦到書名輸入框，並加入橙色高光提示
-      const titleInput = document.getElementById('bookTitle');
-      titleInput.focus();
-      titleInput.classList.add('bg-orange-50', 'ring-2', 'ring-orange-400');
-      setTimeout(() => titleInput.classList.remove('bg-orange-50', 'ring-2', 'ring-orange-400'), 1500);
+      showToast('搵唔到相關資料，試吓轉用「作者」或「ISBN」搜尋 🥲', 'error');
+      resultsContainer.classList.add('hidden');
     }
 
   } catch (error) {
-    console.error("Error in Google Books fetch:", error);
+    console.error("Fetch error:", error);
     showToast('網絡錯誤，請檢查連線再試', 'error');
   } finally {
-    // 確保無論成功定失敗，都會復原按鈕
     searchBtn.innerHTML = originalBtnHTML;
     searchBtn.disabled = false;
     lucide.createIcons();
   }
 }
 
+// 🌟 新增：當用戶點擊其中一個搜尋結果時觸發
+window.selectBookFromResult = (encodedDataStr) => {
+  const bookData = JSON.parse(decodeURIComponent(encodedDataStr));
+
+  // 填寫表單
+  document.getElementById('bookTitle').value = bookData.title;
+  document.getElementById('bookAuthor').value = bookData.author;
+  document.getElementById('bookDesc').value = bookData.desc;
+  document.getElementById('bookCover').value = bookData.cover;
+  document.getElementById('bookCategory').value = bookData.category;
+
+  // 隱藏搜尋結果列表
+  document.getElementById('bookSearchResults').classList.add('hidden');
+  document.getElementById('bookSearchInput').value = ''; // 順手清空搜尋框
+
+  showToast('✅ 成功載入書籍資料！', 'success');
+
+  // UX：綠色高光閃爍提示
+  ['bookTitle', 'bookAuthor', 'bookCategory', 'bookCover', 'bookDesc'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value) {
+      el.classList.add('bg-green-50', 'ring-2', 'ring-green-400');
+      setTimeout(() => el.classList.remove('bg-green-50', 'ring-2', 'ring-green-400'), 1200);
+    }
+  });
+};
 async function saveNewBook() {
   const title = document.getElementById('bookTitle').value.trim();
   if (!title) { showToast('請填寫書名', 'error'); return; }
