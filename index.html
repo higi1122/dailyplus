@@ -89,9 +89,9 @@ tailwind.config = {
   <span id="userBadge" class="bg-sky2 text-primary font-semibold text-sm px-3 py-1 rounded-full truncate max-w-[80px]"></span>
 
   <!-- 🌟 新增：返回大堂主頁按鈕 -->
-  <button onclick="backToHub()" class="p-1.5 rounded-full bg-white text-primary border border-sky2 hover:bg-sky1 transition flex items-center justify-center shadow-sm active:scale-90" title="返回大堂">
-    <i data-lucide="home" class="w-5 h-5"></i>
-  </button>
+<button onclick="openQuickSwitcher()" class="p-1.5 rounded-full bg-white text-primary border border-sky2 hover:bg-sky1 transition flex items-center justify-center shadow-sm active:scale-90" title="切換功能/返回大堂">
+  <i data-lucide="layout-grid" class="w-5 h-5"></i>
+</button>
 </div>
    </header>
    <!-- Pages -->
@@ -193,9 +193,9 @@ tailwind.config = {
             <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
           </span>
         </button>
-        <button onclick="backToHub()" class="p-2 rounded-full bg-orange-100 text-orange-500 hover:bg-orange-200 transition flex items-center justify-center shadow-sm active:scale-90" title="返回大堂">
-          <i data-lucide="home" class="w-5 h-5"></i>
-        </button>
+<button onclick="openQuickSwitcher()" class="p-2 rounded-full bg-orange-100 text-orange-500 hover:bg-orange-200 transition flex items-center justify-center shadow-sm active:scale-90" title="切換功能/返回大堂">
+  <i data-lucide="layout-grid" class="w-5 h-5"></i>
+</button>
       </div>
     </header>
 
@@ -633,16 +633,20 @@ auth.onAuthStateChanged(async user => {
     if(pwdInput) pwdInput.value = '';
   }
 });
-// 進入指定的應用模塊
+// ✅ 升級版：進入指定的應用模塊（加入全域防疊加清場邏輯）
 function enterApp(appName) {
+  // 先將所有主要畫面全體隱藏，防止模塊直跳時發生 UI 疊加 bug
   document.getElementById('hubScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('readingApp').style.display = 'none';
+  
   if (appName === 'gymigogo') {
     document.getElementById('app').style.display = 'flex';
     lucide.createIcons();
-} else if (appName === 'reading') {
-  document.getElementById('readingApp').style.display = 'flex';
-  renderBooks(); // <-- 確保一入去就畫個書架出嚟
-}
+  } else if (appName === 'reading') {
+    document.getElementById('readingApp').style.display = 'flex';
+    renderBooks(); // 確保重新繪製書架
+  }
 }
 
 // 從子模塊返回大堂
@@ -652,6 +656,63 @@ function backToHub() {
   document.getElementById('hubScreen').style.display = 'flex';
 }
 
+// 🌟 新增功能：雙模塊快速導航切換面板 (Quick Switcher Modal)
+window.openQuickSwitcher = () => {
+  // 智能偵測用家目前正身處邊個模塊
+  const isGym = document.getElementById('app').style.display === 'flex';
+  const isRead = document.getElementById('readingApp').style.display === 'flex';
+  
+  let html = `
+    <div class="modal-box max-w-sm text-left border border-slate-100 card-enter" onclick="event.stopPropagation()">
+      <div class="text-center mb-4 flex flex-col items-center">
+        <div class="w-10 h-10 rounded-full bg-sky1 text-primary flex items-center justify-center mb-1 shadow-inner">
+          <i data-lucide="compass" class="w-5 h-5"></i>
+        </div>
+        <h3 class="font-extrabold text-base text-slate-800 tracking-wide">快速導航切換</h3>
+        <p class="text-[11px] text-slate-400 font-semibold mt-0.5">一鍵穿梭你的美好日常 ✨</p>
+      </div>
+      
+      <div class="space-y-3">
+        <button onclick="closeModal(); backToHub();" class="w-full bg-slate-50 border-2 border-slate-200 hover:border-slate-300 rounded-2xl p-3.5 text-left flex items-center gap-4 group transition-all active:scale-[0.98]">
+          <div class="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center text-xl">🏠</div>
+          <div class="flex-1 min-w-0">
+            <h4 class="font-extrabold text-slate-700 text-sm flex items-center gap-1.5">返回大堂</h4>
+            <p class="text-[10px] text-slate-400 font-medium truncate">返回總目錄重新選擇功能</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors"></i>
+        </button>
+
+        <button onclick="closeModal(); enterApp('gymigogo');" class="w-full bg-white border-2 ${isGym ? 'border-primary bg-blue-50/20' : 'border-sky-100/80 hover:border-sky-300'} rounded-2xl p-3.5 text-left flex items-center gap-4 group transition-all active:scale-[0.98]">
+          <div class="w-10 h-10 rounded-xl bg-sky1 flex items-center justify-center text-xl shadow-sm border border-sky2/40">🦊</div>
+          <div class="flex-1 min-w-0">
+            <h4 class="font-extrabold text-primary text-sm flex items-center gap-1.5">
+              Gymigogo 運動記錄
+              ${isGym ? '<span class="text-[9px] bg-primary text-white px-1.5 py-0.5 rounded-md font-bold">目前使用中</span>' : ''}
+            </h4>
+            <p class="text-[10px] text-slate-400 font-medium truncate">繼續你嘅 Work(out) Hard 旅程</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-sky-300 group-hover:text-primary transition-colors"></i>
+        </button>
+
+        <button onclick="closeModal(); enterApp('reading');" class="w-full bg-white border-2 ${isRead ? 'border-orange-400 bg-orange-50/10' : 'border-orange-100/80 hover:border-orange-300'} rounded-2xl p-3.5 text-left flex items-center gap-4 group transition-all active:scale-[0.98]">
+          <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-xl shadow-sm border border-orange-100">📚</div>
+          <div class="flex-1 min-w-0">
+            <h4 class="font-extrabold text-orange-500 text-sm flex items-center gap-1.5">
+              My Reading Record
+              ${isRead ? '<span class="text-[9px] bg-orange-500 text-white px-1.5 py-0.5 rounded-md font-bold">目前使用中</span>' : ''}
+            </h4>
+            <p class="text-[10px] text-slate-400 font-medium truncate">打開專屬立體書架與閱讀筆記</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-orange-300 group-hover:text-orange-500 transition-colors"></i>
+        </button>
+      </div>
+      
+      <button onclick="closeModal()" class="w-full mt-4 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition text-xs text-center active:scale-95">取消</button>
+    </div>
+  `;
+  showModal(html);
+  lucide.createIcons(); // 重新渲染 Modal 入面嘅 compass 同 chevron 圖示
+};
    
 // ========== NAVIGATION ==========
 function switchPage(page) {
