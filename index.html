@@ -169,7 +169,15 @@ tailwind.config = {
         </div>
         <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-orange-500"></i>
       </button>
-      
+
+      <button onclick="enterApp('todo')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-emerald-300 group card-enter" style="animation-delay: 0.1s;">
+        <div class="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-2xl group-hover:bg-emerald-100 transition-colors border border-emerald-100 shadow-inner">✅</div>
+        <div class="flex-1">
+          <h2 class="font-extrabold text-lg text-emerald-500">Daily+ Todo</h2>
+          <p class="text-[11px] font-bold text-slate-400 mt-0.5">安排你的專屬日程與清單</p>
+        </div>
+        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-emerald-500"></i>
+      </button>
     </div>
     
     <!-- 登出按鈕 -->
@@ -283,6 +291,43 @@ tailwind.config = {
       </button>
     </nav>
 
+</div>
+
+  <div id="todoApp" class="h-full w-full bg-slate-50 flex flex-col overflow-hidden" style="display:none;">
+    <header class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">✅</span>
+        <span class="font-extrabold text-emerald-500 text-lg">Daily+ Todo</span>
+      </div>
+      <button onclick="openQuickSwitcher()" class="p-2 rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition flex items-center justify-center shadow-sm active:scale-90" title="切換功能/返回大堂">
+        <i data-lucide="layout-grid" class="w-5 h-5"></i>
+      </button>
+    </header>
+
+    <main class="flex-1 overflow-y-auto p-4 pb-2 relative" id="todoMainContent">
+      <div class="flex items-center justify-between bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mb-4 card-enter">
+ <button onclick="window.changeTodoDate(-1)" class="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 transition active:scale-90"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+        
+        <div class="text-center cursor-pointer group" onclick="window.goToTodayTodo()">
+          <h3 id="todoDateDisplay" class="font-extrabold text-slate-800 text-base group-hover:text-emerald-600 transition">今日</h3>
+          <p id="todoProgressText" class="text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5 border border-emerald-100">0 / 0 已完成</p>
+        </div>
+        
+        <button onclick="window.changeTodoDate(1)" class="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 transition active:scale-90"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+      </div>
+
+      <div id="todoListContainer" class="space-y-2 pb-4"></div>
+    </main>
+
+<div class="bg-white border-t border-slate-200 p-3 flex gap-1.5 flex-shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-20" style="padding-bottom: max(12px, env(safe-area-inset-bottom));">
+<input id="newTodoTime" type="time" step="300" class="border-2 border-emerald-100 bg-emerald-50/30 rounded-xl px-2 py-3 focus:border-emerald-400 focus:outline-none transition font-bold text-slate-700 text-sm shadow-inner w-24 text-center">
+      
+      <input id="newTodoInput" type="text" placeholder="大概幾點做啲咩？(例如: 晨跑/睇書)" class="flex-1 border-2 border-emerald-100 bg-emerald-50/30 rounded-xl px-3 py-3 focus:border-emerald-400 focus:outline-none transition font-bold text-slate-700 text-sm shadow-inner" onkeypress="if(event.key === 'Enter') window.addTodo()">
+      
+      <button onclick="window.addTodo()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 rounded-xl flex items-center justify-center shadow-sm transition active:scale-95 flex-shrink-0">
+        <i data-lucide="plus" class="w-5 h-5"></i>
+      </button>
+    </div>
   </div>
 
    <script>
@@ -501,9 +546,21 @@ auth.onAuthStateChanged(async user => {
       .orderBy("timestamp", "desc")
       .onSnapshot(snapshot => {
         window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // 如果目前畫面係開緊書架，就即時刷新
+// 如果目前畫面係開緊書架，就即時刷新
         if(document.getElementById('readingApp').style.display === 'flex') {
           renderBooks();
+        }
+      });
+
+    // 🌟 新增：實時載入 Todo 日程數據
+    if(window.todosUnsubscribe) window.todosUnsubscribe();
+    window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos")
+      .orderBy("timestamp", "asc")
+      .onSnapshot(snapshot => {
+        window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // 如果目前畫面係開緊 Todo，就即時刷新
+        if(document.getElementById('todoApp').style.display === 'flex') {
+          if(typeof window.renderTodos === 'function') window.renderTodos();
         }
       });
 
@@ -642,6 +699,7 @@ function enterApp(appName) {
   document.getElementById('hubScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
   document.getElementById('readingApp').style.display = 'none';
+  document.getElementById('todoApp').style.display = 'none'; // 🌟 新增隱藏 Todo
   
   if (appName === 'gymigogo') {
     document.getElementById('app').style.display = 'flex';
@@ -649,6 +707,9 @@ function enterApp(appName) {
   } else if (appName === 'reading') {
     document.getElementById('readingApp').style.display = 'flex';
     renderBooks(); // 確保重新繪製書架
+  } else if (appName === 'todo') {
+    document.getElementById('todoApp').style.display = 'flex'; // 🌟 顯示 Todo
+    if(typeof window.renderTodos === 'function') window.renderTodos(); 
   }
 }
 
@@ -656,9 +717,9 @@ function enterApp(appName) {
 function backToHub() {
   document.getElementById('app').style.display = 'none';
   document.getElementById('readingApp').style.display = 'none';
+  document.getElementById('todoApp').style.display = 'none'; // 🌟 新增隱藏 Todo
   document.getElementById('hubScreen').style.display = 'flex';
 }
-
 // 🌟 新增功能：雙模塊快速導航切換面板 (Quick Switcher Modal)
 window.openQuickSwitcher = () => {
   // 智能偵測用家目前正身處邊個模塊
@@ -697,7 +758,7 @@ window.openQuickSwitcher = () => {
           <i data-lucide="chevron-right" class="w-4 h-4 text-sky-300 group-hover:text-primary transition-colors"></i>
         </button>
 
-        <button onclick="closeModal(); enterApp('reading');" class="w-full bg-white border-2 ${isRead ? 'border-orange-400 bg-orange-50/10' : 'border-orange-100/80 hover:border-orange-300'} rounded-2xl p-3.5 text-left flex items-center gap-4 group transition-all active:scale-[0.98]">
+<button onclick="closeModal(); enterApp('reading');" class="w-full bg-white border-2 ${isRead ? 'border-orange-400 bg-orange-50/10' : 'border-orange-100/80 hover:border-orange-300'} rounded-2xl p-3.5 text-left flex items-center gap-4 group transition-all active:scale-[0.98]">
           <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-xl shadow-sm border border-orange-100">📚</div>
           <div class="flex-1 min-w-0">
             <h4 class="font-extrabold text-orange-500 text-sm flex items-center gap-1.5">
@@ -707,6 +768,18 @@ window.openQuickSwitcher = () => {
             <p class="text-[10px] text-slate-400 font-medium truncate">打開專屬立體書架與閱讀筆記</p>
           </div>
           <i data-lucide="chevron-right" class="w-4 h-4 text-orange-300 group-hover:text-orange-500 transition-colors"></i>
+        </button>
+
+        <button onclick="closeModal(); enterApp('todo');" class="w-full bg-white border-2 ${document.getElementById('todoApp').style.display === 'flex' ? 'border-emerald-400 bg-emerald-50/10' : 'border-emerald-100/80 hover:border-emerald-300'} rounded-2xl p-3.5 text-left flex items-center gap-4 group transition-all active:scale-[0.98]">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-xl shadow-sm border border-emerald-100">✅</div>
+          <div class="flex-1 min-w-0">
+            <h4 class="font-extrabold text-emerald-500 text-sm flex items-center gap-1.5">
+              Daily+ Todo
+              ${document.getElementById('todoApp').style.display === 'flex' ? '<span class="text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-md font-bold">目前使用中</span>' : ''}
+            </h4>
+            <p class="text-[10px] text-slate-400 font-medium truncate">安排你的專屬日程與清單</p>
+          </div>
+          <i data-lucide="chevron-right" class="w-4 h-4 text-emerald-300 group-hover:text-emerald-500 transition-colors"></i>
         </button>
       </div>
       
@@ -5409,6 +5482,156 @@ window.renderReadCalendar = () => {
   container.innerHTML = html;
   lucide.createIcons();
 };
-</script>
+// ==========================================
+// ========== ✅ Todo 日程安排系統 ==========
+// ==========================================
+window.allTodos = [];
+window.currentTodoDate = new Date(); // 預設為今日
+
+// 輔助：格式化日期 (YYYY-MM-DD)
+window.formatTodoDate = (dateObj) => {
+  return `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
+};
+
+// 改變日期 (前後切換)
+window.changeTodoDate = (offset) => {
+  window.currentTodoDate.setDate(window.currentTodoDate.getDate() + offset);
+  window.renderTodos();
+};
+
+// 跳轉到今日
+window.goToTodayTodo = () => {
+  window.currentTodoDate = new Date(); // 重設為今日
+  window.renderTodos();
+  showToast('已回到今日', 'info');
+};
+
+// 渲染清單
+window.renderTodos = () => {
+  const targetDateStr = window.formatTodoDate(window.currentTodoDate);
+  const todayStr = window.formatTodoDate(new Date());
+
+ // 1. 處理頂部標題 (加入星期幾)
+  const dateObj = new Date(targetDateStr + 'T00:00:00'); // 確保日期物件正確
+  const weekday = dateObj.toLocaleDateString('zh-HK', { weekday: 'short' });
+  const displayTitle = (targetDateStr === todayStr ? '☀️ 今日' : targetDateStr) + ` (${weekday})`;
+  document.getElementById('todoDateDisplay').textContent = displayTitle;
+
+  // 2. 過濾當日任務
+  const dayTodos = window.allTodos.filter(t => t.date === targetDateStr);
+  const completedCount = dayTodos.filter(t => t.completed).length;
+  
+  const progText = document.getElementById('todoProgressText');
+  progText.textContent = `${completedCount} / ${dayTodos.length} 已完成`;
+  if(dayTodos.length > 0 && completedCount === dayTodos.length) {
+    progText.className = "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full mt-0.5 shadow-sm";
+  } else {
+    progText.className = "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5 border border-emerald-100";
+  }
+
+  // 3. 渲染列表 HTML
+  const listContainer = document.getElementById('todoListContainer');
+  if (dayTodos.length === 0) {
+    listContainer.innerHTML = `
+      <div class="text-center py-16 text-slate-400 card-enter">
+        <div class="text-5xl mb-3 opacity-60">📝</div>
+        <p class="font-extrabold text-sm text-slate-500">呢日暫時冇特別計劃</p>
+        <p class="text-[11px] font-semibold mt-1">喺下方輸入框快速新增任務啦！</p>
+      </div>`;
+ } else {
+    let html = '';
+    
+    // 🌟 UX 核心優化：改為依「一日時間線 (Chronological Timeline)」排序
+    dayTodos.sort((a, b) => {
+      if (a.time && b.time) return a.time.localeCompare(b.time); // 有時間嘅按早到遲排
+      if (a.time) return -1; // 有寫時間嘅排上面
+      if (b.time) return 1;  // 冇寫時間嘅排下面
+      return (a.completed === b.completed) ? 0 : a.completed ? 1 : -1; // 大家都冇時間先按狀態排
+    }).forEach(t => {
+      const isDone = t.completed;
+      html += `
+        <div class="bg-white rounded-xl p-3 shadow-sm border ${isDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-100'} flex items-center gap-3 transition-all card-enter hover:shadow-md cursor-pointer" onclick="window.toggleTodo('${t.id}', ${isDone})">
+          
+          <button class="w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 bg-slate-50 text-transparent'}">
+            <i data-lucide="check" class="w-4 h-4"></i>
+          </button>
+          
+          ${t.time ? `
+            <span class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-extrabold flex-shrink-0 shadow-sm ${isDone ? 'opacity-40' : ''}">
+              ${t.time}
+            </span>
+          ` : `
+            <span class="text-[11px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold flex-shrink-0">
+              全日
+            </span>
+          `}
+          
+          <span class="flex-1 text-sm font-bold ${isDone ? 'line-through text-emerald-600/50' : 'text-slate-700'} transition-all">${t.text}</span>
+          
+          <button onclick="event.stopPropagation(); window.deleteTodo('${t.id}')" class="p-2 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 active:scale-90">
+            <i data-lucide="trash-2" class="w-4 h-4"></i>
+          </button>
+        </div>
+      `;
+    });
+    listContainer.innerHTML = html;
+  }
+  lucide.createIcons();
+};
+
+// 新增任務 (升級：同時支持寫入設定的時間)
+window.addTodo = async () => {
+  const input = document.getElementById('newTodoInput');
+  const timeInput = document.getElementById('newTodoTime'); // 🌟 抓取時間節點
+  
+  const text = input.value.trim();
+  const timeVal = timeInput ? timeInput.value : ''; // 🌟 獲取時間 (例如 "09:30")
+  
+  if(!text) return;
+
+  const targetDateStr = window.formatTodoDate(window.currentTodoDate);
+  
+  // 立即清空輸入框，保持極致流暢操作感
+  input.value = ''; 
+  if(timeInput) timeInput.value = ''; 
+  
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("todos").add({
+      text: text,
+      time: timeVal, // 🌟 寫入 Firebase 資料庫
+      date: targetDateStr,
+      completed: false,
+      timestamp: new Date().toISOString()
+    });
+    if(navigator.vibrate) navigator.vibrate(20);
+  } catch (e) {
+    showToast('新增失敗', 'error');
+  }
+};
+
+// 狀態切換 (Tick/Untick)
+window.toggleTodo = async (id, currentStatus) => {
+  if(navigator.vibrate) navigator.vibrate(20);
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("todos").doc(id).update({
+      completed: !currentStatus
+    });
+    // 如果係完成任務，可以做個小提示
+    if (!currentStatus) showToast('✅ 任務完成！', 'success');
+  } catch(e) { 
+    showToast('更新失敗', 'error'); 
+  }
+};
+
+// 刪除任務
+window.deleteTodo = async (id) => {
+  if(!confirm('確定要刪除呢個任務？')) return;
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("todos").doc(id).delete();
+  } catch(e) { 
+    showToast('刪除失敗', 'error'); 
+  }
+};
+   </script>
 </body>
 </html>
