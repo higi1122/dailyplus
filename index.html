@@ -214,6 +214,9 @@ tailwind.config = {
             </div>
           </div>
           <div class="flex gap-2">
+            <button id="archiveModeBtn" onclick="toggleArchiveMode()" class="p-2 bg-slate-100 text-slate-500 rounded-lg border border-slate-200 hover:bg-slate-200 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center mr-1" title="封存庫">
+              <i data-lucide="archive" class="w-5 h-5"></i>
+            </button>
             <button onclick="window.toggleShelfMode()" class="p-2 bg-indigo-50 text-indigo-500 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="切換顯示模式">
               <i data-lucide="layout-grid" id="shelfModeIcon" class="w-5 h-5"></i>
             </button>
@@ -2886,8 +2889,31 @@ window.generateStarHTML = (prefix, currentRating = 0) => {
 
 // ========== 📚 書架渲染功能 (進化版：支援清單及立體書櫃模式) ==========
 
-window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'list';
+// 🌟 新增：封存模式狀態與切換功能
+window.isArchiveMode = false;
+window.toggleArchiveMode = () => {
+  window.isArchiveMode = !window.isArchiveMode;
+  
+  const bookMainContent = document.getElementById('bookMainContent');
+  const archiveBtn = document.getElementById('archiveModeBtn');
+  
+  if (window.isArchiveMode) {
+    // 進入封存庫：背景轉灰，按鈕加深
+    bookMainContent.classList.replace('bg-sky1', 'bg-slate-200');
+    archiveBtn.classList.replace('bg-slate-100', 'bg-slate-700');
+    archiveBtn.classList.replace('text-slate-500', 'text-white');
+    showToast('📦 已進入封存庫', 'info');
+  } else {
+    // 返回主書架：還原藍色背景同按鈕
+    bookMainContent.classList.replace('bg-slate-200', 'bg-sky1');
+    archiveBtn.classList.replace('bg-slate-700', 'bg-slate-100');
+    archiveBtn.classList.replace('text-white', 'text-slate-500');
+    showToast('📚 返回我的書架', 'success');
+  }
+  renderBooks(); // 重新渲染列表
+};
 
+window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'list';
 window.toggleShelfMode = async () => {
   window.shelfDisplayMode = window.shelfDisplayMode === 'list' ? 'shelf' : 'list';
   localStorage.setItem('gq_shelf_mode', window.shelfDisplayMode);
@@ -2934,18 +2960,26 @@ function renderBooks() {
   // 1. 動態更新分類選單
   updateCategoryDropdown();
 
-  // 2. 執行過濾 (搜尋框 + 分類選單)
+// 2. 執行過濾 (搜尋框 + 分類選單 + 封存狀態)
   let filtered = window.allBooks.filter(book => {
     const title = (book.title || '').toLowerCase();
     const author = (book.author || '').toLowerCase();
     const matchesSearch = title.includes(searchVal) || author.includes(searchVal);
     const matchesCategory = categoryVal === 'all' || book.category === categoryVal;
-    return matchesSearch && matchesCategory;
+    
+    // 🌟 封存模式過濾邏輯
+    const isArchived = book.status === 'archived';
+    if (window.isArchiveMode) {
+      return matchesSearch && matchesCategory && isArchived;
+    } else {
+      return matchesSearch && matchesCategory && !isArchived;
+    }
   });
 
-  // 3. 基礎分組：正在閱讀 vs 已讀完
+  // 3. 基礎分組：正在閱讀 vs 已讀完 vs 封存
   const readingBooks = filtered.filter(b => b.status === 'reading');
   let finishedBooks = filtered.filter(b => b.status === 'finished');
+  let archivedBooks = filtered.filter(b => b.status === 'archived'); // 🌟 新增
 
   let html = '';
 
@@ -3001,7 +3035,8 @@ function renderBooks() {
     else if (sortVal === 'oldest') finishedBooks.sort((a,b) => (a.endDate||'').localeCompare(b.endDate||''));
     else finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
     
-    html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
+html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
+    html += renderWoodenShelf(archivedBooks, '封存庫', 'bg-slate-500'); // 🌟 立體書櫃模式顯示封存書
 
   } else {
     // 🚀 原本嘅「列表視圖」邏輯 (清單模式)
@@ -3069,7 +3104,21 @@ function renderBooks() {
             ${finishedBooks.map(book => renderSingleBookCard(book)).join('')}
           </div>
         </div>`;
-    }
+}
+  }
+
+  // 🌟 在清單模式下如果處於封存區，單獨渲染封存清單
+  if (window.shelfDisplayMode !== 'shelf' && window.isArchiveMode && archivedBooks.length > 0) {
+    html += `
+      <div class="card-enter">
+        <div class="flex items-center gap-2 mb-4 px-1">
+          <i data-lucide="archive" class="w-4 h-4 text-slate-500"></i>
+          <h2 class="font-extrabold text-slate-800 text-base">封存庫</h2>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          ${archivedBooks.map(book => renderSingleBookCard(book)).join('')}
+        </div>
+      </div>`;
   }
 
   grid.innerHTML = html || `<div class="text-center py-10 text-slate-400 font-bold">搵唔到符合條件嘅書 🔍</div>`;
@@ -3137,6 +3186,9 @@ function renderSingleBookCard(book) {
         <span class="group-hover:hidden">閱讀中</span>
         <span class="hidden group-hover:block">標記讀完</span>
       </button>`;
+  } else if (book.status === 'archived') {
+    // 🌟 新增封存狀態顯示
+    statusBadgeHtml = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 shadow-sm relative z-20"><i data-lucide="archive" class="w-3 h-3"></i>已封存</span>`;
   } else {
     statusBadgeHtml = `
       <button onclick="event.stopPropagation(); promptRevertToReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-600 border border-green-200 hover:bg-sky-50 hover:text-sky-600 transition-colors shadow-sm relative z-20">
@@ -3659,7 +3711,7 @@ window.viewBook = (bookId, groupIdsStr = '') => {
     ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100 mt-1"><i data-lucide="tag" class="w-3 h-3"></i>${book.category}</span>` 
     : '';
 
-  let interactiveStatusHtml = '';
+let interactiveStatusHtml = '';
   if (book.status === 'reading') {
     interactiveStatusHtml = `<button onclick="quickFinishBook('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors shadow-sm relative z-20"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse group-hover:hidden"></span><i data-lucide="check-circle" class="w-2.5 h-2.5 hidden group-hover:block text-orange-600"></i><span class="group-hover:hidden">閱讀中 📖</span><span class="hidden group-hover:block">標記讀完</span></button>`;
   } else if (book.status === 'finished') {
@@ -3669,6 +3721,9 @@ window.viewBook = (bookId, groupIdsStr = '') => {
       if (parts.length >= 3) displayFinishedDate = `${parseInt(parts[2])}/${parseInt(parts[1])} 已讀完`;
     }
     interactiveStatusHtml = `<button onclick="promptRevertToReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-600 border border-green-200 hover:bg-sky-50 hover:text-sky-600 transition-colors shadow-sm relative z-20"><span class="w-1.5 h-1.5 rounded-full bg-green-500 group-hover:hidden"></span><i data-lucide="rotate-ccw" class="w-2.5 h-2.5 hidden group-hover:block text-sky-500"></i><span class="group-hover:hidden">${displayFinishedDate}</span><span class="hidden group-hover:block">還原狀態</span></button>`;
+  } else if (book.status === 'archived') {
+    // 🌟 解決詳情頁變咗「有興趣」嘅 Bug
+    interactiveStatusHtml = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 shadow-sm relative z-20"><i data-lucide="archive" class="w-3 h-3"></i> 已封存</span>`;
   } else {
     interactiveStatusHtml = `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-50 text-pink-600 border border-pink-200 shadow-sm relative z-20">有興趣 🧐</span>`;
   }
@@ -3887,11 +3942,12 @@ function editBookInfo(bookId) {
             <input id="editBookEndDate" type="date" value="${book.endDate || ''}" onchange="syncDateAndStatus('date', 'editBookEndDate', 'editBookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700">
           </div>
         </div>
-       <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
+<div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
           <select id="editBookStatus" onchange="syncDateAndStatus('status', 'editBookEndDate', 'editBookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white">
             <option value="reading" ${book.status === 'reading' ? 'selected' : ''}>📖 閱讀中</option>
             <option value="finished" ${book.status === 'finished' ? 'selected' : ''}>✅ 已讀完</option>
             <option value="wishlist" ${book.status === 'wishlist' ? 'selected' : ''}>🧐 有興趣</option>
+            <option value="archived" ${book.status === 'archived' ? 'selected' : ''}>📦 已封存</option>
           </select>
         </div>
         
@@ -3975,12 +4031,13 @@ window.updateModalTheme = (statusSelectId) => {
   const status = statusSelect.value;
   
   // 1. 一般輸入框 (只換邊框色)
-  const elements = document.querySelectorAll('.modal-box input:not(#bookSearchInput), .modal-box select, .modal-box textarea');
+const elements = document.querySelectorAll('.modal-box input:not(#bookSearchInput), .modal-box select, .modal-box textarea');
   elements.forEach(el => {
-    el.classList.remove('border-sky2', 'focus:border-primary', 'border-orange-300', 'focus:border-orange-500', 'border-green-300', 'focus:border-green-500', 'border-pink-300', 'focus:border-pink-500');
+    el.classList.remove('border-sky2', 'focus:border-primary', 'border-orange-300', 'focus:border-orange-500', 'border-green-300', 'focus:border-green-500', 'border-pink-300', 'focus:border-pink-500', 'border-slate-300', 'focus:border-slate-500');
     if (status === 'reading') el.classList.add('border-orange-300', 'focus:border-orange-500');
     else if (status === 'finished') el.classList.add('border-green-300', 'focus:border-green-500');
     else if (status === 'wishlist') el.classList.add('border-pink-300', 'focus:border-pink-500');
+    else if (status === 'archived') el.classList.add('border-slate-300', 'focus:border-slate-500');
     else el.classList.add('border-sky2', 'focus:border-primary'); // 預設藍色
   });
 
@@ -3992,28 +4049,32 @@ window.updateModalTheme = (statusSelectId) => {
   const searchInput = document.getElementById('bookSearchInput');
 
   if (container) {
-    container.classList.remove('bg-orange-50', 'border-orange-100', 'bg-green-50', 'border-green-100', 'bg-pink-50', 'border-pink-100');
+    container.classList.remove('bg-orange-50', 'border-orange-100', 'bg-green-50', 'border-green-100', 'bg-pink-50', 'border-pink-100', 'bg-slate-50', 'border-slate-200');
     if (status === 'reading') container.classList.add('bg-orange-50', 'border-orange-100');
     else if (status === 'finished') container.classList.add('bg-green-50', 'border-green-100');
     else if (status === 'wishlist') container.classList.add('bg-pink-50', 'border-pink-100');
+    else if (status === 'archived') container.classList.add('bg-slate-50', 'border-slate-200');
   }
   if (label) {
-    label.classList.remove('text-orange-600', 'text-green-600', 'text-pink-600');
+    label.classList.remove('text-orange-600', 'text-green-600', 'text-pink-600', 'text-slate-600');
     if (status === 'reading') label.classList.add('text-orange-600');
     else if (status === 'finished') label.classList.add('text-green-600');
     else if (status === 'wishlist') label.classList.add('text-pink-600');
+    else if (status === 'archived') label.classList.add('text-slate-600');
   }
   if (btn) {
-    btn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-green-500', 'hover:bg-green-600', 'bg-pink-500', 'hover:bg-pink-600');
+    btn.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-green-500', 'hover:bg-green-600', 'bg-pink-500', 'hover:bg-pink-600', 'bg-slate-500', 'hover:bg-slate-600');
     if (status === 'reading') btn.classList.add('bg-orange-500', 'hover:bg-orange-600');
     else if (status === 'finished') btn.classList.add('bg-green-500', 'hover:bg-green-600');
     else if (status === 'wishlist') btn.classList.add('bg-pink-500', 'hover:bg-pink-600');
+    else if (status === 'archived') btn.classList.add('bg-slate-500', 'hover:bg-slate-600');
   }
   if (searchInput) {
-    searchInput.classList.remove('border-orange-200', 'focus:border-orange-400', 'border-green-200', 'focus:border-green-400', 'border-pink-200', 'focus:border-pink-400');
+    searchInput.classList.remove('border-orange-200', 'focus:border-orange-400', 'border-green-200', 'focus:border-green-400', 'border-pink-200', 'focus:border-pink-400', 'border-slate-200', 'focus:border-slate-400');
     if (status === 'reading') searchInput.classList.add('border-orange-200', 'focus:border-orange-400');
     else if (status === 'finished') searchInput.classList.add('border-green-200', 'focus:border-green-400');
     else if (status === 'wishlist') searchInput.classList.add('border-pink-200', 'focus:border-pink-400');
+    else if (status === 'archived') searchInput.classList.add('border-slate-200', 'focus:border-slate-400');
   }
 };
 
@@ -4649,10 +4710,21 @@ window.showBookMenu = (e, bookId) => {
     </button>`;
   }
 
-  // 智能選項 3：移回有興趣 (如果目前唔係 wishlist)
-  if (book.status !== 'wishlist') {
+// 智能選項 3：移回有興趣 (如果目前唔係 wishlist 同 archived)
+  if (book.status !== 'wishlist' && book.status !== 'archived') {
     html += `<button onclick="window.menuMoveToWishlist('${book.id}')" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
       <i data-lucide="heart" class="w-5 h-5"></i> 移回有興趣
+    </button>`;
+  }
+  
+  // 🌟 新增：封存與還原按鈕
+  if (book.status === 'archived') {
+    html += `<button onclick="window.unarchiveBook('${book.id}')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm border border-blue-100">
+      <i data-lucide="archive-restore" class="w-5 h-5"></i> 移出封存區 (放回書架)
+    </button>`;
+  } else {
+    html += `<button onclick="window.archiveBook('${book.id}')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm border border-slate-200">
+      <i data-lucide="archive" class="w-5 h-5"></i> 封存此書
     </button>`;
   }
 
@@ -4673,7 +4745,7 @@ window.menuMoveToWishlist = async (bookId) => {
   try {
     await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({
       status: 'wishlist',
-      endDate: '' // 清除可能殘留嘅結束日期
+      endDate: ''
     });
     closeModal();
     showToast('已移回有興趣清單 🧐', 'info');
@@ -4681,7 +4753,42 @@ window.menuMoveToWishlist = async (bookId) => {
     showToast('更新失敗，請檢查網絡', 'error');
   }
 };
-// ========== 📤 分享書籍畀朋友 ==========
+
+// 🌟 新增：封存與還原功能
+window.archiveBook = async (bookId) => {
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({
+      status: 'archived'
+    });
+    closeModal();
+    showToast('📦 已放入封存庫', 'info');
+  } catch (e) {
+    console.error(e);
+    showToast('封存失敗', 'error');
+  }
+};
+
+window.unarchiveBook = async (bookId) => {
+  // 🌟 先搵返本書嘅資料出嚟
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (!book) return;
+
+  // 🌟 智能判斷：有結束日期就去「已讀完」，無就去「閱讀中」
+  const newStatus = book.endDate ? 'finished' : 'reading';
+  const toastMsg = book.endDate ? '📚 已放回「已讀完」書櫃' : '📖 已放回書架，繼續閱讀！';
+
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({
+      status: newStatus
+      // 💡 呢度唔需要再清空 endDate，保留原狀就得
+    });
+    closeModal();
+    showToast(toastMsg, 'success');
+  } catch (e) {
+    console.error(e);
+    showToast('還原失敗', 'error');
+  }
+};// ========== 📤 分享書籍畀朋友 ==========
 // 1. 喺長按選單度加「分享」按鈕
 const originalShowBookMenu = window.showBookMenu;
 window.showBookMenu = (e, bookId) => {
