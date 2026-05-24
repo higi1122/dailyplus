@@ -3820,7 +3820,8 @@ let interactiveStatusHtml = '';
 // 🌟 Z-Library 連結生成 (中文字改為 15 位)
   const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
   const searchTerm = isCjk ? book.title.substring(0, 15) : book.title.substring(0, 30);
-  const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm)}`;
+  // 🌟 修正：將單引號轉為 %27，防止破壞 onclick 語法
+  const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm).replace(/'/g, "%27")}`;
   const safeTitle = book.title.replace(/'/g, "\\'");
 
   let html = `
