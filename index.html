@@ -2964,9 +2964,9 @@ window.generateStarHTML = (prefix, currentRating = 0) => {
   // 注入用來做「半填滿」效果的 SVG 漸層
   let html = `<div class="flex gap-2 mb-1 relative">
     <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
-      <linearGradient id="half_grad_${prefix}" x1="0" x2="1" y1="0" y2="0">
-        <stop offset="50%" stop-color="currentColor" />
-        <stop offset="50%" stop-color="transparent" />
+<linearGradient id="half_grad_${prefix}" x1="0" x2="1" y1="0" y2="0">
+        <stop offset="50%" stop-color="#f59e0b" />
+        <stop offset="50%" stop-color="#e2e8f0" />
       </linearGradient>
     </svg>
   `;
@@ -3306,8 +3306,8 @@ function renderSingleBookCard(book) {
   let ratingHtml = '';
   if (book.status === 'finished' && book.rating > 0) {
     ratingHtml = `<div class="flex items-center gap-0.5 mt-1 relative">
-      <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
-        <linearGradient id="half_grad_${book.id}_sm" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="currentColor" /><stop offset="50%" stop-color="transparent" /></linearGradient>
+<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+        <linearGradient id="half_grad_${book.id}_sm" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient>
       </svg>`;
     for(let i=1; i<=5; i++) {
       const isFull = book.rating >= i;
@@ -3841,7 +3841,7 @@ let interactiveStatusHtml = '';
 
 let reviewHtml = '';
   if (book.status === 'finished' && (book.rating > 0 || book.review)) {
-    let stars = `<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false"><linearGradient id="half_grad_${book.id}_md" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="currentColor" /><stop offset="50%" stop-color="transparent" /></linearGradient></svg>`;
+    let stars = `<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false"><linearGradient id="half_grad_${book.id}_md" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;
     for(let i=1; i<=5; i++) {
        const isFull = book.rating >= i;
        const isHalf = book.rating === i - 0.5;
@@ -5457,7 +5457,7 @@ window.renderReadCalendar = () => {
 let stars = '';
         if (b.rating > 0) {
           stars = `<div class="flex gap-[1px] mt-0.5 justify-center pointer-events-none relative">
-            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${b.id}_xs" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="currentColor" /><stop offset="50%" stop-color="transparent" /></linearGradient></svg>
+            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${b.id}_xs" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>
           `;
           for(let s=1; s<=5; s++) {
             const isFull = b.rating >= s;
