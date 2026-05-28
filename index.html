@@ -2928,33 +2928,63 @@ window.toggleSpecialDay = async (date, type) => {
   }
 };
 
-// ========== ⭐ 星星評分系統 ==========
+// ========== ⭐ 星星評分系統 (支援半星) ==========
 window.setBookRating = (val, prefix) => {
   const input = document.getElementById(prefix + 'Rating');
+  // 支援點擊同一個數值取消評分 (清零)
+  if (input && parseFloat(input.value) === val) {
+    val = 0;
+  }
   if (input) input.value = val;
   
   for(let i=1; i<=5; i++) {
-    const star = document.getElementById(`${prefix}Star_${i}`);
-    if(star) {
-      if(i <= val) {
-        star.classList.add('text-warm3', 'fill-current');
-        star.classList.remove('text-slate-200');
+    const starSvg = document.getElementById(`${prefix}StarSvg_${i}`);
+    if(starSvg) {
+      if (val >= i) {
+        // 全星
+        starSvg.classList.add('text-warm3');
+        starSvg.classList.remove('text-slate-200');
+        starSvg.setAttribute('fill', 'currentColor');
+      } else if (val === i - 0.5) {
+        // 半星 (運用漸層)
+        starSvg.classList.add('text-warm3');
+        starSvg.classList.remove('text-slate-200');
+        starSvg.setAttribute('fill', `url(#half_grad_${prefix})`);
       } else {
-        star.classList.remove('text-warm3', 'fill-current');
-        star.classList.add('text-slate-200');
+        // 空星
+        starSvg.classList.remove('text-warm3');
+        starSvg.classList.add('text-slate-200');
+        starSvg.setAttribute('fill', 'currentColor');
       }
     }
   }
 };
 
 window.generateStarHTML = (prefix, currentRating = 0) => {
-  let html = `<div class="flex gap-2 mb-1">`;
+  // 注入用來做「半填滿」效果的 SVG 漸層
+  let html = `<div class="flex gap-2 mb-1 relative">
+    <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+      <linearGradient id="half_grad_${prefix}" x1="0" x2="1" y1="0" y2="0">
+        <stop offset="50%" stop-color="currentColor" />
+        <stop offset="50%" stop-color="transparent" />
+      </linearGradient>
+    </svg>
+  `;
   for(let i=1; i<=5; i++) {
-    const isFilled = i <= currentRating;
-    const colorClass = isFilled ? 'text-warm3 fill-current' : 'text-slate-200';
-    html += `<button type="button" id="${prefix}Star_${i}" onclick="window.setBookRating(${i}, '${prefix}')" class="p-1 transition-transform active:scale-75 ${colorClass}">
-      <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-    </button>`;
+    const isFull = currentRating >= i;
+    const isHalf = currentRating === i - 0.5;
+    const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+    const fillAttr = isHalf ? `url(#half_grad_${prefix})` : 'currentColor';
+    
+    html += `<div class="relative w-8 h-8 transition-transform active:scale-75">
+      <svg id="${prefix}StarSvg_${i}" class="w-8 h-8 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+      <div class="absolute inset-0 flex">
+        <div class="w-1/2 h-full cursor-pointer" onclick="window.setBookRating(${i - 0.5}, '${prefix}')"></div>
+        <div class="w-1/2 h-full cursor-pointer" onclick="window.setBookRating(${i}, '${prefix}')"></div>
+      </div>
+    </div>`;
   }
   html += `</div><input type="hidden" id="${prefix}Rating" value="${currentRating}">`;
   return html;
@@ -3272,12 +3302,19 @@ function renderSingleBookCard(book) {
       </button>`;
   }
 
-  // 顯示星星
+// 顯示星星 (支援半星)
   let ratingHtml = '';
   if (book.status === 'finished' && book.rating > 0) {
-    ratingHtml = `<div class="flex items-center gap-0.5 mt-1">`;
+    ratingHtml = `<div class="flex items-center gap-0.5 mt-1 relative">
+      <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+        <linearGradient id="half_grad_${book.id}_sm" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="currentColor" /><stop offset="50%" stop-color="transparent" /></linearGradient>
+      </svg>`;
     for(let i=1; i<=5; i++) {
-      ratingHtml += `<svg class="w-3 h-3 ${i <= book.rating ? 'text-warm3 fill-current' : 'text-slate-200'}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+      const isFull = book.rating >= i;
+      const isHalf = book.rating === i - 0.5;
+      const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+      const fillAttr = isHalf ? `url(#half_grad_${book.id}_sm)` : 'currentColor';
+      ratingHtml += `<svg class="w-3 h-3 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     }
     ratingHtml += `</div>`;
   }
@@ -3370,7 +3407,7 @@ async function confirmQuickFinish(bookId) {
   lucide.createIcons();
   
   try {
-    const rating = parseInt(document.getElementById('quickRating').value) || 0;
+    const rating = parseFloat(document.getElementById('quickRating').value) || 0;
     const review = document.getElementById('quickFinishReview').value.trim();
 
     // 直寫入 Firebase，只需 Update 狀態同結束日期
@@ -3680,7 +3717,7 @@ async function saveNewBook() {
     startDate: document.getElementById('bookStartDate').value,
     endDate: document.getElementById('bookEndDate').value,
     status: document.getElementById('bookStatus').value,
-    rating: parseInt(document.getElementById('addRating')?.value) || 0,
+    rating: parseFloat(document.getElementById('addRating')?.value) || 0,
     review: document.getElementById('addReviewText')?.value.trim() || '',
     description: document.getElementById('bookDesc').value.trim(), // 👈 獨立儲存簡介
     notes: notesArray,
@@ -3802,14 +3839,18 @@ let interactiveStatusHtml = '';
     interactiveStatusHtml = `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-50 text-pink-600 border border-pink-200 shadow-sm relative z-20">有興趣 🧐</span>`;
   }
 
-  let reviewHtml = '';
+let reviewHtml = '';
   if (book.status === 'finished' && (book.rating > 0 || book.review)) {
-    let stars = '';
+    let stars = `<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false"><linearGradient id="half_grad_${book.id}_md" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="currentColor" /><stop offset="50%" stop-color="transparent" /></linearGradient></svg>`;
     for(let i=1; i<=5; i++) {
-       stars += `<svg class="w-5 h-5 ${i <= book.rating ? 'text-warm3 fill-current' : 'text-slate-200'}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+       const isFull = book.rating >= i;
+       const isHalf = book.rating === i - 0.5;
+       const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+       const fillAttr = isHalf ? `url(#half_grad_${book.id}_md)` : 'currentColor';
+       stars += `<svg class="w-5 h-5 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     }
     reviewHtml = `
-      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100">
+      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100 relative">
          <h4 class="text-xs font-bold text-orange-600 mb-2 flex items-center gap-1"><i data-lucide="award" class="w-4 h-4"></i>整體評分與書評</h4>
          ${book.rating > 0 ? `<div class="flex gap-1 mb-3">${stars}</div>` : ''}
          ${book.review ? `<p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${book.review}</p>` : ''}
@@ -4058,7 +4099,7 @@ async function confirmEditBookInfo(bookId) {
     startDate: document.getElementById('editBookStartDate').value,
     endDate: document.getElementById('editBookEndDate').value,
     status: document.getElementById('editBookStatus').value,
-    rating: parseInt(document.getElementById('editRating')?.value) || 0,
+    rating: parseFloat(document.getElementById('editRating')?.value) || 0,
     review: document.getElementById('editReviewText')?.value.trim() || '',
     description: document.getElementById('editBookDesc').value.trim() // 👈 更新簡介
   };
@@ -5413,10 +5454,18 @@ window.renderReadCalendar = () => {
           ? `<img src="${b.coverUrl}" class="w-[32px] h-[46px] object-cover rounded-[2px] shadow-sm border border-slate-200 pointer-events-none">` 
           : `<div class="w-[32px] h-[46px] bg-slate-200 rounded-[2px] text-[7px] flex items-center justify-center p-0.5 text-center font-bold text-slate-500 shadow-sm border border-slate-200 truncate leading-tight pointer-events-none">📗</div>`;
         
-        let stars = '';
+let stars = '';
         if (b.rating > 0) {
-          stars = `<div class="flex gap-[1px] mt-0.5 justify-center pointer-events-none">`;
-          for(let s=1; s<=5; s++) stars += `<svg class="w-[6px] h-[6px] ${s<=b.rating?'text-warm3 fill-current':'text-slate-200 fill-current'}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+          stars = `<div class="flex gap-[1px] mt-0.5 justify-center pointer-events-none relative">
+            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${b.id}_xs" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="currentColor" /><stop offset="50%" stop-color="transparent" /></linearGradient></svg>
+          `;
+          for(let s=1; s<=5; s++) {
+            const isFull = b.rating >= s;
+            const isHalf = b.rating === s - 0.5;
+            const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+            const fillAttr = isHalf ? `url(#half_grad_${b.id}_xs)` : 'currentColor';
+            stars += `<svg class="w-[6px] h-[6px] ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+          }
           stars += `</div>`;
         }
         contentHtml = `<div class="flex flex-col items-center mt-0.5 w-full h-full cursor-pointer hover:scale-105 transition-transform" onclick="window.viewBook('${b.id}')">${cover}${stars}</div>`;
