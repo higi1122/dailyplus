@@ -3113,10 +3113,9 @@ books.forEach(book => {
           : `<div class="w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">${book.title}</div>`;
           
         // 🌟 3. 新增：書本封面上嘅星星評分 (支援半星與開關)
-        let coverStarHtml = '';
+     let coverStarHtml = '';
         if (window.showCoverStars && book.rating > 0) {
-          coverStarHtml = `<div class="absolute bottom-1.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] relative">
-            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;
+          coverStarHtml = `<div class="absolute top-1.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] relative">            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;
           for(let s=1; s<=5; s++) {
             const isFull = book.rating >= s;
             const isHalf = book.rating === s - 0.5;
