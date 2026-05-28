@@ -597,9 +597,10 @@ auth.onAuthStateChanged(async user => {
         if (doc.data().exerciseData) exerciseData = doc.data().exerciseData;
         else exerciseData = JSON.parse(JSON.stringify(globalExerciseData)); // 繼承系統預設
         
-        // 🌟 載入進階偏好設定 (Firebase 會覆蓋本地預設)
+// 🌟 載入進階偏好設定 (Firebase 會覆蓋本地預設)
         if (doc.data().defaultStartupApp) window.defaultStartupApp = doc.data().defaultStartupApp;
         if (doc.data().shelfDisplayMode) window.shelfDisplayMode = doc.data().shelfDisplayMode;
+        if (doc.data().showCoverStars !== undefined) window.showCoverStars = doc.data().showCoverStars; // 🌟 載入星星顯示設定
         
         // 🌟 自動跳轉到預設 App 首頁
         if (window.defaultStartupApp === 'gymigogo') {
@@ -3017,6 +3018,7 @@ window.toggleArchiveMode = () => {
 };
 
 window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'list';
+window.showCoverStars = localStorage.getItem('gq_show_cover_stars') !== 'false'; // 🌟 預設為開啟 (true)
 window.toggleShelfMode = async () => {
   window.shelfDisplayMode = window.shelfDisplayMode === 'list' ? 'shelf' : 'list';
   localStorage.setItem('gq_shelf_mode', window.shelfDisplayMode);
@@ -3104,12 +3106,27 @@ function renderBooks() {
             <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 142px, #8b6e4e 142px, #8b6e4e 144px);"></div>
             
             <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-5 gap-y-8 relative z-10">`;
-      books.forEach(book => {
+books.forEach(book => {
         // 🌟 2. 圖片加入 pointer-events-none 同 select-none，徹底防止長按時彈出「儲存圖片」阻擋選單
         const coverHtml = book.coverUrl 
           ? `<img src="${book.coverUrl}" class="w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
           : `<div class="w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">${book.title}</div>`;
           
+        // 🌟 3. 新增：書本封面上嘅星星評分 (支援半星與開關)
+        let coverStarHtml = '';
+        if (window.showCoverStars && book.rating > 0) {
+          coverStarHtml = `<div class="absolute bottom-1.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)] relative">
+            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;
+          for(let s=1; s<=5; s++) {
+            const isFull = book.rating >= s;
+            const isHalf = book.rating === s - 0.5;
+            const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+            const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
+            coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+          }
+          coverStarHtml += `</div>`;
+        }
+
         shelfHtml += `
           <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
                style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
@@ -3122,6 +3139,7 @@ function renderBooks() {
                onclick="window.handleBookClick(event, '${book.id}')" 
                oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
             ${coverHtml}
+            ${coverStarHtml}
             <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
           </div>`;
       });
@@ -4703,12 +4721,19 @@ window.renderReadSettings = () => {
         </select>
       </div>
 
-      <div>
+<div class="mb-3">
         <label class="text-xs font-bold text-slate-500 block mb-1">書架預設模式</label>
         <select id="settingShelfMode" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
           <option value="list" ${window.shelfDisplayMode === 'list' ? 'selected' : ''}>📄 列表模式</option>
           <option value="shelf" ${window.shelfDisplayMode === 'shelf' ? 'selected' : ''}>🗄️ 立體書櫃模式</option>
         </select>
+      </div>
+
+      <div>
+        <label class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors shadow-sm">
+          <span class="text-sm font-bold text-slate-700">書櫃模式顯示評分星星</span>
+          <input type="checkbox" id="settingShowCoverStars" onchange="window.saveReadSettings()" ${window.showCoverStars ? 'checked' : ''} class="w-5 h-5 accent-primary cursor-pointer">
+        </label>
       </div>
     </div>
 
@@ -4727,12 +4752,15 @@ window.renderReadSettings = () => {
 window.saveReadSettings = async () => {
   const defaultApp = document.getElementById('settingDefaultApp').value;
   const shelfMode = document.getElementById('settingShelfMode').value;
+  const showCoverStars = document.getElementById('settingShowCoverStars').checked;
   
   window.defaultStartupApp = defaultApp;
   window.shelfDisplayMode = shelfMode;
+  window.showCoverStars = showCoverStars;
   
   // 同時更新 LocalStorage
   localStorage.setItem('gq_shelf_mode', shelfMode);
+  localStorage.setItem('gq_show_cover_stars', showCoverStars);
   
   // 立即套用模式 (如果有開書架嘅話)
   if (currentReadPage === 'shelf') renderBooks();
@@ -4741,7 +4769,8 @@ window.saveReadSettings = async () => {
     try {
       await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").set({
         defaultStartupApp: defaultApp,
-        shelfDisplayMode: shelfMode
+        shelfDisplayMode: shelfMode,
+        showCoverStars: showCoverStars // 🌟 儲存星星設定
       }, { merge: true });
       showToast('⚙️ 設定已儲存同步！', 'success');
     } catch(e) {
