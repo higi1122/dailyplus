@@ -333,6 +333,15 @@ tailwind.config = {
    <script>
     
 // ========== STATE ==========
+// 🌟 核心修復：預先初始化所有陣列，防止 Firebase 未下載完就繪製畫面導致 Crash (白畫面/卡頓)
+window.allBooks = [];
+window.allTodos = [];
+window.myFriends = [];
+window.myRequests = [];
+window.myChallenges = [];
+window.myBookShares = [];
+window.mySentShares = [];
+
 let allRecords = [];
 let currentPage = 'calendar';
 let calYear, calMonth;
