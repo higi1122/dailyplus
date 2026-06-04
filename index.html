@@ -492,22 +492,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// 🌟 終極修正 1：解決「白等1-2分鐘」的連線卡死 Bug
-// 強制使用穩定的 Long-polling 連線，完美避開 WebSocket 經常發呆的問題！
-const dbSettings = { experimentalForceLongPolling: true };
 
-// 🌟 終極修正 2：更新寫法，消除 F12 的 Deprecated 黃色警告
-try {
-  if (typeof firebase.firestore.indexedDbLocalCache === 'function') {
-    dbSettings.cache = firebase.firestore.indexedDbLocalCache();
-  }
-} catch (e) {}
-db.settings(dbSettings);
-
-// 兼容處理：如果瀏覽器未支援新寫法，安全退回舊版並靜默忽略警告
-if (!dbSettings.cache) {
-  db.enablePersistence().catch(() => {});
-}
 
 let currentUser = null;
 let recordsUnsubscribe = null;
