@@ -68,6 +68,11 @@ tailwind.config = {
   <style>body { box-sizing: border-box; }</style>
  </head>
  <body class="h-full bg-sky1">
+ 
+  <div id="syncStatusBadge" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-white border border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-full px-4 py-2 flex items-center gap-2 text-xs font-bold text-slate-600 transition-all duration-500 opacity-0 pointer-events-none translate-y-[-20px]">
+    <div id="syncStatusContent" class="flex items-center gap-1.5"></div>
+  </div>
+
   <div id="app" class="h-full w-full flex flex-col overflow-hidden" style="display:none;">
    <!-- Header -->
 <header id="appHeader" class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0">
@@ -5735,6 +5740,52 @@ window.deleteTodo = async (id) => {
     showToast('刪除失敗', 'error'); 
   }
 };
+
+  // ==========================================
+  // 🌟 新增：雲端同步狀態監聽與 UI 控制
+  // ==========================================
+  window.updateSyncUI = (status) => {
+    const badge = document.getElementById('syncStatusBadge');
+    const content = document.getElementById('syncStatusContent');
+    if (!badge || !content) return;
+
+    // 顯示 Badge
+    badge.classList.remove('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+    badge.classList.add('opacity-100', 'translate-y-0');
+
+    if (status === 'offline') {
+      content.innerHTML = '<i data-lucide="cloud-off" class="w-4 h-4 text-orange-500"></i><span class="text-orange-600">離線 (已存手機)</span>';
+    } else if (status === 'syncing') {
+      content.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 text-sky-500 animate-spin"></i><span class="text-sky-600">同步中...</span>';
+    } else if (status === 'online') {
+      content.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i><span class="text-emerald-600">已同步</span>';
+      // 顯示 2.5 秒後自動隱藏，保持畫面乾淨
+      setTimeout(() => {
+        badge.classList.add('opacity-0', 'translate-y-[-20px]', 'pointer-events-none');
+        badge.classList.remove('opacity-100', 'translate-y-0');
+      }, 2500);
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  };
+
+  // 監聽手機網絡變化
+  window.addEventListener('offline', () => window.updateSyncUI('offline'));
+  window.addEventListener('online', () => {
+    window.updateSyncUI('syncing');
+    setTimeout(() => window.updateSyncUI('online'), 1200); 
+  });
+
+  // App 每次開啟時自動檢查一次
+  window.addEventListener('load', () => {
+    if (!navigator.onLine) {
+      setTimeout(() => window.updateSyncUI('offline'), 1000);
+    } else {
+      setTimeout(() => {
+        window.updateSyncUI('syncing');
+        setTimeout(() => window.updateSyncUI('online'), 1000);
+      }, 500);
+    }
+  });
    </script>
 </body>
 </html>
