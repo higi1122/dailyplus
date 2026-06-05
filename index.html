@@ -551,31 +551,7 @@ auth.onAuthStateChanged(async user => {
     document.getElementById('userBadge').textContent = displayId;
     document.getElementById('hubWelcomeName').textContent = `準備好今日嘅任務未呀，${displayId}？`;
     
-    // --- 新增：實時載入書架數據 ---
-    if(window.booksUnsubscribe) window.booksUnsubscribe();
-    window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books")
-      .orderBy("timestamp", "desc")
-      .onSnapshot(snapshot => {
-        window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-// 如果目前畫面係開緊書架，就即時刷新
-        if(document.getElementById('readingApp').style.display === 'flex') {
-          renderBooks();
-        }
-      });
-
-    // 🌟 新增：實時載入 Todo 日程數據
-    if(window.todosUnsubscribe) window.todosUnsubscribe();
-    window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos")
-      .orderBy("timestamp", "asc")
-      .onSnapshot(snapshot => {
-        window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // 如果目前畫面係開緊 Todo，就即時刷新
-        if(document.getElementById('todoApp').style.display === 'flex') {
-          if(typeof window.renderTodos === 'function') window.renderTodos();
-        }
-      });
-
-    // (下面保留你原本載入 Firebase 數據嘅邏輯不變...)
+    // 🌟 核心優化：此處已移除初始連線風暴，改由功能開啟時按需載入 (Lazy Load)
     // --- 檢查是否 Admin，顯示按鈕 ---
     const isAdmin = user.email === 'adming@gymigogo.com';
     const navAdmin = document.getElementById('nav-admin');
@@ -630,68 +606,12 @@ auth.onAuthStateChanged(async user => {
       if(currentPage === 'shop') renderShop();
     });
 
-    // 實時載入資料庫數據
-    if(recordsUnsubscribe) recordsUnsubscribe();
-    recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records")
-      .onSnapshot(snapshot => {
-        allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
-        document.getElementById('totalPoints').textContent = getTotalPoints().available;
-        if(currentPage !== 'admin') renderCurrentPage();
-      });
-
-    // --- 新增：實時載入好友、邀請及挑戰數據 ---
-    const updateNotif = () => {
-      const notif = document.getElementById('friendNotif');
-      if(notif) {
-        const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0);
-        if(count > 0) notif.classList.remove('hidden');
-        else notif.classList.add('hidden');
-      }
-    };
-
-    if(window.friendsUnsubscribe) window.friendsUnsubscribe();
-    window.friendsUnsubscribe = db.collection("users").doc(user.uid).collection("friends").onSnapshot(snap => {
-      window.myFriends = snap.docs.map(d => ({uid: d.id, ...d.data()}));
-      if(currentPage === 'friends') renderFriends();
-    });
-
-    if(window.reqsUnsubscribe) window.reqsUnsubscribe();
-    window.reqsUnsubscribe = db.collection("users").doc(user.uid).collection("friend_requests").onSnapshot(snap => {
-      window.myRequests = snap.docs.map(d => ({uid: d.id, ...d.data()}));
-      updateNotif(); // 有新邀請就閃紅點
-      if(currentPage === 'friends') renderFriends();
-    });
-
-    if(window.chalUnsubscribe) window.chalUnsubscribe();
-    window.chalUnsubscribe = db.collection("users").doc(user.uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
-      window.myChallenges = snap.docs.map(d => ({id: d.id, ...d.data()}));
-      updateNotif(); // 有新挑戰就閃紅點
-      if(currentPage === 'friends') renderFriends();
-    });
-// 💡 新增：監聽有無人 Send 好書畀你
-    if(window.bookSharesUnsubscribe) window.bookSharesUnsubscribe();
-    window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
-      window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
-      const notif = document.getElementById('readFriendNotif');
-      if(notif) {
-        if(window.myBookShares.length > 0) notif.classList.remove('hidden');
-        else notif.classList.add('hidden');
-      }
-      if(currentReadPage === 'friends') window.renderReadFriends();
-    });
-
-    // 🌟 新增：監聽我送出過嘅推介
-    if(window.sentSharesUnsubscribe) window.sentSharesUnsubscribe();
-    window.sentSharesUnsubscribe = db.collection("users").doc(user.uid).collection("sent_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
-      window.mySentShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
-      if(currentReadPage === 'friends') window.renderReadFriends();
-    });
-    
+    // 🌟 已成功轉移至按需延遲加載 (Lazy Load) 模塊，登入時不再請求此處數據
     switchPage('calendar');
     lucide.createIcons();
 } else {
     currentUser = null;
-    if(recordsUnsubscribe) { recordsUnsubscribe(); recordsUnsubscribe = null; }
+    if(window.clearAllListeners) window.clearAllListeners();
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
     
@@ -705,22 +625,93 @@ auth.onAuthStateChanged(async user => {
     if(pwdInput) pwdInput.value = '';
   }
 });
-// ✅ 升級版：進入指定的應用模塊（加入全域防疊加清場邏輯）
+// 🌟 新增：功能模塊按需讀取 (Lazy Loading) 核心邏輯
+window.initReadingData = () => {
+  if (window.booksUnsubscribe) return; // 避免重複監聽
+  const user = firebase.auth().currentUser; if (!user) return;
+  
+  window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+    window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if(document.getElementById('readingApp').style.display === 'flex') renderBooks();
+  });
+  window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
+    window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    const notif = document.getElementById('readFriendNotif');
+    if(notif) { if(window.myBookShares.length > 0) notif.classList.remove('hidden'); else notif.classList.add('hidden'); }
+    if(typeof currentReadPage !== 'undefined' && currentReadPage === 'friends') window.renderReadFriends();
+  });
+  window.sentSharesUnsubscribe = db.collection("users").doc(user.uid).collection("sent_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
+    window.mySentShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    if(typeof currentReadPage !== 'undefined' && currentReadPage === 'friends') window.renderReadFriends();
+  });
+};
+
+window.initTodoData = () => {
+  if (window.todosUnsubscribe) return;
+  const user = firebase.auth().currentUser; if (!user) return;
+  
+  window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot(snapshot => {
+    window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    if(document.getElementById('todoApp').style.display === 'flex') { if(typeof window.renderTodos === 'function') window.renderTodos(); }
+  });
+};
+
+window.initGymData = () => {
+  if (recordsUnsubscribe) return;
+  const user = firebase.auth().currentUser; if (!user) return;
+  
+  recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot(snapshot => {
+    allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
+    document.getElementById('totalPoints').textContent = getTotalPoints().available;
+    if(currentPage !== 'admin') renderCurrentPage();
+  });
+  const updateNotif = () => {
+    const notif = document.getElementById('friendNotif');
+    if(notif) { const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0); if(count > 0) notif.classList.remove('hidden'); else notif.classList.add('hidden'); }
+  };
+  window.friendsUnsubscribe = db.collection("users").doc(user.uid).collection("friends").onSnapshot(snap => {
+    window.myFriends = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+    if(currentPage === 'friends') renderFriends();
+  });
+  window.reqsUnsubscribe = db.collection("users").doc(user.uid).collection("friend_requests").onSnapshot(snap => {
+    window.myRequests = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+    updateNotif(); if(currentPage === 'friends') renderFriends();
+  });
+  window.chalUnsubscribe = db.collection("users").doc(user.uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
+    window.myChallenges = snap.docs.map(d => ({id: d.id, ...d.data()}));
+    updateNotif(); if(currentPage === 'friends') renderFriends();
+  });
+};
+
+window.clearAllListeners = () => {
+  if(window.booksUnsubscribe) { window.booksUnsubscribe(); window.booksUnsubscribe = null; }
+  if(window.bookSharesUnsubscribe) { window.bookSharesUnsubscribe(); window.bookSharesUnsubscribe = null; }
+  if(window.sentSharesUnsubscribe) { window.sentSharesUnsubscribe(); window.sentSharesUnsubscribe = null; }
+  if(window.todosUnsubscribe) { window.todosUnsubscribe(); window.todosUnsubscribe = null; }
+  if(recordsUnsubscribe) { recordsUnsubscribe(); recordsUnsubscribe = null; }
+  if(window.friendsUnsubscribe) { window.friendsUnsubscribe(); window.friendsUnsubscribe = null; }
+  if(window.reqsUnsubscribe) { window.reqsUnsubscribe(); window.reqsUnsubscribe = null; }
+  if(window.chalUnsubscribe) { window.chalUnsubscribe(); window.chalUnsubscribe = null; }
+};
+
+// ✅ 升級版：進入指定的應用模塊（加入按需載入 Data 邏輯）
 function enterApp(appName) {
-  // 先將所有主要畫面全體隱藏，防止模塊直跳時發生 UI 疊加 bug
   document.getElementById('hubScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
   document.getElementById('readingApp').style.display = 'none';
-  document.getElementById('todoApp').style.display = 'none'; // 🌟 新增隱藏 Todo
+  document.getElementById('todoApp').style.display = 'none';
   
   if (appName === 'gymigogo') {
+    window.initGymData(); // 👈 只有開 Gym 模塊才讀取 Gym Data
     document.getElementById('app').style.display = 'flex';
     lucide.createIcons();
   } else if (appName === 'reading') {
+    window.initReadingData(); // 👈 只有開閱讀模塊才讀取閱讀 Data
     document.getElementById('readingApp').style.display = 'flex';
-    renderBooks(); // 確保重新繪製書架
+    renderBooks();
   } else if (appName === 'todo') {
-    document.getElementById('todoApp').style.display = 'flex'; // 🌟 顯示 Todo
+    window.initTodoData(); // 👈 只有開 Todo 模塊才讀取 Todo Data
+    document.getElementById('todoApp').style.display = 'flex';
     if(typeof window.renderTodos === 'function') window.renderTodos(); 
   }
 }
