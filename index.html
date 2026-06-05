@@ -597,10 +597,9 @@ auth.onAuthStateChanged(async user => {
         if (doc.data().exerciseData) exerciseData = doc.data().exerciseData;
         else exerciseData = JSON.parse(JSON.stringify(globalExerciseData)); // 繼承系統預設
         
-// 🌟 載入進階偏好設定 (Firebase 會覆蓋本地預設)
+        // 🌟 載入進階偏好設定 (Firebase 會覆蓋本地預設)
         if (doc.data().defaultStartupApp) window.defaultStartupApp = doc.data().defaultStartupApp;
         if (doc.data().shelfDisplayMode) window.shelfDisplayMode = doc.data().shelfDisplayMode;
-        if (doc.data().showCoverStars !== undefined) window.showCoverStars = doc.data().showCoverStars; // 🌟 載入星星顯示設定
         
         // 🌟 自動跳轉到預設 App 首頁
         if (window.defaultStartupApp === 'gymigogo') {
@@ -2929,63 +2928,33 @@ window.toggleSpecialDay = async (date, type) => {
   }
 };
 
-// ========== ⭐ 星星評分系統 (支援半星) ==========
+// ========== ⭐ 星星評分系統 ==========
 window.setBookRating = (val, prefix) => {
   const input = document.getElementById(prefix + 'Rating');
-  // 支援點擊同一個數值取消評分 (清零)
-  if (input && parseFloat(input.value) === val) {
-    val = 0;
-  }
   if (input) input.value = val;
   
   for(let i=1; i<=5; i++) {
-    const starSvg = document.getElementById(`${prefix}StarSvg_${i}`);
-    if(starSvg) {
-      if (val >= i) {
-        // 全星
-        starSvg.classList.add('text-warm3');
-        starSvg.classList.remove('text-slate-200');
-        starSvg.setAttribute('fill', 'currentColor');
-      } else if (val === i - 0.5) {
-        // 半星 (運用漸層)
-        starSvg.classList.add('text-warm3');
-        starSvg.classList.remove('text-slate-200');
-        starSvg.setAttribute('fill', `url(#half_grad_${prefix})`);
+    const star = document.getElementById(`${prefix}Star_${i}`);
+    if(star) {
+      if(i <= val) {
+        star.classList.add('text-warm3', 'fill-current');
+        star.classList.remove('text-slate-200');
       } else {
-        // 空星
-        starSvg.classList.remove('text-warm3');
-        starSvg.classList.add('text-slate-200');
-        starSvg.setAttribute('fill', 'currentColor');
+        star.classList.remove('text-warm3', 'fill-current');
+        star.classList.add('text-slate-200');
       }
     }
   }
 };
 
 window.generateStarHTML = (prefix, currentRating = 0) => {
-  // 注入用來做「半填滿」效果的 SVG 漸層
-  let html = `<div class="flex gap-2 mb-1 relative">
-    <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
-<linearGradient id="half_grad_${prefix}" x1="0" x2="1" y1="0" y2="0">
-        <stop offset="50%" stop-color="#f59e0b" />
-        <stop offset="50%" stop-color="#e2e8f0" />
-      </linearGradient>
-    </svg>
-  `;
+  let html = `<div class="flex gap-2 mb-1">`;
   for(let i=1; i<=5; i++) {
-    const isFull = currentRating >= i;
-    const isHalf = currentRating === i - 0.5;
-    const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-    const fillAttr = isHalf ? `url(#half_grad_${prefix})` : 'currentColor';
-    
-    html += `<div class="relative w-8 h-8 transition-transform active:scale-75">
-      <svg id="${prefix}StarSvg_${i}" class="w-8 h-8 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-      </svg>
-      <div class="absolute inset-0 flex">
-        <div class="w-1/2 h-full cursor-pointer" onclick="window.setBookRating(${i - 0.5}, '${prefix}')"></div>
-        <div class="w-1/2 h-full cursor-pointer" onclick="window.setBookRating(${i}, '${prefix}')"></div>
-      </div>
-    </div>`;
+    const isFilled = i <= currentRating;
+    const colorClass = isFilled ? 'text-warm3 fill-current' : 'text-slate-200';
+    html += `<button type="button" id="${prefix}Star_${i}" onclick="window.setBookRating(${i}, '${prefix}')" class="p-1 transition-transform active:scale-75 ${colorClass}">
+      <svg class="w-8 h-8" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+    </button>`;
   }
   html += `</div><input type="hidden" id="${prefix}Rating" value="${currentRating}">`;
   return html;
@@ -3018,7 +2987,6 @@ window.toggleArchiveMode = () => {
 };
 
 window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'list';
-window.showCoverStars = localStorage.getItem('gq_show_cover_stars') !== 'false'; // 🌟 預設為開啟 (true)
 window.toggleShelfMode = async () => {
   window.shelfDisplayMode = window.shelfDisplayMode === 'list' ? 'shelf' : 'list';
   localStorage.setItem('gq_shelf_mode', window.shelfDisplayMode);
@@ -3101,38 +3069,17 @@ function renderBooks() {
             <span class="w-2 h-2 rounded-full ${badgeColor}"></span>
             <h2 class="font-extrabold text-slate-800 text-base">${title} (${books.length})</h2>
           </div>
-  
-        <div class="bg-[#f4ebe1] pt-[20px] px-5 pb-6 rounded-xl shadow-inner border-[3px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
-
-            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
-
+          
+<div class="bg-[#f4ebe1] p-5 rounded-xl shadow-inner border-[3px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
+            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 142px, #8b6e4e 142px, #8b6e4e 144px);"></div>
             
-
-            <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-5 gap-y-8 relative z-10">`; 
-
-      
-books.forEach(book => {
+            <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-5 gap-y-8 relative z-10">`;
+      books.forEach(book => {
         // 🌟 2. 圖片加入 pointer-events-none 同 select-none，徹底防止長按時彈出「儲存圖片」阻擋選單
         const coverHtml = book.coverUrl 
           ? `<img src="${book.coverUrl}" class="w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
           : `<div class="w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">${book.title}</div>`;
           
-        // 🌟 3. 新增：書本封面上嘅星星評分 (支援半星與開關)
-let coverStarHtml = '';
-        if (window.showCoverStars && book.rating > 0) {
-          // 🌟 修正：刪除多餘嘅 relative，確保 absolute 能夠將星星浮動喺書本頂部
-          coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
-            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
-         for(let s=1; s<=5; s++) {
-            const isFull = book.rating >= s;
-            const isHalf = book.rating === s - 0.5;
-            const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-            const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
-            coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-          }
-          coverStarHtml += `</div>`;
-        }
-
         shelfHtml += `
           <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
                style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
@@ -3145,7 +3092,6 @@ let coverStarHtml = '';
                onclick="window.handleBookClick(event, '${book.id}')" 
                oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
             ${coverHtml}
-            ${coverStarHtml}
             <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
           </div>`;
       });
@@ -3326,19 +3272,12 @@ function renderSingleBookCard(book) {
       </button>`;
   }
 
-// 顯示星星 (支援半星)
+  // 顯示星星
   let ratingHtml = '';
   if (book.status === 'finished' && book.rating > 0) {
-    ratingHtml = `<div class="flex items-center gap-0.5 mt-1 relative">
-<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
-        <linearGradient id="half_grad_${book.id}_sm" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient>
-      </svg>`;
+    ratingHtml = `<div class="flex items-center gap-0.5 mt-1">`;
     for(let i=1; i<=5; i++) {
-      const isFull = book.rating >= i;
-      const isHalf = book.rating === i - 0.5;
-      const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-      const fillAttr = isHalf ? `url(#half_grad_${book.id}_sm)` : 'currentColor';
-      ratingHtml += `<svg class="w-3 h-3 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+      ratingHtml += `<svg class="w-3 h-3 ${i <= book.rating ? 'text-warm3 fill-current' : 'text-slate-200'}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     }
     ratingHtml += `</div>`;
   }
@@ -3431,7 +3370,7 @@ async function confirmQuickFinish(bookId) {
   lucide.createIcons();
   
   try {
-    const rating = parseFloat(document.getElementById('quickRating').value) || 0;
+    const rating = parseInt(document.getElementById('quickRating').value) || 0;
     const review = document.getElementById('quickFinishReview').value.trim();
 
     // 直寫入 Firebase，只需 Update 狀態同結束日期
@@ -3741,7 +3680,7 @@ async function saveNewBook() {
     startDate: document.getElementById('bookStartDate').value,
     endDate: document.getElementById('bookEndDate').value,
     status: document.getElementById('bookStatus').value,
-    rating: parseFloat(document.getElementById('addRating')?.value) || 0,
+    rating: parseInt(document.getElementById('addRating')?.value) || 0,
     review: document.getElementById('addReviewText')?.value.trim() || '',
     description: document.getElementById('bookDesc').value.trim(), // 👈 獨立儲存簡介
     notes: notesArray,
@@ -3863,18 +3802,14 @@ let interactiveStatusHtml = '';
     interactiveStatusHtml = `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-50 text-pink-600 border border-pink-200 shadow-sm relative z-20">有興趣 🧐</span>`;
   }
 
-let reviewHtml = '';
+  let reviewHtml = '';
   if (book.status === 'finished' && (book.rating > 0 || book.review)) {
-    let stars = `<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false"><linearGradient id="half_grad_${book.id}_md" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;
+    let stars = '';
     for(let i=1; i<=5; i++) {
-       const isFull = book.rating >= i;
-       const isHalf = book.rating === i - 0.5;
-       const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-       const fillAttr = isHalf ? `url(#half_grad_${book.id}_md)` : 'currentColor';
-       stars += `<svg class="w-5 h-5 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+       stars += `<svg class="w-5 h-5 ${i <= book.rating ? 'text-warm3 fill-current' : 'text-slate-200'}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     }
     reviewHtml = `
-      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100 relative">
+      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100">
          <h4 class="text-xs font-bold text-orange-600 mb-2 flex items-center gap-1"><i data-lucide="award" class="w-4 h-4"></i>整體評分與書評</h4>
          ${book.rating > 0 ? `<div class="flex gap-1 mb-3">${stars}</div>` : ''}
          ${book.review ? `<p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${book.review}</p>` : ''}
@@ -4123,7 +4058,7 @@ async function confirmEditBookInfo(bookId) {
     startDate: document.getElementById('editBookStartDate').value,
     endDate: document.getElementById('editBookEndDate').value,
     status: document.getElementById('editBookStatus').value,
-    rating: parseFloat(document.getElementById('editRating')?.value) || 0,
+    rating: parseInt(document.getElementById('editRating')?.value) || 0,
     review: document.getElementById('editReviewText')?.value.trim() || '',
     description: document.getElementById('editBookDesc').value.trim() // 👈 更新簡介
   };
@@ -4727,19 +4662,12 @@ window.renderReadSettings = () => {
         </select>
       </div>
 
-<div class="mb-3">
+      <div>
         <label class="text-xs font-bold text-slate-500 block mb-1">書架預設模式</label>
         <select id="settingShelfMode" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
           <option value="list" ${window.shelfDisplayMode === 'list' ? 'selected' : ''}>📄 列表模式</option>
           <option value="shelf" ${window.shelfDisplayMode === 'shelf' ? 'selected' : ''}>🗄️ 立體書櫃模式</option>
         </select>
-      </div>
-
-      <div>
-        <label class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors shadow-sm">
-          <span class="text-sm font-bold text-slate-700">書櫃模式顯示評分星星</span>
-          <input type="checkbox" id="settingShowCoverStars" onchange="window.saveReadSettings()" ${window.showCoverStars ? 'checked' : ''} class="w-5 h-5 accent-primary cursor-pointer">
-        </label>
       </div>
     </div>
 
@@ -4758,15 +4686,12 @@ window.renderReadSettings = () => {
 window.saveReadSettings = async () => {
   const defaultApp = document.getElementById('settingDefaultApp').value;
   const shelfMode = document.getElementById('settingShelfMode').value;
-  const showCoverStars = document.getElementById('settingShowCoverStars').checked;
   
   window.defaultStartupApp = defaultApp;
   window.shelfDisplayMode = shelfMode;
-  window.showCoverStars = showCoverStars;
   
   // 同時更新 LocalStorage
   localStorage.setItem('gq_shelf_mode', shelfMode);
-  localStorage.setItem('gq_show_cover_stars', showCoverStars);
   
   // 立即套用模式 (如果有開書架嘅話)
   if (currentReadPage === 'shelf') renderBooks();
@@ -4775,8 +4700,7 @@ window.saveReadSettings = async () => {
     try {
       await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").set({
         defaultStartupApp: defaultApp,
-        shelfDisplayMode: shelfMode,
-        showCoverStars: showCoverStars // 🌟 儲存星星設定
+        shelfDisplayMode: shelfMode
       }, { merge: true });
       showToast('⚙️ 設定已儲存同步！', 'success');
     } catch(e) {
@@ -5489,18 +5413,10 @@ window.renderReadCalendar = () => {
           ? `<img src="${b.coverUrl}" class="w-[32px] h-[46px] object-cover rounded-[2px] shadow-sm border border-slate-200 pointer-events-none">` 
           : `<div class="w-[32px] h-[46px] bg-slate-200 rounded-[2px] text-[7px] flex items-center justify-center p-0.5 text-center font-bold text-slate-500 shadow-sm border border-slate-200 truncate leading-tight pointer-events-none">📗</div>`;
         
-let stars = '';
+        let stars = '';
         if (b.rating > 0) {
-          stars = `<div class="flex gap-[1px] mt-0.5 justify-center pointer-events-none relative">
-            <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${b.id}_xs" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>
-          `;
-          for(let s=1; s<=5; s++) {
-            const isFull = b.rating >= s;
-            const isHalf = b.rating === s - 0.5;
-            const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-            const fillAttr = isHalf ? `url(#half_grad_${b.id}_xs)` : 'currentColor';
-            stars += `<svg class="w-[6px] h-[6px] ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-          }
+          stars = `<div class="flex gap-[1px] mt-0.5 justify-center pointer-events-none">`;
+          for(let s=1; s<=5; s++) stars += `<svg class="w-[6px] h-[6px] ${s<=b.rating?'text-warm3 fill-current':'text-slate-200 fill-current'}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
           stars += `</div>`;
         }
         contentHtml = `<div class="flex flex-col items-center mt-0.5 w-full h-full cursor-pointer hover:scale-105 transition-transform" onclick="window.viewBook('${b.id}')">${cover}${stars}</div>`;
