@@ -492,7 +492,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-
+firebase.firestore().settings({
+  experimentalForceLongPolling: true 
+});
 
 let currentUser = null;
 let recordsUnsubscribe = null;
@@ -701,6 +703,8 @@ function enterApp(appName) {
   document.getElementById('readingApp').style.display = 'none';
   document.getElementById('todoApp').style.display = 'none';
   
+  window.clearAllListeners();
+
   if (appName === 'gymigogo') {
     window.initGymData(); // 👈 只有開 Gym 模塊才讀取 Gym Data
     document.getElementById('app').style.display = 'flex';
