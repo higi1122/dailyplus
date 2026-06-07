@@ -702,7 +702,7 @@ window.clearAllListeners = () => {
   if(window.chalUnsubscribe) { window.chalUnsubscribe(); window.chalUnsubscribe = null; }
 };
 
-// ✅ 升級版：進入指定的應用模塊（加入按需載入 Data 邏輯）
+// ✅ 升級版：進入指定的應用模塊（修復雙重繪製閃爍問題）
 function enterApp(appName) {
   document.getElementById('hubScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
@@ -712,17 +712,17 @@ function enterApp(appName) {
   window.clearAllListeners();
 
   if (appName === 'gymigogo') {
-    window.initGymData(); // 👈 只有開 Gym 模塊才讀取 Gym Data
+    window.initGymData(); 
     document.getElementById('app').style.display = 'flex';
     lucide.createIcons();
   } else if (appName === 'reading') {
-    window.initReadingData(); // 👈 只有開閱讀模塊才讀取閱讀 Data
+    window.initReadingData(); 
     document.getElementById('readingApp').style.display = 'flex';
-    renderBooks();
+    // ❌ 已刪除手動 renderBooks()，等 Firebase 自動彈出，唔會再閃
   } else if (appName === 'todo') {
-    window.initTodoData(); // 👈 只有開 Todo 模塊才讀取 Todo Data
+    window.initTodoData(); 
     document.getElementById('todoApp').style.display = 'flex';
-    if(typeof window.renderTodos === 'function') window.renderTodos(); 
+    // ❌ 已刪除手動 renderTodos()，等 Firebase 自動彈出，唔會再閃
   }
 }
 
@@ -3054,18 +3054,17 @@ function renderBooks() {
   
   document.getElementById('totalBooksCount').textContent = window.allBooks.length;
   
-  // 💡 更新模式 Icon (書櫃 vs 清單)
   const modeIcon = document.getElementById('shelfModeIcon');
   if (modeIcon) {
     modeIcon.setAttribute('data-lucide', window.shelfDisplayMode === 'shelf' ? 'list' : 'layout-grid');
   }
 
-  // 保持佈局穩定
   grid.className = "flex flex-col gap-6 pb-24 relative"; 
 
   if (window.allBooks.length === 0) {
+    // ❌ 移除了 card-enter
     grid.innerHTML = `
-      <div class="col-span-2 text-center py-12 text-slate-400 card-enter">
+      <div class="col-span-2 text-center py-12 text-slate-400">
         <div class="text-5xl mb-3">📇</div>
         <p class="font-bold">書架仲係空空如也</p>
         <p class="text-xs mt-1">撳右下角新增第一本書啦！</p>
@@ -3074,17 +3073,14 @@ function renderBooks() {
     return;
   }
 
-  // 1. 動態更新分類選單
   updateCategoryDropdown();
 
-// 2. 執行過濾 (搜尋框 + 分類選單 + 封存狀態)
   let filtered = window.allBooks.filter(book => {
     const title = (book.title || '').toLowerCase();
     const author = (book.author || '').toLowerCase();
     const matchesSearch = title.includes(searchVal) || author.includes(searchVal);
     const matchesCategory = categoryVal === 'all' || book.category === categoryVal;
     
-    // 🌟 封存模式過濾邏輯
     const isArchived = book.status === 'archived';
     if (window.isArchiveMode) {
       return matchesSearch && matchesCategory && isArchived;
@@ -3093,42 +3089,34 @@ function renderBooks() {
     }
   });
 
-  // 3. 基礎分組：正在閱讀 vs 已讀完 vs 封存
   const readingBooks = filtered.filter(b => b.status === 'reading');
   let finishedBooks = filtered.filter(b => b.status === 'finished');
-  let archivedBooks = filtered.filter(b => b.status === 'archived'); // 🌟 新增
+  let archivedBooks = filtered.filter(b => b.status === 'archived');
 
   let html = '';
 
-  // 🌟 判斷是否為「書櫃模式」
   if (window.shelfDisplayMode === 'shelf') {
-    
-    // 定義書櫃渲染組件
     const renderWoodenShelf = (books, title, badgeColor) => {
       if (books.length === 0) return '';
       
+      // ❌ 移除了 card-enter
       let shelfHtml = `
-        <div class="card-enter mb-4">
+        <div class="mb-4">
           <div class="flex items-center gap-2 mb-3 px-1">
             <span class="w-2 h-2 rounded-full ${badgeColor}"></span>
             <h2 class="font-extrabold text-slate-800 text-base">${title} (${books.length})</h2>
           </div>
-          
-<div class="bg-[#f4ebe1] pt-[20px] px-5 pb-6 rounded-xl shadow-inner border-[3px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
+          <div class="bg-[#f4ebe1] pt-[20px] px-5 pb-6 rounded-xl shadow-inner border-[3px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
             <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
-            
             <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-5 gap-y-8 relative z-10">`;
 
-books.forEach(book => {
-        // 🌟 2. 圖片加入 pointer-events-none 同 select-none，徹底防止長按時彈出「儲存圖片」阻擋選單
+      books.forEach(book => {
         const coverHtml = book.coverUrl 
           ? `<img src="${book.coverUrl}" class="w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
           : `<div class="w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">${book.title}</div>`;
           
-        // 🌟 3. 新增：書本封面上嘅星星評分 (支援半星與開關)
-let coverStarHtml = '';
+        let coverStarHtml = '';
         if (window.showCoverStars && book.rating > 0) {
-          // 🌟 修正：刪除多餘嘅 relative，確保 absolute 能夠將星星浮動喺書本頂部
           coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
             <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
          for(let s=1; s<=5; s++) {
@@ -3162,23 +3150,21 @@ let coverStarHtml = '';
       return shelfHtml;
     };
 
-    // 書櫃模式下，只分開「正在閱讀」同「已讀完」，忽略月份時間軸令排版更統一
     html += renderWoodenShelf(readingBooks, '正在閱讀', 'bg-orange-500 animate-pulse');
     
-    // 如果有排序需求，先排序再渲染
     if (sortVal === 'recent') finishedBooks.sort((a,b) => (b.endDate||'').localeCompare(a.endDate||''));
     else if (sortVal === 'oldest') finishedBooks.sort((a,b) => (a.endDate||'').localeCompare(b.endDate||''));
     else finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
     
-html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
-    html += renderWoodenShelf(archivedBooks, '封存庫', 'bg-slate-500'); // 🌟 立體書櫃模式顯示封存書
+    html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
+    html += renderWoodenShelf(archivedBooks, '封存庫', 'bg-slate-500');
 
   } else {
-    // 🚀 原本嘅「列表視圖」邏輯 (清單模式)
-    
+    // 列表模式
     if (readingBooks.length > 0) {
+      // ❌ 移除了 card-enter
       html += `
-        <div class="card-enter">
+        <div>
           <div class="flex items-center gap-2 mb-4 px-1">
             <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
             <h2 class="font-extrabold text-slate-800 text-base">正在閱讀</h2>
@@ -3213,8 +3199,9 @@ html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
         const parts = month.split('-');
         const displayMonth = month === '日期不詳' ? month : `${parts[0]}年 ${parseInt(parts[1])}月`;
 
+        // ❌ 移除了 card-enter
         html += `
-          <div class="card-enter mb-2">
+          <div class="mb-2">
             <div class="flex items-center gap-3 mb-4 px-1">
               <div class="bg-white px-3 py-1 rounded-full shadow-sm border border-slate-100 flex items-center gap-1.5">
                 <i data-lucide="${sortVal === 'recent' ? 'calendar' : 'history'}" class="w-3.5 h-3.5 text-primary"></i>
@@ -3229,8 +3216,9 @@ html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
       });
     } else {
       finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
+      // ❌ 移除了 card-enter
       html += `
-        <div class="card-enter">
+        <div>
           <div class="flex items-center gap-2 mb-4 px-1">
             <i data-lucide="sort-asc" class="w-4 h-4 text-slate-400"></i>
             <h2 class="font-extrabold text-slate-800 text-base">按書名 A-Z 排序</h2>
@@ -3239,13 +3227,13 @@ html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
             ${finishedBooks.map(book => renderSingleBookCard(book)).join('')}
           </div>
         </div>`;
-}
+    }
   }
 
-  // 🌟 在清單模式下如果處於封存區，單獨渲染封存清單
   if (window.shelfDisplayMode !== 'shelf' && window.isArchiveMode && archivedBooks.length > 0) {
+    // ❌ 移除了 card-enter
     html += `
-      <div class="card-enter">
+      <div>
         <div class="flex items-center gap-2 mb-4 px-1">
           <i data-lucide="archive" class="w-4 h-4 text-slate-500"></i>
           <h2 class="font-extrabold text-slate-800 text-base">封存庫</h2>
@@ -4504,17 +4492,13 @@ if(page === 'shelf') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600')
   lucide.createIcons();
 };
 
-// ========== 🧐 渲染「有興趣」清單 ==========
 window.renderWishlist = () => {
   const container = document.getElementById('read-page-wishlist');
   
-  // 💡 如果尚未建立骨架，先注入固定 HTML
   if (!document.getElementById('wishlistGrid')) {
     container.innerHTML = `
-      <!-- 數據概覽 (粉紅主題) -->
-      <div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center card-enter border border-slate-50">
+      <div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center border border-slate-50">
         <div class="flex items-center gap-2">
-        
           <div>
             <div class="text-[11px] font-bold text-slate-400 mb-0.5">有興趣清單</div>
             <div class="text-pink-500 flex items-baseline gap-1">
@@ -4528,8 +4512,7 @@ window.renderWishlist = () => {
         </button>
       </div>
 
-      <!-- 搜尋工具列 -->
-      <div id="wishlistToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white card-enter">
+      <div id="wishlistToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white">
         <div class="relative">
           <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
           <input id="wishlistSearchInput" type="text" oninput="handleWishlistChange()" placeholder="搜尋書名或作者..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition-all">
@@ -4552,7 +4535,6 @@ window.renderWishlist = () => {
         </div>
       </div>
 
-      <!-- 書籍列表 Grid -->
       <div id="wishlistGrid" class="relative"></div>
     `;
   }
@@ -4564,14 +4546,11 @@ window.renderWishlist = () => {
 
   const rawWishlist = window.allBooks.filter(b => b.status === 'wishlist');
   
-  // 更新頂部總數
   const countEl = document.getElementById('totalWishlistCount');
   if (countEl) countEl.textContent = rawWishlist.length;
 
-  // 動態更新分類選單
   updateWishlistCategoryDropdown(rawWishlist);
 
-  // 執行搜尋與過濾
   let filtered = rawWishlist.filter(book => {
     const title = (book.title || '').toLowerCase();
     const author = (book.author || '').toLowerCase();
@@ -4580,7 +4559,6 @@ window.renderWishlist = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // 執行排序
   if (sortVal === 'recent') {
     filtered.sort((a,b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
   } else if (sortVal === 'oldest') {
@@ -4590,7 +4568,7 @@ window.renderWishlist = () => {
   }
 
   if (rawWishlist.length === 0) {
-    grid.innerHTML = `<div class="text-center py-12 text-slate-400 card-enter"><div class="text-5xl mb-3">🧐</div><p class="font-bold">仲未有心水好書</p></div>`;
+    grid.innerHTML = `<div class="text-center py-12 text-slate-400"><div class="text-5xl mb-3">🧐</div><p class="font-bold">仲未有心水好書</p></div>`;
   } else if (filtered.length === 0) {
     grid.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">搵唔到符合條件嘅書 🔍</div>`;
   } else {
@@ -4604,6 +4582,7 @@ window.renderWishlist = () => {
         ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
         : '';
 
+      // ❌ 移除了這裏的 card-enter
       return `
       <div 
         ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
@@ -4614,7 +4593,7 @@ window.renderWishlist = () => {
         onmouseleave="window.handleBookPressEnd()" 
         onclick="window.handleBookClick(event, '${book.id}')" 
         oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
-        class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative card-enter"
+        class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative"
         style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
         <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
           <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
@@ -5652,7 +5631,7 @@ window.goToTodayTodo = () => {
   showToast('已回到今日', 'info');
 };
 
-// 🌟 核心：綜合渲染清單與日曆
+// 🌟 核心：綜合渲染清單與日曆 (修復動畫閃爍)
 window.renderTodos = () => {
   const targetDateStr = window.formatTodoDate(window.currentTodoDate);
   const todayStr = window.formatTodoDate(new Date());
@@ -5665,7 +5644,7 @@ window.renderTodos = () => {
   let dayTodosHtml = '';
   if (dayTodos.length === 0) {
     dayTodosHtml = `
-      <div class="text-center py-12 text-slate-400 card-enter border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 mt-2">
+      <div class="text-center py-12 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 mt-2">
         <div class="text-4xl mb-2 opacity-60">📝</div>
         <p class="font-extrabold text-sm text-slate-500">呢日暫時冇特別計劃</p>
         <p class="text-[11px] font-semibold mt-1">喺下方輸入框快速新增任務啦！</p>
@@ -5681,8 +5660,9 @@ window.renderTodos = () => {
 
     sortedTodos.forEach(t => {
       const isDone = t.completed;
+      // ❌ 移除了 card-enter，剔選任務時唔會再閃爍彈出
       dayTodosHtml += `
-        <div class="bg-white rounded-xl p-3 shadow-sm border ${isDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-100'} flex items-center gap-3 transition-all card-enter hover:shadow-md cursor-pointer" onclick="window.toggleTodo('${t.id}', ${isDone})">
+        <div class="bg-white rounded-xl p-3 shadow-sm border ${isDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-100'} flex items-center gap-3 transition-all hover:shadow-md cursor-pointer" onclick="window.toggleTodo('${t.id}', ${isDone})">
           <button class="w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 bg-slate-50 text-transparent'}">
             <i data-lucide="check" class="w-4 h-4"></i>
           </button>
@@ -5704,14 +5684,15 @@ window.renderTodos = () => {
 
   let finalHtml = '';
 
-  // 🌟 如果係日曆模式，生成日曆 UI
+  // 🌟 日曆模式
   if (window.todoMode === 'calendar') {
     const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
     const firstDay = new Date(window.todoCalYear, window.todoCalMonth, 1).getDay();
     const daysInMonth = new Date(window.todoCalYear, window.todoCalMonth + 1, 0).getDate();
 
+    // ❌ 移除了日曆容器的 card-enter
     let calHtml = `
-      <div class="relative flex items-center justify-center mb-3 min-h-[40px] card-enter bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+      <div class="relative flex items-center justify-center mb-3 min-h-[40px] bg-white p-2 rounded-xl shadow-sm border border-slate-100">
         <div class="absolute left-1 flex gap-1">
           <button onclick="window.todoPrevMonth()" class="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 transition flex items-center justify-center"><i data-lucide="chevron-left" class="w-5 h-5 text-emerald-600"></i></button>
           <button onclick="window.goToTodayTodo()" class="px-2 py-1 rounded-lg bg-slate-50 hover:bg-emerald-50 transition text-emerald-600 font-bold text-xs flex items-center justify-center">今日</button>
@@ -5721,14 +5702,14 @@ window.renderTodos = () => {
           <button onclick="window.todoNextMonth()" class="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 transition flex items-center justify-center"><i data-lucide="chevron-right" class="w-5 h-5 text-emerald-600"></i></button>
         </div>
       </div>
-      <div class="grid grid-cols-7 gap-1 mb-1 text-center card-enter">`;
+      <div class="grid grid-cols-7 gap-1 mb-1 text-center">`;
     
     ['日','一','二','三','四','五','六'].forEach((d, i) => {
        const color = (i === 0 || i === 6) ? 'text-emerald-400' : 'text-slate-400';
        calHtml += `<div class="text-[10px] font-extrabold ${color}">${d}</div>`;
     });
     
-    calHtml += '</div><div class="grid grid-cols-7 gap-1 card-enter">';
+    calHtml += '</div><div class="grid grid-cols-7 gap-1">';
     
     for(let i=0; i<firstDay; i++) calHtml += `<div class="h-[56px] bg-white/40 rounded-lg border border-dashed border-slate-200/50"></div>`;
 
@@ -5743,15 +5724,15 @@ window.renderTodos = () => {
         const doneCount = dTodos.filter(t => t.completed).length;
         const allDone = doneCount === dTodos.length;
         if (allDone) {
-          indicatorHtml = `<span class="text-[8px] font-extrabold text-white bg-emerald-500 px-1 py-0.5 rounded shadow-sm w-full text-center mt-1 truncate block">✅ ${doneCount}/${dTodos.length}</span>`;
+          indicatorHtml = `<span class="text-[8px] font-extrabold text-white bg-emerald-500 px-1 py-0.5 rounded shadow-sm w-full text-center mt-1 truncate block transition-all">✅ ${doneCount}/${dTodos.length}</span>`;
         } else {
-          indicatorHtml = `<span class="text-[8px] font-extrabold text-emerald-600 bg-emerald-100 border border-emerald-200 px-1 py-0.5 rounded shadow-sm w-full text-center mt-1 truncate block">${doneCount}/${dTodos.length}</span>`;
+          indicatorHtml = `<span class="text-[8px] font-extrabold text-emerald-600 bg-emerald-100 border border-emerald-200 px-1 py-0.5 rounded shadow-sm w-full text-center mt-1 truncate block transition-all">${doneCount}/${dTodos.length}</span>`;
         }
       }
 
       calHtml += `
         <button onclick="window.selectTodoDate('${dateStr}')" class="rounded-xl p-1 h-[56px] flex flex-col items-center justify-start transition-all overflow-hidden ${isSelected?'bg-emerald-500 text-white shadow-md':isToday?'bg-emerald-50 ring-2 ring-emerald-400':'bg-white border border-slate-100 hover:bg-slate-50'}">
-          <span class="text-xs font-bold ${isSelected?'text-white':isToday?'text-emerald-600':'text-slate-700'}">${d}</span>
+          <span class="text-xs font-bold transition-colors ${isSelected?'text-white':isToday?'text-emerald-600':'text-slate-700'}">${d}</span>
           <div class="flex-1 w-full flex flex-col justify-center px-0.5 pointer-events-none">
             ${indicatorHtml}
           </div>
@@ -5765,32 +5746,31 @@ window.renderTodos = () => {
     }
     calHtml += '</div>';
     
-    // 將日曆加入 finalHtml
     finalHtml += calHtml;
     
-    // 日曆模式下的標題顯示 (簡單顯示當日進度)
     const progClass = (dayTodos.length > 0 && completedCount === dayTodos.length) 
-        ? "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full shadow-sm"
-        : "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100";
+        ? "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full shadow-sm transition-all"
+        : "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 transition-all";
         
     finalHtml += `
-      <div class="flex items-center justify-between mt-4 mb-3 px-1 card-enter">
+      <div class="flex items-center justify-between mt-4 mb-3 px-1">
         <h3 class="font-extrabold text-slate-800 text-base">${targetDateStr} 日程</h3>
         <p class="${progClass}">${completedCount} / ${dayTodos.length} 已完成</p>
       </div>
     `;
   } else {
-    // 🌟 原本嘅「清單模式」頂部日期選擇器
+    // 🌟 清單模式
     const dateObj = new Date(targetDateStr + 'T00:00:00');
     const weekday = dateObj.toLocaleDateString('zh-HK', { weekday: 'short' });
     const displayTitle = (targetDateStr === todayStr ? '☀️ 今日' : targetDateStr) + ` (${weekday})`;
     
     const progClass = (dayTodos.length > 0 && completedCount === dayTodos.length) 
-        ? "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full mt-0.5 shadow-sm"
-        : "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5 border border-emerald-100";
+        ? "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full mt-0.5 shadow-sm transition-all"
+        : "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5 border border-emerald-100 transition-all";
 
+    // ❌ 移除了清單模式頂部的 card-enter
     finalHtml += `
-      <div class="flex items-center justify-between bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mb-4 card-enter">
+      <div class="flex items-center justify-between bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mb-4">
         <button onclick="window.changeTodoDate(-1)" class="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 transition active:scale-90"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
         <div class="text-center cursor-pointer group" onclick="window.goToTodayTodo()">
           <h3 class="font-extrabold text-slate-800 text-base group-hover:text-emerald-600 transition">${displayTitle}</h3>
@@ -5805,7 +5785,6 @@ window.renderTodos = () => {
   finalHtml += `<div class="space-y-2 pb-4">${dayTodosHtml}</div>`;
   document.getElementById('todoMainContent').innerHTML = finalHtml;
   
-  // 更新頂部 Icon 顯示狀態 (變成日曆或者清單 Icon)
   const icon = document.getElementById('todoModeIcon');
   if (icon) icon.setAttribute('data-lucide', window.todoMode === 'calendar' ? 'list' : 'calendar');
   
