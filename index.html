@@ -299,9 +299,15 @@ tailwind.config = {
         <span class="text-2xl">✅</span>
         <span class="font-extrabold text-emerald-500 text-lg">Daily+ Todo</span>
       </div>
-      <button onclick="openQuickSwitcher()" class="p-2 rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition flex items-center justify-center shadow-sm active:scale-90" title="切換功能/返回大堂">
-        <i data-lucide="layout-grid" class="w-5 h-5"></i>
-      </button>
+      <div class="flex items-center gap-2">
+        <button onclick="window.toggleTodoMode()" class="p-2 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition flex items-center justify-center shadow-sm active:scale-90 border border-emerald-100" title="切換列表/日曆模式">
+          <i data-lucide="calendar" id="todoModeIcon" class="w-5 h-5"></i>
+        </button>
+        
+        <button onclick="openQuickSwitcher()" class="p-2 rounded-full bg-emerald-100 text-emerald-600 hover:bg-emerald-200 transition flex items-center justify-center shadow-sm active:scale-90" title="切換功能/返回大堂">
+          <i data-lucide="layout-grid" class="w-5 h-5"></i>
+        </button>
+      </div>
     </header>
 
     <main class="flex-1 overflow-y-auto p-4 pb-2 relative" id="todoMainContent">
@@ -5590,94 +5596,219 @@ let stars = '';
 window.allTodos = [];
 window.currentTodoDate = new Date(); // 預設為今日
 
+// 🌟 新增：日曆狀態變數
+window.todoMode = localStorage.getItem('gq_todo_mode') || 'list';
+window.todoCalYear = new Date().getFullYear();
+window.todoCalMonth = new Date().getMonth();
+
 // 輔助：格式化日期 (YYYY-MM-DD)
 window.formatTodoDate = (dateObj) => {
   return `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
 };
 
+// 🌟 新增：切換顯示模式 (清單 / 日曆)
+window.toggleTodoMode = () => {
+  window.todoMode = window.todoMode === 'list' ? 'calendar' : 'list';
+  localStorage.setItem('gq_todo_mode', window.todoMode);
+  if (window.todoMode === 'calendar') {
+     window.todoCalYear = window.currentTodoDate.getFullYear();
+     window.todoCalMonth = window.currentTodoDate.getMonth();
+  }
+  window.renderTodos();
+};
+
+// 日曆導航函數
+window.todoPrevMonth = () => {
+  window.todoCalMonth--;
+  if (window.todoCalMonth < 0) { window.todoCalMonth = 11; window.todoCalYear--; }
+  window.renderTodos();
+};
+window.todoNextMonth = () => {
+  window.todoCalMonth++;
+  if (window.todoCalMonth > 11) { window.todoCalMonth = 0; window.todoCalYear++; }
+  window.renderTodos();
+};
+window.selectTodoDate = (dateStr) => {
+  window.currentTodoDate = new Date(dateStr + 'T00:00:00'); // 加上時間避免時區偏移
+  window.renderTodos();
+};
+
 // 改變日期 (前後切換)
 window.changeTodoDate = (offset) => {
   window.currentTodoDate.setDate(window.currentTodoDate.getDate() + offset);
+  if (window.todoMode === 'calendar') {
+     window.todoCalYear = window.currentTodoDate.getFullYear();
+     window.todoCalMonth = window.currentTodoDate.getMonth();
+  }
   window.renderTodos();
 };
 
 // 跳轉到今日
 window.goToTodayTodo = () => {
-  window.currentTodoDate = new Date(); // 重設為今日
+  window.currentTodoDate = new Date(); 
+  window.todoCalYear = window.currentTodoDate.getFullYear();
+  window.todoCalMonth = window.currentTodoDate.getMonth();
   window.renderTodos();
   showToast('已回到今日', 'info');
 };
 
-// 渲染清單
+// 🌟 核心：綜合渲染清單與日曆
 window.renderTodos = () => {
   const targetDateStr = window.formatTodoDate(window.currentTodoDate);
   const todayStr = window.formatTodoDate(new Date());
 
- // 1. 處理頂部標題 (加入星期幾)
-  const dateObj = new Date(targetDateStr + 'T00:00:00'); // 確保日期物件正確
-  const weekday = dateObj.toLocaleDateString('zh-HK', { weekday: 'short' });
-  const displayTitle = (targetDateStr === todayStr ? '☀️ 今日' : targetDateStr) + ` (${weekday})`;
-  document.getElementById('todoDateDisplay').textContent = displayTitle;
-
-  // 2. 過濾當日任務
+  // 過濾當日任務
   const dayTodos = window.allTodos.filter(t => t.date === targetDateStr);
   const completedCount = dayTodos.filter(t => t.completed).length;
   
-  const progText = document.getElementById('todoProgressText');
-  progText.textContent = `${completedCount} / ${dayTodos.length} 已完成`;
-  if(dayTodos.length > 0 && completedCount === dayTodos.length) {
-    progText.className = "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full mt-0.5 shadow-sm";
-  } else {
-    progText.className = "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5 border border-emerald-100";
-  }
-
-  // 3. 渲染列表 HTML
-  const listContainer = document.getElementById('todoListContainer');
+  // 任務列表 HTML 生成
+  let dayTodosHtml = '';
   if (dayTodos.length === 0) {
-    listContainer.innerHTML = `
-      <div class="text-center py-16 text-slate-400 card-enter">
-        <div class="text-5xl mb-3 opacity-60">📝</div>
+    dayTodosHtml = `
+      <div class="text-center py-12 text-slate-400 card-enter border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 mt-2">
+        <div class="text-4xl mb-2 opacity-60">📝</div>
         <p class="font-extrabold text-sm text-slate-500">呢日暫時冇特別計劃</p>
         <p class="text-[11px] font-semibold mt-1">喺下方輸入框快速新增任務啦！</p>
       </div>`;
- } else {
-    let html = '';
-    
-    // 🌟 UX 核心優化：改為依「一日時間線 (Chronological Timeline)」排序
-    dayTodos.sort((a, b) => {
-      if (a.time && b.time) return a.time.localeCompare(b.time); // 有時間嘅按早到遲排
-      if (a.time) return -1; // 有寫時間嘅排上面
-      if (b.time) return 1;  // 冇寫時間嘅排下面
-      return (a.completed === b.completed) ? 0 : a.completed ? 1 : -1; // 大家都冇時間先按狀態排
-    }).forEach(t => {
+  } else {
+    // 依「一日時間線」排序
+    const sortedTodos = [...dayTodos].sort((a, b) => {
+      if (a.time && b.time) return a.time.localeCompare(b.time);
+      if (a.time) return -1;
+      if (b.time) return 1;
+      return (a.completed === b.completed) ? 0 : a.completed ? 1 : -1;
+    });
+
+    sortedTodos.forEach(t => {
       const isDone = t.completed;
-      html += `
+      dayTodosHtml += `
         <div class="bg-white rounded-xl p-3 shadow-sm border ${isDone ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-100'} flex items-center gap-3 transition-all card-enter hover:shadow-md cursor-pointer" onclick="window.toggleTodo('${t.id}', ${isDone})">
-          
           <button class="w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isDone ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 bg-slate-50 text-transparent'}">
             <i data-lucide="check" class="w-4 h-4"></i>
           </button>
-          
           ${t.time ? `
             <span class="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-md font-extrabold flex-shrink-0 shadow-sm ${isDone ? 'opacity-40' : ''}">
               ${t.time}
             </span>
           ` : `
-            <span class="text-[11px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold flex-shrink-0">
-              全日
-            </span>
+            <span class="text-[11px] bg-slate-100 text-slate-400 px-2 py-0.5 rounded-md font-bold flex-shrink-0">全日</span>
           `}
-          
           <span class="flex-1 text-sm font-bold ${isDone ? 'line-through text-emerald-600/50' : 'text-slate-700'} transition-all">${t.text}</span>
-          
           <button onclick="event.stopPropagation(); window.deleteTodo('${t.id}')" class="p-2 text-slate-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 active:scale-90">
             <i data-lucide="trash-2" class="w-4 h-4"></i>
           </button>
         </div>
       `;
     });
-    listContainer.innerHTML = html;
   }
+
+  let finalHtml = '';
+
+  // 🌟 如果係日曆模式，生成日曆 UI
+  if (window.todoMode === 'calendar') {
+    const monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    const firstDay = new Date(window.todoCalYear, window.todoCalMonth, 1).getDay();
+    const daysInMonth = new Date(window.todoCalYear, window.todoCalMonth + 1, 0).getDate();
+
+    let calHtml = `
+      <div class="relative flex items-center justify-center mb-3 min-h-[40px] card-enter bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+        <div class="absolute left-1 flex gap-1">
+          <button onclick="window.todoPrevMonth()" class="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 transition flex items-center justify-center"><i data-lucide="chevron-left" class="w-5 h-5 text-emerald-600"></i></button>
+          <button onclick="window.goToTodayTodo()" class="px-2 py-1 rounded-lg bg-slate-50 hover:bg-emerald-50 transition text-emerald-600 font-bold text-xs flex items-center justify-center">今日</button>
+        </div>
+        <div class="font-extrabold text-base text-slate-800 tracking-wide">${window.todoCalYear} 年 ${monthNames[window.todoCalMonth]}</div>
+        <div class="absolute right-1 flex items-center justify-center">
+          <button onclick="window.todoNextMonth()" class="p-1.5 rounded-lg bg-slate-50 hover:bg-emerald-50 transition flex items-center justify-center"><i data-lucide="chevron-right" class="w-5 h-5 text-emerald-600"></i></button>
+        </div>
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-1 text-center card-enter">`;
+    
+    ['日','一','二','三','四','五','六'].forEach((d, i) => {
+       const color = (i === 0 || i === 6) ? 'text-emerald-400' : 'text-slate-400';
+       calHtml += `<div class="text-[10px] font-extrabold ${color}">${d}</div>`;
+    });
+    
+    calHtml += '</div><div class="grid grid-cols-7 gap-1 card-enter">';
+    
+    for(let i=0; i<firstDay; i++) calHtml += `<div class="h-[56px] bg-white/40 rounded-lg border border-dashed border-slate-200/50"></div>`;
+
+    for(let d=1; d<=daysInMonth; d++) {
+      const dateStr = `${window.todoCalYear}-${String(window.todoCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const dTodos = window.allTodos.filter(t => t.date === dateStr);
+      const isToday = dateStr === todayStr;
+      const isSelected = dateStr === targetDateStr;
+
+      let indicatorHtml = '';
+      if (dTodos.length > 0) {
+        const doneCount = dTodos.filter(t => t.completed).length;
+        const allDone = doneCount === dTodos.length;
+        if (allDone) {
+          indicatorHtml = `<span class="text-[8px] font-extrabold text-white bg-emerald-500 px-1 py-0.5 rounded shadow-sm w-full text-center mt-1 truncate block">✅ ${doneCount}/${dTodos.length}</span>`;
+        } else {
+          indicatorHtml = `<span class="text-[8px] font-extrabold text-emerald-600 bg-emerald-100 border border-emerald-200 px-1 py-0.5 rounded shadow-sm w-full text-center mt-1 truncate block">${doneCount}/${dTodos.length}</span>`;
+        }
+      }
+
+      calHtml += `
+        <button onclick="window.selectTodoDate('${dateStr}')" class="rounded-xl p-1 h-[56px] flex flex-col items-center justify-start transition-all overflow-hidden ${isSelected?'bg-emerald-500 text-white shadow-md':isToday?'bg-emerald-50 ring-2 ring-emerald-400':'bg-white border border-slate-100 hover:bg-slate-50'}">
+          <span class="text-xs font-bold ${isSelected?'text-white':isToday?'text-emerald-600':'text-slate-700'}">${d}</span>
+          <div class="flex-1 w-full flex flex-col justify-center px-0.5 pointer-events-none">
+            ${indicatorHtml}
+          </div>
+        </button>`;
+    }
+    
+    const totalCells = firstDay + daysInMonth;
+    const remainingCells = (7 - (totalCells % 7)) % 7;
+    for(let i=0; i<remainingCells; i++) {
+       calHtml += `<div class="h-[56px] bg-white/40 rounded-lg border border-dashed border-slate-200/50"></div>`;
+    }
+    calHtml += '</div>';
+    
+    // 將日曆加入 finalHtml
+    finalHtml += calHtml;
+    
+    // 日曆模式下的標題顯示 (簡單顯示當日進度)
+    const progClass = (dayTodos.length > 0 && completedCount === dayTodos.length) 
+        ? "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full shadow-sm"
+        : "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100";
+        
+    finalHtml += `
+      <div class="flex items-center justify-between mt-4 mb-3 px-1 card-enter">
+        <h3 class="font-extrabold text-slate-800 text-base">${targetDateStr} 日程</h3>
+        <p class="${progClass}">${completedCount} / ${dayTodos.length} 已完成</p>
+      </div>
+    `;
+  } else {
+    // 🌟 原本嘅「清單模式」頂部日期選擇器
+    const dateObj = new Date(targetDateStr + 'T00:00:00');
+    const weekday = dateObj.toLocaleDateString('zh-HK', { weekday: 'short' });
+    const displayTitle = (targetDateStr === todayStr ? '☀️ 今日' : targetDateStr) + ` (${weekday})`;
+    
+    const progClass = (dayTodos.length > 0 && completedCount === dayTodos.length) 
+        ? "text-[10px] font-bold text-white bg-emerald-500 px-2 py-0.5 rounded-full mt-0.5 shadow-sm"
+        : "text-[10px] font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full mt-0.5 border border-emerald-100";
+
+    finalHtml += `
+      <div class="flex items-center justify-between bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mb-4 card-enter">
+        <button onclick="window.changeTodoDate(-1)" class="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 transition active:scale-90"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
+        <div class="text-center cursor-pointer group" onclick="window.goToTodayTodo()">
+          <h3 class="font-extrabold text-slate-800 text-base group-hover:text-emerald-600 transition">${displayTitle}</h3>
+          <p class="${progClass}">${completedCount} / ${dayTodos.length} 已完成</p>
+        </div>
+        <button onclick="window.changeTodoDate(1)" class="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-500 transition active:scale-90"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
+      </div>
+    `;
+  }
+
+  // 注入列表
+  finalHtml += `<div class="space-y-2 pb-4">${dayTodosHtml}</div>`;
+  document.getElementById('todoMainContent').innerHTML = finalHtml;
+  
+  // 更新頂部 Icon 顯示狀態 (變成日曆或者清單 Icon)
+  const icon = document.getElementById('todoModeIcon');
+  if (icon) icon.setAttribute('data-lucide', window.todoMode === 'calendar' ? 'list' : 'calendar');
+  
   lucide.createIcons();
 };
 
