@@ -5881,7 +5881,7 @@ window.showTodoMenu = (e, id) => {
     </div>
     <div class="space-y-2">
       <button onclick="window.openEditTodoModal()" class="w-full flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-bold rounded-2xl transition-colors active:scale-95 text-sm">
-        <i data-lucide="edit-3" class="w-4 h-4 text-emerald-500"></i> 修改此項目
+        <i data-lucide="pencil" class="w-4 h-4 text-emerald-500"></i> 修改此項目
       </button>
       <button onclick="window.copySelectedTodo()" class="w-full flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-sky-50 text-slate-700 hover:text-sky-700 font-bold rounded-2xl transition-colors active:scale-95 text-sm">
         <i data-lucide="copy" class="w-4 h-4 text-sky-500"></i> 複製此項目到其他日子
@@ -5890,12 +5890,12 @@ window.showTodoMenu = (e, id) => {
         <i data-lucide="copy-check" class="w-4 h-4 text-indigo-500"></i> 複製【全日計劃】到其他日子
       </button>
       <button onclick="window.deleteTodo('${id}')" class="w-full flex items-center gap-3 p-3.5 bg-red-50 text-red-600 hover:bg-red-100 font-bold rounded-2xl transition-colors active:scale-95 text-sm">
-        <i data-lucide="trash-2" class="w-4 h-4"></i> 刪除此項目 (單一)
+        <i data-lucide="trash-2" class="w-4 h-4"></i> 刪除此項目
       </button>
       
       ${hasSeries ? `
       <button onclick="window.deleteSeriesTodo('${id}')" class="w-full flex items-center gap-3 p-3.5 bg-red-50 text-red-600 hover:bg-red-100 font-bold rounded-2xl transition-colors active:scale-95 text-sm border border-red-100">
-        <i data-lucide="alert-circle" class="w-4 h-4"></i> 刪除此項目及未來所有重複
+        <i data-lucide="alert-circle" class="w-4 h-4"></i> 刪除此項目及未來的重複項目
       </button>
       ` : ''}
     </div>
