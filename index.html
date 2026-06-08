@@ -327,24 +327,30 @@ tailwind.config = {
 
 <div class="bg-white border-t border-slate-200 p-3 flex flex-col gap-2 flex-shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.02)] z-20" style="padding-bottom: max(12px, env(safe-area-inset-bottom));">
       
-      <div class="flex items-center gap-2 px-1">
-        <i data-lucide="repeat" class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0"></i>
-        <select id="newTodoRepeat" onchange="document.getElementById('newTodoUntilContainer').style.display = this.value === 'none' ? 'none' : 'flex'" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 focus:outline-none focus:border-emerald-400 flex-shrink-0">
-          <option value="none">單次 (不重複)</option>
-          <option value="daily">每日重複</option>
-          <option value="workday">逢星期一至五</option>
-          <option value="0">逢星期日</option>
-          <option value="1">逢星期一</option>
-          <option value="2">逢星期二</option>
-          <option value="3">逢星期三</option>
-          <option value="4">逢星期四</option>
-          <option value="5">逢星期五</option>
-          <option value="6">逢星期六</option>
-        </select>
+<div class="flex flex-col gap-2 w-full">
+        <div class="flex items-center gap-2 px-1">
+          <i data-lucide="repeat" class="w-3.5 h-3.5 text-emerald-500 flex-shrink-0"></i>
+          <select id="newTodoRepeat" onchange="window.toggleRepeatOptions(this.value)" class="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 focus:outline-none focus:border-emerald-400 flex-shrink-0">
+            <option value="none">單次 (不重複)</option>
+            <option value="daily">每日重複</option>
+            <option value="workday">逢星期一至五</option>
+            <option value="custom">自訂星期幾 (可多選)</option>
+          </select>
+          
+          <div id="newTodoUntilContainer" style="display:none;" class="flex items-center gap-1 flex-1 min-w-0">
+            <span class="text-[11px] font-bold text-slate-400 flex-shrink-0">直至</span>
+            <input type="date" id="newTodoUntil" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 focus:outline-none focus:border-emerald-400">
+          </div>
+        </div>
         
-        <div id="newTodoUntilContainer" style="display:none;" class="flex items-center gap-1 flex-1 min-w-0">
-          <span class="text-[11px] font-bold text-slate-400 flex-shrink-0">直至</span>
-          <input type="date" id="newTodoUntil" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 focus:outline-none focus:border-emerald-400">
+        <div id="customDaysContainer" class="hidden flex gap-2 px-6">
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="1" class="todo-day-cb w-3.5 h-3.5 accent-emerald-500">一</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="2" class="todo-day-cb w-3.5 h-3.5 accent-emerald-500">二</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="3" class="todo-day-cb w-3.5 h-3.5 accent-emerald-500">三</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="4" class="todo-day-cb w-3.5 h-3.5 accent-emerald-500">四</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="5" class="todo-day-cb w-3.5 h-3.5 accent-emerald-500">五</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="6" class="todo-day-cb w-3.5 h-3.5 accent-emerald-500">六</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="0" class="todo-day-cb w-3.5 h-3.5 accent-emerald-500">日</label>
         </div>
       </div>
 
@@ -5861,6 +5867,8 @@ window.showTodoMenu = (e, id) => {
   const todo = window.allTodos.find(t => t.id === id);
   if (!todo) return;
 
+  const hasSeries = !!todo.seriesId;
+
   const html = `<div class="modal-box" onclick="event.stopPropagation()">
     <div class="flex items-center gap-3 mb-4 border-b border-slate-100 pb-3">
       <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
@@ -5882,8 +5890,14 @@ window.showTodoMenu = (e, id) => {
         <i data-lucide="copy-check" class="w-4 h-4 text-indigo-500"></i> 複製【全日計劃】到其他日子
       </button>
       <button onclick="window.deleteTodo('${id}')" class="w-full flex items-center gap-3 p-3.5 bg-red-50 text-red-600 hover:bg-red-100 font-bold rounded-2xl transition-colors active:scale-95 text-sm">
-        <i data-lucide="trash-2" class="w-4 h-4"></i> 刪除此項目
+        <i data-lucide="trash-2" class="w-4 h-4"></i> 刪除此項目 (單一)
       </button>
+      
+      ${hasSeries ? `
+      <button onclick="window.deleteSeriesTodo('${id}')" class="w-full flex items-center gap-3 p-3.5 bg-red-50 text-red-600 hover:bg-red-100 font-bold rounded-2xl transition-colors active:scale-95 text-sm border border-red-100">
+        <i data-lucide="alert-circle" class="w-4 h-4"></i> 刪除此項目及未來所有重複
+      </button>
+      ` : ''}
     </div>
     <button onclick="closeModal()" class="w-full mt-4 p-3 bg-white border-2 border-slate-200 text-slate-500 hover:bg-slate-50 font-bold rounded-2xl transition-colors active:scale-95">取消</button>
   </div>`;
@@ -5895,16 +5909,52 @@ window.openEditTodoModal = () => {
   const todo = window.allTodos.find(t => t.id === window.selectedTodoId);
   if (!todo) return;
   
+  const hasSeries = !!todo.seriesId;
+
   const html = `<div class="modal-box text-left" onclick="event.stopPropagation()">
     <h3 class="font-extrabold text-slate-800 text-lg mb-4 flex items-center gap-2">
       <i data-lucide="edit-3" class="w-5 h-5 text-emerald-500"></i> 修改項目
     </h3>
-    <div class="space-y-3">
+    <div class="space-y-3 max-h-[65vh] overflow-y-auto px-1">
       <div><label class="block text-xs font-bold text-slate-500 mb-1">日期</label><input type="date" id="editTodoDate" value="${todo.date}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-emerald-400"></div>
       <div><label class="block text-xs font-bold text-slate-500 mb-1">時間 (選填)</label><input type="time" id="editTodoTime" value="${todo.time || ''}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-emerald-400"></div>
       <div><label class="block text-xs font-bold text-slate-500 mb-1">計劃內容</label><input type="text" id="editTodoText" value="${todo.text}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-emerald-400"></div>
+      
+      <div id="editModeContainer" class="${hasSeries ? 'block' : 'hidden'} border-t border-slate-100 pt-3 mt-2">
+        <label class="block text-xs font-bold text-slate-500 mb-1">修改範圍</label>
+        <select id="editScope" onchange="document.getElementById('editRepeatSection').style.display = this.value === 'future' ? 'block' : 'none'" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-emerald-400">
+          <option value="single">只修改此項目</option>
+          <option value="future">修改此項目及未來所有重複項目</option>
+        </select>
+      </div>
+
+      <div id="editRepeatSection" style="display:none;" class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100 mt-2">
+        <label class="block text-[11px] font-extrabold text-emerald-600 mb-2">🔄 重新設定未來重複規則 (將取代舊項目)</label>
+        <select id="editTodoRepeat" onchange="window.toggleEditRepeatOptions(this.value)" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-xs font-bold text-slate-600 focus:outline-none mb-2 shadow-sm">
+          <option value="keep">保持原本日子不變</option>
+          <option value="daily">改為：每日重複</option>
+          <option value="workday">改為：逢星期一至五</option>
+          <option value="custom">改為：自訂星期幾 (可多選)</option>
+        </select>
+        
+        <div id="editCustomDaysContainer" class="hidden flex flex-wrap gap-2 mb-2">
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="1" class="edit-todo-day-cb w-3.5 h-3.5 accent-emerald-500">一</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="2" class="edit-todo-day-cb w-3.5 h-3.5 accent-emerald-500">二</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="3" class="edit-todo-day-cb w-3.5 h-3.5 accent-emerald-500">三</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="4" class="edit-todo-day-cb w-3.5 h-3.5 accent-emerald-500">四</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="5" class="edit-todo-day-cb w-3.5 h-3.5 accent-emerald-500">五</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="6" class="edit-todo-day-cb w-3.5 h-3.5 accent-emerald-500">六</label>
+          <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600"><input type="checkbox" value="0" class="edit-todo-day-cb w-3.5 h-3.5 accent-emerald-500">日</label>
+        </div>
+        
+        <div id="editTodoUntilContainer" class="hidden items-center gap-2">
+          <span class="text-[11px] font-bold text-slate-500 flex-shrink-0">直至</span>
+          <input type="date" id="editTodoUntil" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-bold text-slate-600 focus:outline-none shadow-sm">
+        </div>
+      </div>
+
     </div>
-    <div class="flex gap-2 mt-5">
+    <div class="flex gap-2 mt-4 pt-2 border-t border-slate-100">
       <button onclick="closeModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-colors text-sm">取消</button>
       <button onclick="window.saveEditTodo()" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-sm transition-colors text-sm">儲存</button>
     </div>
@@ -5913,7 +5963,21 @@ window.openEditTodoModal = () => {
   lucide.createIcons();
 };
 
+window.toggleEditRepeatOptions = (val) => {
+  document.getElementById('editTodoUntilContainer').style.display = (val === 'keep') ? 'none' : 'flex';
+  const customDays = document.getElementById('editCustomDaysContainer');
+  if (customDays) {
+    if (val === 'custom') customDays.classList.remove('hidden');
+    else customDays.classList.add('hidden');
+  }
+};
+
 window.saveEditTodo = async () => {
+  const todo = window.allTodos.find(t => t.id === window.selectedTodoId);
+  if (!todo) return;
+  
+  const scopeEl = document.getElementById('editScope');
+  const scope = scopeEl ? scopeEl.value : 'single';
   const newDate = document.getElementById('editTodoDate').value;
   const newTime = document.getElementById('editTodoTime').value;
   const newText = document.getElementById('editTodoText').value.trim();
@@ -5921,15 +5985,87 @@ window.saveEditTodo = async () => {
   if (!newText || !newDate) return showToast('請填寫完整', 'error');
   
   try {
-    await db.collection("users").doc(currentUser.uid).collection("todos").doc(window.selectedTodoId).update({
-      date: newDate, time: newTime, text: newText
-    });
-    showToast('修改成功', 'success');
+    if (todo.seriesId && scope === 'future') {
+      const repeatMode = document.getElementById('editTodoRepeat').value;
+      const snapshot = await db.collection("users").doc(currentUser.uid).collection("todos")
+        .where("seriesId", "==", todo.seriesId)
+        .get();
+        
+      const batch = db.batch();
+      
+      if (repeatMode === 'keep') {
+        // 🚀 模式 A：保持日子不變，淨係改字眼同時間
+        snapshot.docs.forEach(doc => {
+          if (doc.data().date >= todo.date) {
+            if (doc.id === window.selectedTodoId) batch.update(doc.ref, { date: newDate, time: newTime, text: newText });
+            else batch.update(doc.ref, { text: newText, time: newTime });
+          }
+        });
+      } else {
+        // 🚀 模式 B：重新設定日子 (刪除舊項目，重新生成)
+        const untilDateStr = document.getElementById('editTodoUntil').value;
+        if (!untilDateStr) return showToast('請選擇重複直至幾多號', 'error');
+        
+        const endDateObj = new Date(untilDateStr + 'T00:00:00');
+        const startDateObj = new Date(newDate + 'T00:00:00');
+        
+        if (endDateObj < startDateObj) return showToast('結束日期不能早於開始日期', 'error');
+        if ((endDateObj - startDateObj) / (1000 * 60 * 60 * 24) > 365) return showToast('最多只能重複 1 年', 'error');
+
+        let selectedDays = [];
+        if (repeatMode === 'custom') {
+          const cbs = document.querySelectorAll('.edit-todo-day-cb:checked');
+          if (cbs.length === 0) return showToast('請至少選擇一日', 'error');
+          selectedDays = Array.from(cbs).map(cb => parseInt(cb.value));
+        }
+
+        // 1. 刪除所有大過或等於今日嘅舊項目
+        snapshot.docs.forEach(doc => {
+          if (doc.data().date >= todo.date) batch.delete(doc.ref);
+        });
+
+        // 2. 自動生成全新嘅項目
+        let curDate = new Date(startDateObj);
+        while (curDate <= endDateObj) {
+          const dayOfWeek = curDate.getDay();
+          let shouldAdd = false;
+
+          if (repeatMode === 'daily') shouldAdd = true;
+          else if (repeatMode === 'workday') shouldAdd = (dayOfWeek >= 1 && dayOfWeek <= 5);
+          else if (repeatMode === 'custom') shouldAdd = selectedDays.includes(dayOfWeek);
+
+          if (shouldAdd) {
+            const newRef = db.collection("users").doc(currentUser.uid).collection("todos").doc();
+            batch.set(newRef, { 
+              text: newText, 
+              time: newTime, 
+              date: window.formatTodoDate(curDate), 
+              completed: false, 
+              seriesId: todo.seriesId, 
+              timestamp: new Date().toISOString() 
+            });
+          }
+          curDate.setDate(curDate.getDate() + 1);
+        }
+      }
+      
+      await batch.commit();
+      showToast('已更新未來所有項目', 'success');
+    } else {
+      // 🚀 單一修改
+      await db.collection("users").doc(currentUser.uid).collection("todos").doc(window.selectedTodoId).update({
+        date: newDate, time: newTime, text: newText
+      });
+      showToast('修改成功', 'success');
+    }
+    
     closeModal();
     if(newDate !== window.formatTodoDate(window.currentTodoDate)) window.selectTodoDate(newDate);
-  } catch (e) { showToast('修改失敗', 'error'); }
+  } catch (e) { 
+    console.error("修改失敗原因:", e);
+    showToast('修改失敗', 'error'); 
+  }
 };
-
 window.copySelectedTodo = async () => {
   const targetDate = prompt("請輸入要複製到的日期 (格式: YYYY-MM-DD):", window.formatTodoDate(window.currentTodoDate));
   if (!targetDate) { closeModal(); return; }
@@ -5972,6 +6108,37 @@ window.deleteTodo = async (id) => {
   } catch(e) { showToast('刪除失敗', 'error'); }
 };
 
+// 🌟 新增：批量刪除功能 (保護過去紀錄)
+window.deleteSeriesTodo = async (id) => {
+  const todo = window.allTodos.find(t => t.id === id);
+  if (!todo || !todo.seriesId) return;
+
+  if(!confirm('確定要刪除呢個任務，以及未來所有相關嘅重複項目？(注意：過去已經發生嘅紀錄唔會被刪除)')) return;
+
+  try {
+    const snapshot = await db.collection("users").doc(currentUser.uid).collection("todos")
+      .where("seriesId", "==", todo.seriesId)
+      .get();
+
+    const batch = db.batch();
+    let deleteCount = 0;
+    
+    snapshot.docs.forEach(doc => {
+      // 確保只刪除當前日子及未來嘅項目，保護過去嘅歷史紀錄唔會唔見
+      if (doc.data().date >= todo.date) {
+        batch.delete(doc.ref);
+        deleteCount++;
+      }
+    });
+
+    await batch.commit();
+    showToast(`成功清理 ${deleteCount} 個項目`, 'success');
+    closeModal();
+  } catch(e) {
+    console.error(e);
+    showToast('批量刪除失敗', 'error');
+  }
+};
 window.toggleTodo = async (id, currentStatus) => {
   if(navigator.vibrate) navigator.vibrate(20);
   try {
@@ -5980,7 +6147,17 @@ window.toggleTodo = async (id, currentStatus) => {
   } catch(e) { showToast('更新失敗', 'error'); }
 };
 
-// 🌟 升級版：新增任務 (支援多種重複及日期計算)
+// 🌟 UI 控制：切換自訂星期幾嘅顯示
+window.toggleRepeatOptions = (val) => {
+  document.getElementById('newTodoUntilContainer').style.display = val === 'none' ? 'none' : 'flex';
+  const customDays = document.getElementById('customDaysContainer');
+  if (customDays) {
+    if (val === 'custom') customDays.classList.remove('hidden');
+    else customDays.classList.add('hidden');
+  }
+};
+
+// 🌟 升級版：新增任務 (支援多選自訂星期幾及系列 ID)
 window.addTodo = async () => {
   const input = document.getElementById('newTodoInput');
   const timeInput = document.getElementById('newTodoTime');
@@ -6002,12 +6179,18 @@ window.addTodo = async () => {
     if (!untilDateStr) { showToast('請選擇重複直至幾多號', 'error'); return; }
     const endDateObj = new Date(untilDateStr + 'T00:00:00');
     if (endDateObj <= startDateObj) { showToast('結束日期必須晚於開始日期', 'error'); return; }
-    
-    // 防呆：最多重複一年 (365日)，避免不小心死機
     if ((endDateObj - startDateObj) / (1000 * 60 * 60 * 24) > 365) { showToast('最多只能重複 1 年', 'error'); return; }
 
+    // 如果揀咗自訂星期幾，攞出剔咗邊幾日
+    let selectedDays = [];
+    if (repeatMode === 'custom') {
+      const cbs = document.querySelectorAll('.todo-day-cb:checked');
+      if (cbs.length === 0) { showToast('請至少選擇一日', 'error'); return; }
+      selectedDays = Array.from(cbs).map(cb => parseInt(cb.value));
+    }
+
     let curDate = new Date(startDateObj);
-    curDate.setDate(curDate.getDate() + 1); // 由第二日開始計
+    curDate.setDate(curDate.getDate() + 1);
 
     while (curDate <= endDateObj) {
       const dayOfWeek = curDate.getDay();
@@ -6015,17 +6198,23 @@ window.addTodo = async () => {
 
       if (repeatMode === 'daily') shouldAdd = true;
       else if (repeatMode === 'workday') shouldAdd = (dayOfWeek >= 1 && dayOfWeek <= 5);
-      else shouldAdd = (dayOfWeek === parseInt(repeatMode));
+      else if (repeatMode === 'custom') shouldAdd = selectedDays.includes(dayOfWeek);
 
       if (shouldAdd) datesToCreate.push(window.formatTodoDate(curDate));
       curDate.setDate(curDate.getDate() + 1);
     }
   }
 
-  // 清空輸入框
+  // UI 清空
   input.value = ''; 
   if(timeInput) timeInput.value = ''; 
-  if(repeatSelect) { repeatSelect.value = 'none'; document.getElementById('newTodoUntilContainer').style.display = 'none'; }
+  if(repeatSelect) { 
+    repeatSelect.value = 'none'; 
+    document.getElementById('newTodoUntilContainer').style.display = 'none'; 
+    const customDays = document.getElementById('customDaysContainer');
+    if(customDays) customDays.classList.add('hidden');
+    document.querySelectorAll('.todo-day-cb').forEach(cb => cb.checked = false); // 取消所有勾選
+  }
   if(untilInput) untilInput.value = '';
 
   const btn = document.querySelector('button[onclick="window.addTodo()"]');
@@ -6034,9 +6223,19 @@ window.addTodo = async () => {
   try {
     const batch = db.batch();
     const timestamp = new Date().toISOString();
+    // 🌟 生成系列 ID
+    const seriesId = datesToCreate.length > 1 ? 's_' + Date.now() : null; 
+
     datesToCreate.forEach(dStr => {
       const newRef = db.collection("users").doc(currentUser.uid).collection("todos").doc();
-      batch.set(newRef, { text: text, time: timeVal, date: dStr, completed: false, timestamp: timestamp });
+      batch.set(newRef, { 
+        text: text, 
+        time: timeVal, 
+        date: dStr, 
+        completed: false, 
+        seriesId: seriesId, // 🌟 寫入系列 ID
+        timestamp: timestamp 
+      });
     });
     await batch.commit();
     if(navigator.vibrate) navigator.vibrate(20);
