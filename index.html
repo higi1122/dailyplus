@@ -4654,12 +4654,14 @@ const categoryTagHtml = book.category
           <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
           ${coverHtml}
 <div class="absolute top-2 right-2 flex flex-col gap-1.5 z-20">
-            <button onclick="event.stopPropagation(); window.toggleWishlistHeart('${book.id}', ${isHearted})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
-              <i data-lucide="heart" class="w-4 h-4 transition-colors ${heartIconClass}"></i>
+<button onclick="event.stopPropagation(); window.toggleWishlistHeart('${book.id}', ${isHearted})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
+              <i data-lucide="heart" class="w-4 h-4 transition-colors ${isHearted ? 'text-pink-500' : 'text-slate-300'}"></i>
             </button>
-            <button onclick="event.stopPropagation(); window.toggleWishlistDownloaded('${book.id}', ${!!book.isDownloaded})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
-              <i data-lucide="check-circle-2" class="w-4 h-4 transition-colors ${book.isDownloaded ? 'fill-blue-500 text-blue-500' : 'text-slate-300'}"></i>
+
+<button onclick="event.stopPropagation(); window.toggleWishlistDownloaded('${book.id}', ${!!book.isDownloaded})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
+              <i data-lucide="check-circle-2" class="w-4 h-4 transition-colors ${book.isDownloaded ? 'text-blue-500' : 'text-slate-300'}"></i>
             </button>
+
           </div>
         </div>
         <div class="p-3 flex-1 flex flex-col bg-white">
