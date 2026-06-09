@@ -4571,12 +4571,12 @@ window.renderWishlist = () => {
             <i data-lucide="chevron-down" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
           </div>
           <div class="flex-1 relative">
-            <select id="wishlistSortOrder" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+<select id="wishlistSortOrder" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
               <option value="recent">最近加入</option>
+              <option value="hearted">❤️ 最愛優先</option>
               <option value="oldest">最舊加入</option>
               <option value="title">書名 (A-Z)</option>
-            </select>
-            <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+            </select>            <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
           </div>
         </div>
       </div>
@@ -4605,8 +4605,14 @@ window.renderWishlist = () => {
     return matchesSearch && matchesCategory;
   });
 
-  if (sortVal === 'recent') {
+ if (sortVal === 'recent') {
     filtered.sort((a,b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+  } else if (sortVal === 'hearted') {
+    // 🌟 新增：最愛優先排序
+    filtered.sort((a,b) => {
+      if (!!a.isHearted === !!b.isHearted) return (b.timestamp || '').localeCompare(a.timestamp || '');
+      return a.isHearted ? -1 : 1;
+    });
   } else if (sortVal === 'oldest') {
     filtered.sort((a,b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
   } else {
@@ -4624,11 +4630,14 @@ window.renderWishlist = () => {
         ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
         : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
       
-      const categoryTagHtml = book.category 
+const categoryTagHtml = book.category 
         ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
         : '';
 
-      // ❌ 移除了這裏的 card-enter
+      // 🌟 新增心心狀態判斷
+      const isHearted = !!book.isHearted;
+      const heartIconClass = isHearted ? 'fill-pink-500 text-pink-500' : 'text-slate-300';
+
       return `
       <div 
         ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
@@ -4644,8 +4653,17 @@ window.renderWishlist = () => {
         <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
           <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
           ${coverHtml}
+<div class="absolute top-2 right-2 flex flex-col gap-1.5 z-20">
+            <button onclick="event.stopPropagation(); window.toggleWishlistHeart('${book.id}', ${isHearted})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
+              <i data-lucide="heart" class="w-4 h-4 transition-colors ${heartIconClass}"></i>
+            </button>
+            <button onclick="event.stopPropagation(); window.toggleWishlistDownloaded('${book.id}', ${!!book.isDownloaded})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
+              <i data-lucide="check-circle-2" class="w-4 h-4 transition-colors ${book.isDownloaded ? 'fill-blue-500 text-blue-500' : 'text-slate-300'}"></i>
+            </button>
+          </div>
         </div>
         <div class="p-3 flex-1 flex flex-col bg-white">
+
           <h3 class="font-extrabold text-sm text-slate-800 truncate mb-1">${book.title}</h3>
           <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
           ${categoryTagHtml}
@@ -4676,6 +4694,33 @@ window.toggleWishlistToolbar = () => {
 
 window.handleWishlistChange = () => {
   renderWishlist();
+};
+
+// 🌟 新增：有興趣清單點擊心心功能
+window.toggleWishlistHeart = async (bookId, currentHeartStatus) => {
+  if (navigator.vibrate) navigator.vibrate(20);
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({ 
+      isHearted: !currentHeartStatus 
+    });
+    if (!currentHeartStatus) showToast('❤️ 已加入最愛', 'success');
+  } catch(e) { 
+    showToast('更新失敗', 'error'); 
+  }
+};
+
+// 🌟 新增：處理已下載標記
+window.toggleWishlistDownloaded = async (bookId, currentDownloadStatus) => {
+  if (navigator.vibrate) navigator.vibrate(20);
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({ 
+      isDownloaded: !currentDownloadStatus 
+    });
+    if (!currentDownloadStatus) showToast('✅ 已標記為已下載', 'success');
+    else showToast('已取消下載標記', 'info');
+  } catch(e) { 
+    showToast('更新失敗', 'error'); 
+  }
 };
 
 function updateWishlistCategoryDropdown(wishlistBooks) {
