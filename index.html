@@ -663,9 +663,33 @@ auth.onAuthStateChanged(async user => {
     if(pwdInput) pwdInput.value = '';
   }
 });
-// 🌟 新增：功能模塊按需讀取 (Lazy Loading) 核心邏輯
+// 🌟 新增：獨立出「共用社交數據」(好友、邀請)，確保跨模塊同步
+window.initSocialData = () => {
+  const user = firebase.auth().currentUser; if (!user) return;
+  
+  if (!window.friendsUnsubscribe) {
+    window.friendsUnsubscribe = db.collection("users").doc(user.uid).collection("friends").onSnapshot(snap => {
+      window.myFriends = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+      if(typeof currentPage !== 'undefined' && currentPage === 'friends') renderFriends();
+      if(typeof currentReadPage !== 'undefined' && currentReadPage === 'friends') window.renderReadFriends();
+    });
+  }
+  
+  if (!window.reqsUnsubscribe) {
+    window.reqsUnsubscribe = db.collection("users").doc(user.uid).collection("friend_requests").onSnapshot(snap => {
+      window.myRequests = snap.docs.map(d => ({uid: d.id, ...d.data()}));
+      const gymNotif = document.getElementById('friendNotif');
+      if(gymNotif) { const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0); if(count > 0) gymNotif.classList.remove('hidden'); else gymNotif.classList.add('hidden'); }
+      if(typeof currentPage !== 'undefined' && currentPage === 'friends') renderFriends();
+      if(typeof currentReadPage !== 'undefined' && currentReadPage === 'friends') window.renderReadFriends();
+    });
+  }
+};
+
+// 🌟 功能模塊按需讀取
 window.initReadingData = () => {
-  if (window.booksUnsubscribe) return; // 避免重複監聽
+  window.initSocialData(); // 同步加載好友名單！
+  if (window.booksUnsubscribe) return; 
   const user = firebase.auth().currentUser; if (!user) return;
   
   window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot(snapshot => {
@@ -695,6 +719,7 @@ window.initTodoData = () => {
 };
 
 window.initGymData = () => {
+  window.initSocialData(); // 同步加載好友名單！
   if (recordsUnsubscribe) return;
   const user = firebase.auth().currentUser; if (!user) return;
   
@@ -703,21 +728,12 @@ window.initGymData = () => {
     document.getElementById('totalPoints').textContent = getTotalPoints().available;
     if(currentPage !== 'admin') renderCurrentPage();
   });
-  const updateNotif = () => {
-    const notif = document.getElementById('friendNotif');
-    if(notif) { const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0); if(count > 0) notif.classList.remove('hidden'); else notif.classList.add('hidden'); }
-  };
-  window.friendsUnsubscribe = db.collection("users").doc(user.uid).collection("friends").onSnapshot(snap => {
-    window.myFriends = snap.docs.map(d => ({uid: d.id, ...d.data()}));
-    if(currentPage === 'friends') renderFriends();
-  });
-  window.reqsUnsubscribe = db.collection("users").doc(user.uid).collection("friend_requests").onSnapshot(snap => {
-    window.myRequests = snap.docs.map(d => ({uid: d.id, ...d.data()}));
-    updateNotif(); if(currentPage === 'friends') renderFriends();
-  });
+  
   window.chalUnsubscribe = db.collection("users").doc(user.uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myChallenges = snap.docs.map(d => ({id: d.id, ...d.data()}));
-    updateNotif(); if(currentPage === 'friends') renderFriends();
+    const gymNotif = document.getElementById('friendNotif');
+    if(gymNotif) { const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0); if(count > 0) gymNotif.classList.remove('hidden'); else gymNotif.classList.add('hidden'); }
+    if(typeof currentPage !== 'undefined' && currentPage === 'friends') renderFriends();
   });
 };
 
