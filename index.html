@@ -3155,13 +3155,20 @@ function renderBooks() {
             <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
             <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-5 gap-y-8 relative z-10">`;
 
-      books.forEach(book => {
-        const coverHtml = book.coverUrl 
-          ? `<img src="${book.coverUrl}" class="w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
-          : `<div class="w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">${book.title}</div>`;
-          
-        let coverStarHtml = '';
-        if (window.showCoverStars && book.rating > 0) {
+   books.forEach(book => {
+            const v = window.getBookVersions(book);
+            const disp = v.zh || v.en || book;
+            const hasBoth = v.zh && v.en;
+            
+            const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" onclick="window.toggleCardLang(event, '${book.id}')" class="absolute top-1 left-1 bg-white/90 backdrop-blur shadow-sm border border-slate-200 text-[9px] font-black px-1.5 py-0.5 rounded text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;">英</button>` : '';
+
+            const coverHtml = toggleBtnHtml + (disp.cover 
+              ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
+              : `<div id="cv_img_${book.id}" class="w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none" style="-webkit-touch-callout: none; -webkit-user-select: none;">${disp.title}</div>`);
+              
+            let coverStarHtml = '';
+            
+            if (window.showCoverStars && book.rating > 0) {
           coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
             <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
          for(let s=1; s<=5; s++) {
@@ -3329,9 +3336,27 @@ function updateCategoryDropdown() {
 
 // 抽取卡片渲染邏輯，確保樣式同原本一模一樣，並優化日期顯示格式
 function renderSingleBookCard(book) {
-  const coverHtml = book.coverUrl 
-    ? `<img src="${book.coverUrl}" class="w-24 aspect-[2/3] object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100\\' height=\\'100\\'><rect width=\\'100\\' height=\\'100\\' fill=\\'%23e2e8f0\\'/><text x=\\'50%\\' y=\\'50%\\' dominant-baseline=\\'middle\\' text-anchor=\\'middle\\' font-size=\\'20\\' fill=\\'%2394a3b8\\'>無圖片</text></svg>'">`
-    : `<div class="w-24 aspect-[2/3] bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] relative z-10">📗</div>`;
+  const v = window.getBookVersions(book);
+  const disp = v.zh || v.en;
+  const hasBoth = v.zh && v.en;
+  
+  // 建立動態切換功能
+  window.toggleCardLang = (e, id) => {
+    e.stopPropagation();
+    const b = window.allBooks.find(x=>x.id===id); const vb = window.getBookVersions(b);
+    const img = document.getElementById('cv_img_'+id); const title = document.getElementById('cv_title_'+id); const btn = document.getElementById('cv_btn_'+id);
+    if(btn.innerText === '英') {
+       if(img && vb.en.cover) img.src = vb.en.cover; title.innerText = vb.en.title; btn.innerText = '中';
+    } else {
+       if(img && vb.zh.cover) img.src = vb.zh.cover; title.innerText = vb.zh.title; btn.innerText = '英';
+    }
+  };
+
+  const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" onclick="window.toggleCardLang(event, '${book.id}')" class="absolute top-1 right-1 bg-white/90 backdrop-blur shadow-sm border border-slate-200 text-[9px] font-black px-1.5 py-0.5 rounded text-slate-600 hover:bg-white z-30 transition-all active:scale-90">英</button>` : '';
+
+  const coverHtml = `<div class="relative z-10 w-24 aspect-[2/3]">${toggleBtnHtml}` + (disp.cover 
+    ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="w-full h-full object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)]">`
+    : `<div id="cv_img_${book.id}" class="w-full h-full bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)]">📗</div>`) + `</div>`;
 
   // 🌟 核心修正：處理「已讀完」嘅顯示字串 (格式：d/m 已讀完)
   let displayFinishedDate = '已讀完';
@@ -3405,9 +3430,8 @@ function renderSingleBookCard(book) {
         ${coverHtml}
       </div>
       <div class="p-3 flex-1 flex flex-col bg-white">
-        <h3 class="font-extrabold text-sm text-slate-800 truncate mb-1">${book.title}</h3>
-        <p class="text-[11px] font-bold text-slate-400 truncate">${book.author || '未知作者'}</p>
-        ${ratingHtml}
+       <h3 id="cv_title_${book.id}" class="font-extrabold text-sm text-slate-800 truncate mb-1">${disp.title}</h3>
+          <p class="text-[11px] font-bold text-slate-400 truncate">${disp.author || '未知作者'}</p>        ${ratingHtml}
         ${categoryTagHtml}
         <div class="mt-auto pt-3 flex items-center">
           ${statusBadgeHtml}
@@ -3498,7 +3522,12 @@ async function confirmQuickFinish(bookId) {
 function openAddBookModal() {
   let html = `
     <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
-      <h3 class="font-extrabold text-lg text-primary mb-4 flex items-center gap-2">➕ 新增閱讀記錄</h3>
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-extrabold text-lg text-primary flex items-center gap-2">➕ 新增閱讀記錄</h3>
+        <button onclick="event.preventDefault(); window.toggleDualLang('add')" class="flex items-center gap-1 text-[11px] font-extrabold text-orange-500 bg-orange-50 hover:bg-orange-100 px-2 py-1.5 rounded-lg border border-orange-100 transition-colors shadow-sm active:scale-95">
+          <i id="addDualBtnIcon" data-lucide="plus" class="w-3.5 h-3.5"></i> <span id="addDualBtnText">新增其他版本</span>
+        </button>
+      </div>
       
 <div id="searchThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
         <label id="searchThemeLabel" class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 選擇搜尋方式並輸入內容</label>
@@ -3528,10 +3557,8 @@ function openAddBookModal() {
       </div>
       
       <div class="space-y-3">
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 *</label><input id="bookTitle" type="text" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">作者</label><input id="bookAuthor" type="text" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">分類 Tag</label><input id="bookCategory" type="text" placeholder="例如：商業理財、小說" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold text-sm"></div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">封面圖片網址</label><input id="bookCover" type="url" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold text-sm"></div>
+        ${window.generateBookLangForm('add')}
+        <div class="pt-3 border-t border-slate-100"><label class="text-xs font-bold text-slate-500 block mb-1">共用分類 Tag</label><input id="addCategory" type="text" placeholder="例如：商業理財、小說" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold text-sm"></div>
         
         <div class="grid grid-cols-2 gap-2">
           <div><label class="text-xs font-bold text-slate-500 block mb-1">開始日期</label><input id="bookStartDate" type="date" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
@@ -3730,27 +3757,123 @@ async function fetchBookData(engine = 'google') {
   }
 }
 
-// 🌟 升級：當用戶點擊其中一個搜尋結果時觸發（保留搜尋框文字版）
+// 🌟 新增：母子書雙語引擎
+window.getBookVersions = (book) => {
+  let zh = null, en = null;
+  if (book.titleZh || book.titleEn) {
+    if (book.titleZh) zh = { title: book.titleZh, author: book.authorZh, cover: book.coverZh, desc: book.descZh };
+    if (book.titleEn) en = { title: book.titleEn, author: book.authorEn, cover: book.coverEn, desc: book.descEn };
+  } else {
+    const isZh = /[\u4e00-\u9fa5]/.test(book.title || '');
+    const v = { title: book.title, author: book.author, cover: book.coverUrl, desc: book.description };
+    if (isZh) zh = v; else en = v;
+  }
+  if (!zh && !en) zh = { title: book.title, author: book.author, cover: book.coverUrl, desc: book.description };
+  return { zh, en };
+};
+
+// 🌟 新增：表單雙語 UI 生成器與切換器
+window.currentBookEditLang = 'zh';
+
+window.switchBookLangTab = (prefix, lang) => {
+  window.currentBookEditLang = lang;
+  document.getElementById(`${prefix}TabBtnZh`).className = lang === 'zh' ? 'flex-1 py-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600' : 'flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-slate-400';
+  document.getElementById(`${prefix}TabBtnEn`).className = lang === 'en' ? 'flex-1 py-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600' : 'flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-slate-400';
+  document.getElementById(`${prefix}TabContentZh`).style.display = lang === 'zh' ? 'block' : 'none';
+  document.getElementById(`${prefix}TabContentEn`).style.display = lang === 'en' ? 'block' : 'none';
+};
+
+window.isDualLangMode = window.isDualLangMode || {};
+
+// 🌟 升級：切換雙語輸入模式 (開/關)
+window.toggleDualLang = (prefix) => {
+  window.isDualLangMode[prefix] = !window.isDualLangMode[prefix];
+  const isDual = window.isDualLangMode[prefix];
+  
+  const container = document.getElementById(`${prefix}TabsContainer`);
+  const btnText = document.getElementById(`${prefix}DualBtnText`);
+  const btnIcon = document.getElementById(`${prefix}DualBtnIcon`);
+  
+  if (isDual) {
+    container.classList.remove('hidden');
+    container.classList.add('flex');
+    btnText.innerText = '取消';
+    btnIcon.setAttribute('data-lucide', 'minus');
+    document.querySelectorAll(`.${prefix}-zh-label`).forEach(el => {
+      if(!el.innerText.includes('(中)')) el.innerText = el.innerText + ' (中)';
+    });
+    window.switchBookLangTab(prefix, 'en');
+  } else {
+    container.classList.add('hidden');
+    container.classList.remove('flex');
+    btnText.innerText = '新增其他版本';
+    btnIcon.setAttribute('data-lucide', 'plus');
+    document.querySelectorAll(`.${prefix}-zh-label`).forEach(el => {
+      el.innerText = el.innerText.replace(' (中)', '');
+    });
+    
+    // 🌟 防呆：取消雙語時，清空隱藏嘅英文資料，避免意外儲存
+    document.getElementById(`${prefix}EnTitle`).value = '';
+    document.getElementById(`${prefix}EnAuthor`).value = '';
+    document.getElementById(`${prefix}EnCover`).value = '';
+    document.getElementById(`${prefix}EnDesc`).value = '';
+    
+    window.switchBookLangTab(prefix, 'zh');
+  }
+  lucide.createIcons();
+};
+
+window.generateBookLangForm = (prefix, book = {}) => {
+  window.currentBookEditLang = 'zh'; 
+  const v = window.getBookVersions(book);
+  const isDual = !!(book.titleZh && book.titleEn); 
+  window.isDualLangMode[prefix] = isDual; // 初始化狀態
+  
+  const zhData = isDual ? v.zh : (v.zh || v.en || book || {});
+  const enData = isDual ? v.en : {};
+  const labelSuffix = isDual ? ' (中)' : '';
+
+  return `
+    <div id="${prefix}TabsContainer" class="${isDual ? 'flex' : 'hidden'} border-b border-slate-200 mb-3 pt-1">
+      <button id="${prefix}TabBtnZh" onclick="event.preventDefault(); window.switchBookLangTab('${prefix}', 'zh')" class="flex-1 py-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600 transition-colors">🀄 中文版資料</button>
+      <button id="${prefix}TabBtnEn" onclick="event.preventDefault(); window.switchBookLangTab('${prefix}', 'en')" class="flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-slate-400 transition-colors">🔤 英文版資料</button>
+    </div>
+    
+    <div id="${prefix}TabContentZh" class="space-y-3 block">
+      <div><label class="${prefix}-zh-label text-xs font-bold text-slate-500 block mb-1">書名${labelSuffix}</label><input id="${prefix}ZhTitle" type="text" value="${zhData.title||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
+      <div><label class="${prefix}-zh-label text-xs font-bold text-slate-500 block mb-1">作者${labelSuffix}</label><input id="${prefix}ZhAuthor" type="text" value="${zhData.author||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
+      <div><label class="${prefix}-zh-label text-xs font-bold text-slate-500 block mb-1">封面網址${labelSuffix}</label><input id="${prefix}ZhCover" type="url" value="${zhData.cover||zhData.coverUrl||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold text-sm"></div>
+      <div><label class="${prefix}-zh-label text-xs font-bold text-slate-500 block mb-1">官方簡介${labelSuffix}</label><textarea id="${prefix}ZhDesc" rows="3" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none font-medium text-slate-600 text-sm">${zhData.desc||zhData.description||''}</textarea></div>
+    </div>
+    
+    <div id="${prefix}TabContentEn" class="space-y-3 hidden">
+      <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 (英)</label><input id="${prefix}EnTitle" type="text" value="${enData.title||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
+      <div><label class="text-xs font-bold text-slate-500 block mb-1">作者 (英)</label><input id="${prefix}EnAuthor" type="text" value="${enData.author||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
+      <div><label class="text-xs font-bold text-slate-500 block mb-1">封面網址 (英)</label><input id="${prefix}EnCover" type="url" value="${enData.cover||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold text-sm"></div>
+      <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (英)</label><textarea id="${prefix}EnDesc" rows="3" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none font-medium text-slate-600 text-sm">${enData.desc||''}</textarea></div>
+    </div>
+  `;
+};
+
 window.selectBookFromResult = (encodedDataStr) => {
   const bookData = JSON.parse(decodeURIComponent(encodedDataStr));
+  const isEdit = !!document.getElementById('editZhTitle');
+  const prefix = isEdit ? 'edit' : 'add';
+  const lang = window.currentBookEditLang === 'zh' ? 'Zh' : 'En';
 
-  // 填寫表單
-  document.getElementById('bookTitle').value = bookData.title;
-  document.getElementById('bookAuthor').value = bookData.author;
-  document.getElementById('bookDesc').value = bookData.desc;
-  document.getElementById('bookCover').value = bookData.cover;
-  document.getElementById('bookCategory').value = bookData.category;
-
-  // 隱藏搜尋結果列表
-  document.getElementById('bookSearchResults').classList.add('hidden');
+  document.getElementById(`${prefix}${lang}Title`).value = bookData.title;
+  document.getElementById(`${prefix}${lang}Author`).value = bookData.author;
+  document.getElementById(`${prefix}${lang}Desc`).value = bookData.desc;
+  document.getElementById(`${prefix}${lang}Cover`).value = bookData.cover;
   
-  // ⛔ 呢度原本有一行清空搜尋框嘅代碼，我哋已經將佢移除咗
-  // document.getElementById('bookSearchInput').value = ''; 
+  const catEl = document.getElementById(`${prefix}Category`);
+  if(catEl && !catEl.value) catEl.value = bookData.category;
 
-  showToast('✅ 成功載入書籍資料！', 'success');
+  document.getElementById('bookSearchResults').classList.add('hidden');
+  showToast(`✅ 已填寫${lang==='Zh'?'中文':'英文'}版資料！`, 'success');
 
   // UX：綠色高光閃爍提示
-  ['bookTitle', 'bookAuthor', 'bookCategory', 'bookCover', 'bookDesc'].forEach(id => {
+  [`${prefix}${lang}Title`, `${prefix}${lang}Author`, `${prefix}Category`, `${prefix}${lang}Cover`, `${prefix}${lang}Desc`].forEach(id => {
     const el = document.getElementById(id);
     if (el && el.value) {
       el.classList.add('bg-green-50', 'ring-2', 'ring-green-400');
@@ -3760,39 +3883,28 @@ window.selectBookFromResult = (encodedDataStr) => {
 };
 
 async function saveNewBook() {
-  const title = document.getElementById('bookTitle').value.trim();
-  if (!title) { showToast('請填寫書名', 'error'); return; }
+  const titleZh = document.getElementById('addZhTitle').value.trim();
+  const titleEn = document.getElementById('addEnTitle').value.trim();
+  if (!titleZh && !titleEn) { showToast('請填寫至少一個語言的書名', 'error'); return; }
   
   const initialNoteText = document.getElementById('bookNotes').value.trim();
   let notesArray = [];
-  if (initialNoteText) {
-    const now = new Date();
-    notesArray.push({
-      id: 'n_' + Date.now(),
-      date: `📅 ${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}/${String(now.getDate()).padStart(2,'0')}`,
-      text: initialNoteText
-    });
-  }
+  if (initialNoteText) notesArray.push({ id: 'n_' + Date.now(), date: `📅 ${new Date().toLocaleDateString('zh-HK')}`, text: initialNoteText });
 
   const bookData = {
-    title: title, 
-    author: document.getElementById('bookAuthor').value.trim(),
-    category: document.getElementById('bookCategory').value.trim(),
-    coverUrl: document.getElementById('bookCover').value.trim(),
-    startDate: document.getElementById('bookStartDate').value,
-    endDate: document.getElementById('bookEndDate').value,
-    status: document.getElementById('bookStatus').value,
-    rating: parseFloat(document.getElementById('addRating')?.value) || 0,
-    review: document.getElementById('addReviewText')?.value.trim() || '',
-    description: document.getElementById('bookDesc').value.trim(), // 👈 獨立儲存簡介
-    notes: notesArray,
-    timestamp: new Date().toISOString()
+    title: titleZh || titleEn, author: document.getElementById('addZhAuthor').value.trim() || document.getElementById('addEnAuthor').value.trim(),
+    coverUrl: document.getElementById('addZhCover').value.trim() || document.getElementById('addEnCover').value.trim(),
+    description: document.getElementById('addZhDesc').value.trim() || document.getElementById('addEnDesc').value.trim(),
+    titleZh, authorZh: document.getElementById('addZhAuthor').value.trim(), coverZh: document.getElementById('addZhCover').value.trim(), descZh: document.getElementById('addZhDesc').value.trim(),
+    titleEn, authorEn: document.getElementById('addEnAuthor').value.trim(), coverEn: document.getElementById('addEnCover').value.trim(), descEn: document.getElementById('addEnDesc').value.trim(),
+    category: document.getElementById('addCategory').value.trim(),
+    startDate: document.getElementById('bookStartDate').value, endDate: document.getElementById('bookEndDate').value,
+    status: document.getElementById('bookStatus').value, rating: parseFloat(document.getElementById('addRating')?.value) || 0,
+    review: document.getElementById('addReviewText')?.value.trim() || '', notes: notesArray, timestamp: new Date().toISOString()
   };
 
-  try {
-    await db.collection("users").doc(currentUser.uid).collection("books").add(bookData);
-    closeModal(); showToast('書籍已加入書架！', 'success');
-  } catch(e) { showToast('儲存失敗', 'error'); }
+  try { await db.collection("users").doc(currentUser.uid).collection("books").add(bookData); closeModal(); showToast('書籍已加入書架！', 'success'); } 
+  catch(e) { showToast('儲存失敗', 'error'); }
 }
 
 // ========== 📖 書本詳情頁 (支援多本切換版) ==========
@@ -3800,184 +3912,137 @@ window.viewBook = (bookId, groupIdsStr = '') => {
   const book = window.allBooks.find(b => b.id === bookId);
   if (!book) return;
 
-  // 🌟 處理分頁邏輯：將傳入嘅 ID 字串轉返做陣列
   const groupIds = groupIdsStr ? (Array.isArray(groupIdsStr) ? groupIdsStr : groupIdsStr.split(',')) : null;
   let paginationHtml = '';
-  
   if (groupIds && groupIds.length > 1) {
     const idx = groupIds.indexOf(bookId);
     const prevId = groupIds[(idx - 1 + groupIds.length) % groupIds.length];
     const nextId = groupIds[(idx + 1) % groupIds.length];
     const groupStr = groupIds.join(',');
-
     paginationHtml = `
       <div class="flex items-center justify-between mb-4 bg-white/80 p-2 rounded-xl border border-slate-100 shadow-sm card-enter">
-        <button onclick="window.viewBook('${prevId}', '${groupStr}')" class="p-1.5 hover:bg-slate-100 rounded-lg transition-all text-primary active:scale-75">
-          <i data-lucide="chevron-left" class="w-6 h-6"></i>
-        </button>
-        <div class="flex flex-col items-center">
-          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">當日進度</span>
-          <span class="text-sm font-black text-primary">${idx + 1} / ${groupIds.length}</span>
-        </div>
-        <button onclick="window.viewBook('${nextId}', '${groupStr}')" class="p-1.5 hover:bg-slate-100 rounded-lg transition-all text-primary active:scale-75">
-          <i data-lucide="chevron-right" class="w-6 h-6"></i>
-        </button>
-      </div>
-    `;
+        <button onclick="window.viewBook('${prevId}', '${groupStr}')" class="p-1.5 hover:bg-slate-100 rounded-lg transition-all text-primary active:scale-75"><i data-lucide="chevron-left" class="w-6 h-6"></i></button>
+        <div class="flex flex-col items-center"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">當日進度</span><span class="text-sm font-black text-primary">${idx + 1} / ${groupIds.length}</span></div>
+        <button onclick="window.viewBook('${nextId}', '${groupStr}')" class="p-1.5 hover:bg-slate-100 rounded-lg transition-all text-primary active:scale-75"><i data-lucide="chevron-right" class="w-6 h-6"></i></button>
+      </div>`;
   }
- 
-  const coverHtml = book.coverUrl 
-      ? `<img src="${book.coverUrl}" class="w-24 flex-shrink-0 self-start aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">`
-      : `<div class="w-24 flex-shrink-0 self-start aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-3xl shadow-sm">📗</div>`;
-
+  
   const dateStr = [book.startDate, book.endDate].filter(Boolean).join(' 至 ');
   const dateDisplay = dateStr ? `<div class="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>${dateStr}</div>` : '';
 
-  let descHtml = '';
-  if (book.description) {
-    const isLongDesc = book.description.length > 120;
-    descHtml = `
-      <div class="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-100">
-         <h4 class="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1"><i data-lucide="info" class="w-4 h-4"></i>官方簡介</h4>
-         <p id="bookDescText_${book.id}" class="text-sm text-slate-600 whitespace-pre-wrap font-medium line-clamp-5 transition-all" style="word-break: break-word;">${book.description}</p>
-         ${isLongDesc ? `<button onclick="toggleDescription('${book.id}', this)" class="mt-2 w-full flex items-center justify-center gap-1 text-xs font-bold text-sky-500 bg-sky-50 hover:bg-sky-100 py-1.5 rounded-lg transition-colors"><span>展開閱讀</span> <i data-lucide="chevron-down" class="w-3 h-3"></i></button>` : ''}
-      </div>`;
-  }
-
-  let notesArray = [];
-  if (Array.isArray(book.notes)) {
-    notesArray = book.notes;
-  } else if (typeof book.notes === 'string' && book.notes.trim() !== '') {
-    notesArray = [{ id: 'legacy', date: '📅 舊版筆記', text: book.notes }];
-  }
-
-  let notesHtml = '';
-  if (notesArray.length > 0) {
-    notesArray.forEach(n => {
-      notesHtml += `
-        <div class="bg-white p-3 rounded-xl border border-sky-100 shadow-sm mb-2 relative">
-          <div id="noteDisplay_${n.id}">
-            <div class="flex justify-between items-center mb-2 border-b border-slate-50 pb-2">
-              <span class="text-[10px] font-bold text-sky-500">${n.date}</span>
-              <div class="flex gap-1.5">
-                <button onclick="editSingleNote('${n.id}')" class="text-[10px] font-bold text-sky-600 bg-sky-50 hover:bg-sky-100 px-2 py-1 rounded-md transition flex items-center gap-1 border border-sky-100">
-                  <i data-lucide="pencil" class="w-3 h-3"></i>編輯
-                </button>
-                <button onclick="deleteSingleNote('${book.id}', '${n.id}')" class="text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition flex items-center gap-1 border border-red-100">
-                  <i data-lucide="trash" class="w-3 h-3"></i>刪除
-                </button>
-              </div>
-            </div>
-            <p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${n.text}</p>
+  let notesArray = Array.isArray(book.notes) ? book.notes : ((typeof book.notes === 'string' && book.notes.trim() !== '') ? [{ id: 'legacy', date: '📅 舊版筆記', text: book.notes }] : []);
+  let notesHtml = notesArray.length > 0 ? notesArray.map(n => `
+    <div class="bg-white p-3 rounded-xl border border-sky-100 shadow-sm mb-2 relative">
+      <div id="noteDisplay_${n.id}">
+        <div class="flex justify-between items-center mb-2 border-b border-slate-50 pb-2">
+          <span class="text-[10px] font-bold text-sky-500">${n.date}</span>
+          <div class="flex gap-1.5">
+            <button onclick="editSingleNote('${n.id}')" class="text-[10px] font-bold text-sky-600 bg-sky-50 hover:bg-sky-100 px-2 py-1 rounded-md transition flex items-center gap-1 border border-sky-100"><i data-lucide="pencil" class="w-3 h-3"></i>編輯</button>
+            <button onclick="deleteSingleNote('${book.id}', '${n.id}')" class="text-[10px] font-bold text-red-500 bg-red-50 hover:bg-red-100 px-2 py-1 rounded-md transition flex items-center gap-1 border border-red-100"><i data-lucide="trash" class="w-3 h-3"></i>刪除</button>
           </div>
-          <div id="noteEdit_${n.id}" class="hidden">
-            <textarea id="noteEditText_${n.id}" rows="3" class="w-full border-2 border-sky-200 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-sky-400 text-slate-700">${n.text}</textarea>
-            <div class="flex justify-end gap-2 mt-2">
-              <button onclick="cancelEditNote('${n.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition">取消</button>
-              <button onclick="saveEditedNote('${book.id}', '${n.id}')" class="text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition">儲存</button>
-            </div>
-          </div>
-        </div>`;
-    });
-  } else {
-    notesHtml = `<p class="text-sm text-slate-400 text-center py-4">暫時無筆記。</p>`;
-  }
+        </div>
+        <p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${n.text}</p>
+      </div>
+      <div id="noteEdit_${n.id}" class="hidden">
+        <textarea id="noteEditText_${n.id}" rows="3" class="w-full border-2 border-sky-200 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-sky-400 text-slate-700">${n.text}</textarea>
+        <div class="flex justify-end gap-2 mt-2">
+          <button onclick="cancelEditNote('${n.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition">取消</button>
+          <button onclick="saveEditedNote('${book.id}', '${n.id}')" class="text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition">儲存</button>
+        </div>
+      </div>
+    </div>`).join('') : `<p class="text-sm text-slate-400 text-center py-4">暫時無筆記。</p>`;
 
-  const categoryBadge = book.category 
-    ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100 mt-1"><i data-lucide="tag" class="w-3 h-3"></i>${book.category}</span>` 
-    : '';
+  const categoryBadge = book.category ? `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 text-sky-600 border border-sky-100 mt-1"><i data-lucide="tag" class="w-3 h-3"></i>${book.category}</span>` : '';
 
-let interactiveStatusHtml = '';
-  if (book.status === 'reading') {
-    interactiveStatusHtml = `<button onclick="quickFinishBook('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors shadow-sm relative z-20"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse group-hover:hidden"></span><i data-lucide="check-circle" class="w-2.5 h-2.5 hidden group-hover:block text-orange-600"></i><span class="group-hover:hidden">閱讀中 📖</span><span class="hidden group-hover:block">標記讀完</span></button>`;
-  } else if (book.status === 'finished') {
+  let interactiveStatusHtml = '';
+  if (book.status === 'reading') interactiveStatusHtml = `<button onclick="quickFinishBook('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors shadow-sm relative z-20"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse group-hover:hidden"></span><i data-lucide="check-circle" class="w-2.5 h-2.5 hidden group-hover:block text-orange-600"></i><span class="group-hover:hidden">閱讀中 📖</span><span class="hidden group-hover:block">標記讀完</span></button>`;
+  else if (book.status === 'finished') {
     let displayFinishedDate = '已讀完 ✅';
     if (book.endDate) {
       const parts = book.endDate.split('-');
       if (parts.length >= 3) displayFinishedDate = `${parseInt(parts[2])}/${parseInt(parts[1])} 已讀完`;
     }
     interactiveStatusHtml = `<button onclick="promptRevertToReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="group inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-md bg-green-50 text-green-600 border border-green-200 hover:bg-sky-50 hover:text-sky-600 transition-colors shadow-sm relative z-20"><span class="w-1.5 h-1.5 rounded-full bg-green-500 group-hover:hidden"></span><i data-lucide="rotate-ccw" class="w-2.5 h-2.5 hidden group-hover:block text-sky-500"></i><span class="group-hover:hidden">${displayFinishedDate}</span><span class="hidden group-hover:block">還原狀態</span></button>`;
-  } else if (book.status === 'archived') {
-    // 🌟 解決詳情頁變咗「有興趣」嘅 Bug
-    interactiveStatusHtml = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 shadow-sm relative z-20"><i data-lucide="archive" class="w-3 h-3"></i> 已封存</span>`;
-  } else {
-    interactiveStatusHtml = `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-50 text-pink-600 border border-pink-200 shadow-sm relative z-20">有興趣 🧐</span>`;
-  }
+  } else if (book.status === 'archived') interactiveStatusHtml = `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-500 border border-slate-200 shadow-sm relative z-20"><i data-lucide="archive" class="w-3 h-3"></i> 已封存</span>`;
+  else interactiveStatusHtml = `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-50 text-pink-600 border border-pink-200 shadow-sm relative z-20">有興趣 🧐</span>`;
 
-let reviewHtml = '';
+  let reviewHtml = '';
   if (book.status === 'finished' && (book.rating > 0 || book.review)) {
     let stars = `<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false"><linearGradient id="half_grad_${book.id}_md" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;
     for(let i=1; i<=5; i++) {
-       const isFull = book.rating >= i;
-       const isHalf = book.rating === i - 0.5;
+       const isFull = book.rating >= i; const isHalf = book.rating === i - 0.5;
        const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
        const fillAttr = isHalf ? `url(#half_grad_${book.id}_md)` : 'currentColor';
        stars += `<svg class="w-5 h-5 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     }
-    reviewHtml = `
-      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100 relative">
-         <h4 class="text-xs font-bold text-orange-600 mb-2 flex items-center gap-1"><i data-lucide="award" class="w-4 h-4"></i>整體評分與書評</h4>
-         ${book.rating > 0 ? `<div class="flex gap-1 mb-3">${stars}</div>` : ''}
-         ${book.review ? `<p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${book.review}</p>` : ''}
-      </div>
-    `;
+    reviewHtml = `<div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100 relative"><h4 class="text-xs font-bold text-orange-600 mb-2 flex items-center gap-1"><i data-lucide="award" class="w-4 h-4"></i>整體評分與書評</h4>${book.rating > 0 ? `<div class="flex gap-1 mb-3">${stars}</div>` : ''}${book.review ? `<p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${book.review}</p>` : ''}</div>`;
   }
 
-// 🌟 Z-Library 連結生成 (中文字改為 15 位)
-  const isCjk = /[\u4e00-\u9fa5]/.test(book.title);
-  const searchTerm = isCjk ? book.title.substring(0, 15) : book.title.substring(0, 30);
-  // 🌟 修正：將單引號轉為 %27，防止破壞 onclick 語法
-  const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm).replace(/'/g, "%27")}`;
-  const safeTitle = book.title.replace(/'/g, "\\'");
+  // 🌟 核心升級：雙語標籤與內容切換
+  const vb = window.getBookVersions(book);
+  const hasBoth = vb.zh && vb.en;
+  const initialLang = vb.zh ? 'zh' : 'en';
+
+  window.switchViewLang = (bId, lang) => {
+    document.querySelectorAll('.lang-block_' + bId).forEach(el => el.classList.add('hidden'));
+    document.getElementById(`viewLangBlock_${bId}_${lang}`).classList.remove('hidden');
+    document.getElementById(`viewTab_zh_${bId}`).className = lang === 'zh' ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-orange-500 shadow-sm transition-all' : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-600 transition-all';
+    document.getElementById(`viewTab_en_${bId}`).className = lang === 'en' ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-orange-500 shadow-sm transition-all' : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-600 transition-all';
+  };
+
+  const renderLangContent = (langData, langKey) => {
+    if(!langData) return '';
+    const isCjk = /[\u4e00-\u9fa5]/.test(langData.title);
+    const searchTerm = isCjk ? langData.title.substring(0, 15) : langData.title.substring(0, 30);
+    const zUrl = `https://tw.z-library.sk/s/${encodeURIComponent(searchTerm).replace(/'/g, "%27")}`;
+    const safeTitle = langData.title.replace(/'/g, "\\'");
+    const cHtml = langData.cover ? `<img src="${langData.cover}" class="w-24 flex-shrink-0 self-start aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">` : `<div class="w-24 flex-shrink-0 self-start aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-3xl shadow-sm">📗</div>`;
+    const dHtml = langData.desc ? `<div class="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-100"><h4 class="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1"><i data-lucide="info" class="w-4 h-4"></i>官方簡介</h4><p id="bookDescText_${book.id}_${langKey}" class="text-sm text-slate-600 whitespace-pre-wrap font-medium line-clamp-5 transition-all" style="word-break: break-word;">${langData.desc}</p>${langData.desc.length > 120 ? `<button onclick="toggleDescription('${book.id}_${langKey}', this)" class="mt-2 w-full flex items-center justify-center gap-1 text-xs font-bold text-sky-500 bg-sky-50 hover:bg-sky-100 py-1.5 rounded-lg transition-colors"><span>展開閱讀</span> <i data-lucide="chevron-down" class="w-3 h-3"></i></button>` : ''}</div>` : '';
+
+    return `
+      <div id="viewLangBlock_${book.id}_${langKey}" class="lang-block_${book.id} ${langKey === initialLang ? 'block' : 'hidden'}">
+        <div class="absolute top-3 right-11 z-50">
+          <button onblur="setTimeout(() => { const m = document.getElementById('zMenu_${book.id}_${langKey}'); if(m) m.classList.add('hidden'); }, 200)" onclick="document.getElementById('zMenu_${book.id}_${langKey}').classList.toggle('hidden');" class="text-indigo-500 bg-indigo-50 hover:bg-indigo-100 rounded-full w-7 h-7 flex items-center justify-center transition-all font-black text-xs shadow-sm border border-indigo-100 active:scale-90">Z</button>
+          <div id="zMenu_${book.id}_${langKey}" class="hidden absolute right-0 mt-2 shadow-lg bg-white rounded-xl w-36 text-sm font-bold border border-slate-100 p-1.5 z-[100] flex flex-col gap-1">
+            <a onclick="window.open('${zUrl}', '_blank');" class="cursor-pointer text-indigo-600 hover:bg-indigo-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i> 打開連結</a>
+            <a onclick="window.copyZLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> 複製連結</a>
+          </div>
+        </div>
+        <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
+          ${cHtml}
+          <div class="flex-1 flex flex-col min-w-0">
+            <h3 class="font-extrabold text-lg text-slate-800 leading-tight pr-4">${langData.title}</h3>
+            <p class="text-sm font-semibold text-slate-500 mt-1">${langData.author || '未知作者'}</p>
+            <div class="mb-1">${categoryBadge}</div>
+            <div class="mt-auto pt-2">${interactiveStatusHtml}${dateDisplay}</div>
+          </div>
+        </div>
+        ${dHtml}
+      </div>`;
+  };
+
+  let langSwitchHtml = '';
+  if (hasBoth) {
+    langSwitchHtml = `
+      <div class="flex bg-slate-100/80 p-1 rounded-xl mb-3 shadow-inner">
+        <button id="viewTab_zh_${book.id}" onclick="window.switchViewLang('${book.id}', 'zh')" class="${initialLang === 'zh' ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-orange-500 shadow-sm transition-all' : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-600 transition-all'}">🀄 中文版</button>
+        <button id="viewTab_en_${book.id}" onclick="window.switchViewLang('${book.id}', 'en')" class="${initialLang === 'en' ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-orange-500 shadow-sm transition-all' : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-600 transition-all'}">🔤 英文版</button>
+      </div>`;
+  }
 
   let html = `
     <div class="modal-box max-w-md text-left bg-slate-50 relative pt-12" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
-      
-<div class="absolute top-3 right-11 z-50">
-        <button 
-          onblur="setTimeout(() => { const m = document.getElementById('zMenu_${book.id}'); if(m) m.classList.add('hidden'); }, 200)"
-          onclick="document.getElementById('zMenu_${book.id}').classList.toggle('hidden');" 
-          class="text-indigo-500 bg-indigo-50 hover:bg-indigo-100 rounded-full w-7 h-7 flex items-center justify-center transition-all font-black text-xs shadow-sm border border-indigo-100 active:scale-90" 
-          style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
-          Z
-        </button>
-        <div id="zMenu_${book.id}" class="hidden absolute right-0 mt-2 shadow-lg bg-white rounded-xl w-36 text-sm font-bold border border-slate-100 p-1.5 z-[100] flex flex-col gap-1">
-          <a onclick="window.open('${zUrl}', '_blank');" class="cursor-pointer text-indigo-600 hover:bg-indigo-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i> 打開連結</a>
-          <a onclick="window.copyZLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> 複製連結</a>
-        </div>
-      </div>
-      
-
-      <button onclick="closeModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 bg-slate-200/50 hover:bg-slate-200 rounded-full p-1.5 transition-colors z-50">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-
+      <button onclick="closeModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 bg-slate-200/50 hover:bg-slate-200 rounded-full p-1.5 transition-colors z-50"><i data-lucide="x" class="w-4 h-4"></i></button>
       ${paginationHtml}
-
-      <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-        ${coverHtml}
-        <div class="flex-1 flex flex-col min-w-0">
-          <h3 class="font-extrabold text-lg text-slate-800 leading-tight pr-4">${book.title}</h3>
-          <p class="text-sm font-semibold text-slate-500 mt-1">${book.author || '未知作者'}</p>
-          <div class="mb-1">${categoryBadge}</div>
-          <div class="mt-auto pt-2">
-            ${interactiveStatusHtml}
-            ${dateDisplay}
-          </div>
-        </div>
-      </div>
-
-      ${descHtml}
+      ${langSwitchHtml}
+      ${renderLangContent(vb.zh, 'zh')}
+      ${renderLangContent(vb.en, 'en')}
       ${reviewHtml}
-      
       <div class="mb-4">
         <div class="flex justify-between items-center mb-2 px-1">
           <h4 class="text-xs font-bold text-slate-500 flex items-center gap-1"><i data-lucide="book-open" class="w-4 h-4"></i>閱讀筆記</h4>
-          <button onclick="toggleQuickNoteInput('${book.id}')" class="text-[10px] font-bold bg-sky-500 text-white px-3 py-1.5 rounded-full hover:bg-sky-600 transition flex items-center gap-1 shadow-sm">
-            <i data-lucide="plus" class="w-3 h-3"></i>新增筆記
-          </button>
+          <button onclick="toggleQuickNoteInput('${book.id}')" class="text-[10px] font-bold bg-sky-500 text-white px-3 py-1.5 rounded-full hover:bg-sky-600 transition flex items-center gap-1 shadow-sm"><i data-lucide="plus" class="w-3 h-3"></i>新增筆記</button>
         </div>
-        
         <div id="quickNoteContainer_${book.id}" class="hidden mb-3 bg-white p-3 rounded-xl border-2 border-sky-300 shadow-sm card-enter">
            <textarea id="quickNoteText_${book.id}" rows="3" class="w-full border-none focus:ring-0 resize-none text-sm font-semibold text-slate-700 placeholder-slate-400 p-0" placeholder="輸入今日嘅心得..."></textarea>
            <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-100">
@@ -3985,25 +4050,16 @@ let reviewHtml = '';
              <button onclick="saveQuickNote('${book.id}')" class="text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition">加入 📝</button>
            </div>
         </div>
-
-        <div class="space-y-2">
-          ${notesHtml}
-        </div>
+        <div class="space-y-2">${notesHtml}</div>
       </div>
-
-      <button onclick="editBookInfo('${book.id}')" class="w-full bg-sky-100 text-sky-600 font-bold py-2.5 rounded-xl hover:bg-sky-200 transition text-sm mb-2 flex items-center justify-center gap-1">
-        <i data-lucide="pencil" class="w-4 h-4"></i>修改書本資料
-      </button>
-      
-      <button onclick="deleteBook('${book.id}')" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm mb-2 flex items-center justify-center gap-1">
-        <i data-lucide="trash-2" class="w-4 h-4"></i>刪除此書
-      </button>
-      
+      <button onclick="editBookInfo('${book.id}')" class="w-full bg-sky-100 text-sky-600 font-bold py-2.5 rounded-xl hover:bg-sky-200 transition text-sm mb-2 flex items-center justify-center gap-1"><i data-lucide="pencil" class="w-4 h-4"></i>修改書本資料</button>
+      <button onclick="deleteBook('${book.id}')" class="w-full bg-red-50 text-red-500 font-bold py-2.5 rounded-xl hover:bg-red-100 transition text-sm mb-2 flex items-center justify-center gap-1"><i data-lucide="trash-2" class="w-4 h-4"></i>刪除此書</button>
       <button onclick="closeModal()" class="w-full bg-white border border-slate-200 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-50 transition">關閉</button>
     </div>`;
   showModal(html);
   lucide.createIcons();
 };
+
 function toggleQuickNoteInput(bookId) {
   const container = document.getElementById(`quickNoteContainer_${bookId}`);
   if (container.classList.contains('hidden')) {
@@ -4099,31 +4155,57 @@ function editBookInfo(bookId) {
   const book = window.allBooks.find(b => b.id === bookId);
   if (!book) return;
 
+  // 🌟 判斷本書係咪已經有雙語資料
+  const isDual = !!(book.titleZh && book.titleEn);
+
   let html = `
     <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
-      <h3 class="font-extrabold text-lg text-primary mb-4 flex items-center gap-2"><i data-lucide="pencil" class="w-5 h-5"></i>編輯書本資訊</h3>
+      
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-extrabold text-lg text-primary flex items-center gap-2"><i data-lucide="pencil" class="w-5 h-5"></i>編輯書本資訊</h3>
+        <button onclick="event.preventDefault(); window.toggleDualLang('edit')" class="flex items-center gap-1 text-[11px] font-extrabold text-orange-500 bg-orange-50 hover:bg-orange-100 px-2 py-1.5 rounded-lg border border-orange-100 transition-colors shadow-sm active:scale-95">
+          <i id="editDualBtnIcon" data-lucide="${isDual ? 'minus' : 'plus'}" class="w-3.5 h-3.5"></i> <span id="editDualBtnText">${isDual ? '取消' : '新增其他版本'}</span>
+        </button>
+      </div>
       
       <div class="space-y-3">
-        <!-- 🌟 新增：一鍵更新按鈕 -->
-        <div id="editThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-2 border border-orange-100 shadow-inner flex items-center justify-between">
-          <span id="editThemeLabel" class="text-[11px] font-extrabold text-orange-600">想重新抓取資料？</span>
-          <button id="editThemeBtn" onclick="reFetchBookData('${bookId}')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-1.5 rounded-lg transition shadow-sm text-[11px] flex items-center gap-1">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 一鍵更新
-          </button>
+        
+        <div id="searchThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
+          <label id="searchThemeLabel" class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 重新搜尋並覆蓋目前分頁資料</label>
+          <div class="flex gap-1.5">
+            <select id="bookSearchType" class="border-2 border-orange-200 rounded-xl px-2 py-2 focus:border-orange-400 focus:outline-none text-sm font-bold bg-white text-slate-700 w-[72px] flex-shrink-0 text-center">
+              <option value="auto">綜合</option>
+              <option value="intitle">書名</option>
+              <option value="inauthor">作者</option>
+              <option value="isbn">ISBN</option>
+            </select>
+            
+            <input id="bookSearchInput" type="text" value="${(book.title || '').replace(/"/g, '&quot;')}" placeholder="書名 / 作者 / 978..." class="flex-1 border-2 border-orange-200 rounded-xl px-3 py-2 focus:border-orange-400 focus:outline-none text-sm font-bold bg-white text-slate-700 min-w-0" onkeypress="if(event.key === 'Enter') fetchBookData('google')">
+            
+            <button id="searchThemeBtn" onclick="fetchBookData('google')" class="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-xl transition shadow-sm text-sm whitespace-nowrap flex items-center justify-center gap-1 flex-shrink-0">
+              <i data-lucide="search" class="w-4 h-4"></i>
+            </button>
+          </div>
+          <div class="flex justify-end mt-1.5 px-1">
+            <button id="searchFallbackBtn" onclick="fetchBookData('openlibrary')" class="text-[10px] font-bold text-slate-400 hover:text-orange-600 transition-colors flex items-center gap-1">
+              <i data-lucide="library" class="w-3 h-3"></i> 以Open Library搜尋
+            </button>
+          </div>
+          <div id="bookSearchResults" class="hidden mt-3 space-y-2 max-h-48 overflow-y-auto pr-1"></div>
         </div>
 
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 *</label><input id="editBookTitle" type="text" value="${book.title || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">作者</label><input id="editBookAuthor" type="text" value="${book.author || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold"></div>
+        ${window.generateBookLangForm('edit', book)}
+
         <div><label class="text-xs font-bold text-slate-500 block mb-1">分類 Tag</label><input id="editBookCategory" type="text" value="${book.category || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold text-sm"></div>
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">封面圖片網址</label><input id="editBookCover" type="url" value="${book.coverUrl || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-semibold text-sm"></div>
         
         <div class="grid grid-cols-2 gap-2">
           <div><label class="text-xs font-bold text-slate-500 block mb-1">開始日期</label><input id="editBookStartDate" type="date" value="${book.startDate || ''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700"></div>
-         <div><label class="text-xs font-bold text-slate-500 block mb-1">結束日期</label>
+          <div><label class="text-xs font-bold text-slate-500 block mb-1">結束日期</label>
             <input id="editBookEndDate" type="date" value="${book.endDate || ''}" onchange="syncDateAndStatus('date', 'editBookEndDate', 'editBookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700">
           </div>
         </div>
-<div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
+
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
           <select id="editBookStatus" onchange="syncDateAndStatus('status', 'editBookEndDate', 'editBookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white">
             <option value="reading" ${book.status === 'reading' ? 'selected' : ''}>📖 閱讀中</option>
             <option value="finished" ${book.status === 'finished' ? 'selected' : ''}>✅ 已讀完</option>
@@ -4132,7 +4214,6 @@ function editBookInfo(bookId) {
           </select>
         </div>
         
-        <!-- 💡 編輯模式入面都加返修改簡介嘅欄位 -->
         <div id="editBookReviewSection" class="${book.status === 'finished' ? 'block' : 'hidden'} space-y-3 mt-3 pt-3 border-t border-slate-100">
           <div><label class="text-xs font-bold text-slate-500 block mb-1">評分 (滿分 5 星)</label>
           ${window.generateStarHTML('edit', book.rating || 0)}</div>
@@ -4140,33 +4221,36 @@ function editBookInfo(bookId) {
           <textarea id="editReviewText" rows="3" placeholder="寫低你對呢本書嘅感受啦..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm">${book.review || ''}</textarea></div>
         </div>
 
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介</label><textarea id="editBookDesc" rows="4" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm">${book.description || ''}</textarea></div>
       </div>
 
       <button onclick="confirmEditBookInfo('${book.id}')" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">儲存修改 💾</button>
       <button onclick="viewBook('${book.id}')" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">返回</button>
     </div>
   `;
+  
   showModal(html);
-  window.updateModalTheme('editBookStatus'); // 確保編輯嗰陣一打開就變色
+  window.updateModalTheme('editBookStatus'); 
   lucide.createIcons();
 }
 
 async function confirmEditBookInfo(bookId) {
-  const title = document.getElementById('editBookTitle').value.trim();
-  if (!title) { showToast('請填寫書名', 'error'); return; }
+  const titleZh = document.getElementById('editZhTitle').value.trim();
+  const titleEn = document.getElementById('editEnTitle').value.trim();
+  if (!titleZh && !titleEn) { showToast('請填寫至少一個語言的書名', 'error'); return; }
   
   const updatedData = {
-    title: title,
-    author: document.getElementById('editBookAuthor').value.trim(),
-    category: document.getElementById('editBookCategory').value.trim(), // 🌟 修正：編輯模式要讀取 editBookCategory 先啱
-    coverUrl: document.getElementById('editBookCover').value.trim(),
+    title: titleZh || titleEn,
+    author: document.getElementById('editZhAuthor').value.trim() || document.getElementById('editEnAuthor').value.trim(),
+    coverUrl: document.getElementById('editZhCover').value.trim() || document.getElementById('editEnCover').value.trim(),
+    description: document.getElementById('editZhDesc').value.trim() || document.getElementById('editEnDesc').value.trim(),
+    titleZh, authorZh: document.getElementById('editZhAuthor').value.trim(), coverZh: document.getElementById('editZhCover').value.trim(), descZh: document.getElementById('editZhDesc').value.trim(),
+    titleEn, authorEn: document.getElementById('editEnAuthor').value.trim(), coverEn: document.getElementById('editEnCover').value.trim(), descEn: document.getElementById('editEnDesc').value.trim(),
+    category: document.getElementById('editBookCategory').value.trim(),
     startDate: document.getElementById('editBookStartDate').value,
     endDate: document.getElementById('editBookEndDate').value,
     status: document.getElementById('editBookStatus').value,
     rating: parseFloat(document.getElementById('editRating')?.value) || 0,
-    review: document.getElementById('editReviewText')?.value.trim() || '',
-    description: document.getElementById('editBookDesc').value.trim() // 👈 更新簡介
+    review: document.getElementById('editReviewText')?.value.trim() || ''
   };
 
   try {
@@ -4223,10 +4307,9 @@ const elements = document.querySelectorAll('.modal-box input:not(#bookSearchInpu
   });
 
   // 2. 萬能搜尋 / 重新抓取區塊 (換底色、邊框色、文字色、按鈕色)
-  const isEdit = statusSelectId === 'editBookStatus';
-  const container = document.getElementById(isEdit ? 'editThemeContainer' : 'searchThemeContainer');
-  const label = document.getElementById(isEdit ? 'editThemeLabel' : 'searchThemeLabel');
-  const btn = document.getElementById(isEdit ? 'editThemeBtn' : 'searchThemeBtn');
+  const container = document.getElementById('searchThemeContainer');
+  const label = document.getElementById('searchThemeLabel');
+  const btn = document.getElementById('searchThemeBtn');
   const searchInput = document.getElementById('bookSearchInput');
 
   if (container) {
@@ -4361,65 +4444,6 @@ window.confirmRevertToReading = async (bookId) => {
   }
 };
 
-// ========== 🔄 編輯模式：一鍵重新抓取資料 ==========
-window.reFetchBookData = async (bookId) => {
-  const currentTitle = document.getElementById('editBookTitle').value.trim();
-  if (!currentTitle) {
-    showToast('請先確保有書名，才能進行搜尋', 'error');
-    return;
-  }
-
-  const btn = event.currentTarget;
-  const originalHTML = btn.innerHTML;
-  btn.disabled = true;
-  btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i> 搜尋中`;
-  lucide.createIcons();
-
-  try {
-    const apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(currentTitle)}&maxResults=1${GOOGLE_BOOKS_API_KEY ? `&key=${GOOGLE_BOOKS_API_KEY}` : ''}`;
-    const response = await fetch(apiUrl);
-    
-    if (response.status === 429) {
-      showToast('⚠️ Google 搜尋太頻繁，請稍後再試', 'error');
-      return;
-    }
-
-    const data = await response.json();
-
-    if (data.totalItems > 0 && data.items) {
-      const info = data.items[0].volumeInfo;
-      
-      // 自動填寫編輯框
-      document.getElementById('editBookTitle').value = info.title || currentTitle;
-      document.getElementById('editBookAuthor').value = info.authors ? info.authors.join(', ') : '';
-      document.getElementById('editBookCategory').value = info.categories ? info.categories[0] : '';
-      document.getElementById('editBookDesc').value = info.description || '';
-      if (info.imageLinks && info.imageLinks.thumbnail) {
-        document.getElementById('editBookCover').value = info.imageLinks.thumbnail.replace(/^http:\/\//i, 'https://').replace('&edge=curl', '');
-      }
-
-      showToast('🎉 資料已更新，記得撳儲存！', 'success');
-
-      // UX：為變動嘅欄位加入高光閃爍
-      ['editBookTitle', 'editBookAuthor', 'editBookCategory', 'editBookCover', 'editBookDesc'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el && el.value) {
-          el.classList.add('bg-green-50', 'ring-2', 'ring-green-400');
-          setTimeout(() => el.classList.remove('bg-green-50', 'ring-2', 'ring-green-400'), 1200);
-        }
-      });
-    } else {
-      showToast('搵唔到更詳細嘅資料 🥲', 'info');
-    }
-  } catch (error) {
-    console.error("Re-fetch error:", error);
-    showToast('連線失敗', 'error');
-  } finally {
-    btn.innerHTML = originalHTML;
-    btn.disabled = false;
-    lucide.createIcons();
-  }
-};
 
 // ========== 📥 匯出書架數據到 Excel (CSV) (筆記自動分開 15 格) ==========
 function exportBooksToCSV() {
@@ -4626,10 +4650,11 @@ if (!document.getElementById('wishlistGrid')) {
     
     const isChinese = /[\u4e00-\u9fa5]/.test(title);
     
-    // 1. 判斷語言
+    // 🌟 1. 判斷語言 (雙語聯集)
+    const vb = window.getBookVersions(book);
     let passLang = false;
-    if (isChinese && showZh) passLang = true;
-    if (!isChinese && showEn) passLang = true;
+    if (vb.zh && showZh) passLang = true;
+    if (vb.en && showEn) passLang = true;
     
     // 2. 判斷屬性條件 (嚴格過濾模式)
     let passState = true;
