@@ -4540,55 +4540,73 @@ if(page === 'shelf') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600')
 window.renderWishlist = () => {
   const container = document.getElementById('read-page-wishlist');
   
-  if (!document.getElementById('wishlistGrid')) {
-    container.innerHTML = `
-      <div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center border border-slate-50">
-        <div class="flex items-center gap-2">
-          <div>
-            <div class="text-[11px] font-bold text-slate-400 mb-0.5">有興趣清單</div>
-            <div class="text-pink-500 flex items-baseline gap-1">
-              <span id="totalWishlistCount" class="text-xl font-extrabold">0</span> 
-              <span class="text-xs font-bold text-slate-400">本</span>
+if (!document.getElementById('wishlistGrid')) {
+        container.innerHTML = `
+          <div class="bg-white rounded-xl px-4 py-2.5 shadow-sm mb-4 flex justify-between items-center border border-slate-50">
+            <div class="flex items-center gap-2">
+              <div>
+                <div class="text-[11px] font-bold text-slate-400 mb-0.5">有興趣清單</div>
+                <div class="text-pink-500 flex items-baseline gap-1">
+                  <span id="totalWishlistCount" class="text-xl font-extrabold">0</span> 
+                  <span class="text-xs font-bold text-slate-400">本</span>
+                </div>
+              </div>
+            </div>
+            <button onclick="toggleWishlistToolbar()" class="p-2 bg-pink-50 text-pink-500 rounded-lg border border-pink-100 hover:bg-pink-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
+              <i data-lucide="search" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <div id="wishlistToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white">
+            <div class="relative">
+              <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+              <input id="wishlistSearchInput" type="text" oninput="handleWishlistChange()" placeholder="搜尋書名或作者..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition-all">
+            </div>
+            
+            <div class="flex gap-2">
+              <div class="flex-1 relative">
+                <select id="wishlistCategoryFilter" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+                  <option value="all">所有分類</option>
+                </select>
+                <i data-lucide="chevron-down" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+              </div>
+              <div class="flex-1 relative">
+                <select id="wishlistSortOrder" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
+                  <option value="recent">最近加入</option>
+                  <option value="hearted">❤️ 最愛優先</option>
+                  <option value="downloaded">✅ 已下載優先</option>
+                  <option value="oldest">最舊加入</option>
+                  <option value="title">書名 (A-Z)</option>
+                </select>
+                <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
+              </div>
+            </div>
+            
+<div class="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100">
+              <button onclick="window.toggleAllWishlistFiltersBtn()" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md text-[11px] font-bold transition shadow-sm border border-slate-200 active:scale-95">🎯 全選</button>
+              <div class="h-3 w-[1px] bg-slate-200"></div>
+              <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="wlFilterWish" onchange="handleWishlistChange()" checked class="w-3.5 h-3.5 accent-slate-400 cursor-pointer wl-sub-filter"> 🧐 有興趣</label>
+              <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="wlFilterDown" onchange="handleWishlistChange()" checked class="w-3.5 h-3.5 accent-slate-400 cursor-pointer wl-sub-filter"> ✅ 已下載</label>
+              <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="wlFilterZh" onchange="handleWishlistChange()" checked class="w-3.5 h-3.5 accent-slate-400 cursor-pointer wl-sub-filter"> 🀄 中文書</label>
+              <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="wlFilterEn" onchange="handleWishlistChange()" checked class="w-3.5 h-3.5 accent-slate-400 cursor-pointer wl-sub-filter"> 🔤 英文書</label>
             </div>
           </div>
-        </div>
-        <button onclick="toggleWishlistToolbar()" class="p-2 bg-pink-50 text-pink-500 rounded-lg border border-pink-100 hover:bg-pink-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
-          <i data-lucide="search" class="w-5 h-5"></i>
-        </button>
-      </div>
 
-      <div id="wishlistToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white">
-        <div class="relative">
-          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
-          <input id="wishlistSearchInput" type="text" oninput="handleWishlistChange()" placeholder="搜尋書名或作者..." class="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-sm font-semibold focus:outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100 transition-all">
-        </div>
-        <div class="flex gap-2">
-          <div class="flex-1 relative">
-            <select id="wishlistCategoryFilter" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
-              <option value="all">所有分類</option>
-            </select>
-            <i data-lucide="chevron-down" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
-          </div>
-          <div class="flex-1 relative">
-<select id="wishlistSortOrder" onchange="handleWishlistChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 appearance-none focus:outline-none">
-              <option value="recent">最近加入</option>
-              <option value="hearted">❤️ 最愛優先</option>
-              <option value="downloaded">✅ 已下載優先</option>
-              <option value="oldest">最舊加入</option>
-              <option value="title">書名 (A-Z)</option>
-            </select>            <i data-lucide="arrow-down-up" class="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none"></i>
-          </div>
-        </div>
-      </div>
+          <div id="wishlistGrid" class="relative"></div>
+        `;
+      }
 
-      <div id="wishlistGrid" class="relative"></div>
-    `;
-  }
+      const grid = document.getElementById('wishlistGrid');
 
-  const grid = document.getElementById('wishlistGrid');
   const searchVal = document.getElementById('wishlistSearchInput')?.value.toLowerCase() || '';
   const categoryVal = document.getElementById('wishlistCategoryFilter')?.value || 'all';
   const sortVal = document.getElementById('wishlistSortOrder')?.value || 'recent';
+
+  // 🌟 獲取 Checkbox 狀態 (預設全開)
+  const showWish = document.getElementById('wlFilterWish') ? document.getElementById('wlFilterWish').checked : true;
+  const showDown = document.getElementById('wlFilterDown') ? document.getElementById('wlFilterDown').checked : true;
+  const showZh = document.getElementById('wlFilterZh') ? document.getElementById('wlFilterZh').checked : true;
+  const showEn = document.getElementById('wlFilterEn') ? document.getElementById('wlFilterEn').checked : true;
 
   const rawWishlist = window.allBooks.filter(b => b.status === 'wishlist');
   
@@ -4602,8 +4620,23 @@ window.renderWishlist = () => {
     const author = (book.author || '').toLowerCase();
     const matchesSearch = title.includes(searchVal) || author.includes(searchVal);
     const matchesCategory = categoryVal === 'all' || book.category === categoryVal;
-    return matchesSearch && matchesCategory;
+    
+    // 🌟 判斷書籍屬性 (是否下載、書名是否含中文字)
+    const isDownloaded = !!book.isDownloaded;
+    const isChinese = /[\u4e00-\u9fa5]/.test(title);
+    
+    // 🌟 狀態與語言過濾邏輯
+    let passState = false;
+    if (isDownloaded && showDown) passState = true;
+    if (!isDownloaded && showWish) passState = true;
+    
+    let passLang = false;
+    if (isChinese && showZh) passLang = true;
+    if (!isChinese && showEn) passLang = true;
+    
+    return matchesSearch && matchesCategory && passState && passLang;
   });
+
 
  if (sortVal === 'recent') {
     filtered.sort((a,b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
@@ -4704,6 +4737,18 @@ window.toggleWishlistToolbar = () => {
 
 window.handleWishlistChange = () => {
   renderWishlist();
+};
+
+// 🌟 新增：「全選 / 反選」按鈕功能
+window.toggleAllWishlistFiltersBtn = () => {
+  const checkboxes = document.querySelectorAll('.wl-sub-filter');
+  // 檢查係咪 4 個都剔晒
+  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+  
+  // 如果全部都剔咗，就一鍵取消；如果唔係，就一鍵全選
+  checkboxes.forEach(cb => cb.checked = !allChecked);
+  
+  handleWishlistChange(); // 重新整理書單
 };
 
 // 🌟 新增：有興趣清單點擊心心功能
@@ -5302,13 +5347,20 @@ window.renderReadFriends = () => {
     html += `<div class="bg-gradient-to-r from-blue-400 to-primary rounded-2xl p-4 mb-4 shadow-sm text-white card-enter">
       <h3 class="font-bold text-sm mb-3 flex items-center gap-1"><i data-lucide="inbox" class="w-5 h-5"></i> 收到嘅好書推介 (${shares.length})</h3>
       <div class="space-y-2 max-h-64 overflow-y-auto pr-1">`;
-    shares.forEach(s => {
+shares.forEach(s => {
       html += `<div onclick="window.viewSharedBook('${s.id}')" class="bg-white/20 p-3 rounded-xl cursor-pointer hover:bg-white/30 transition shadow-sm border border-white/20">
         <div class="font-bold text-[11px] mb-1 opacity-90">${s.fromName} 推介咗一本書畀你：</div>
-        <div class="text-sm font-extrabold leading-tight">《${s.bookData.title}》</div>
-        <div class="text-[10px] opacity-70 mt-2 flex justify-between items-center">
+        <div class="text-sm font-extrabold leading-tight mb-2">《${s.bookData.title}》</div>
+        <div class="text-[10px] opacity-70 flex justify-between items-end">
           <span>${new Date(s.timestamp).toLocaleDateString('zh-HK')}</span>
-          <span class="font-bold bg-white text-primary px-2 py-0.5 rounded-full">查看 👀</span>
+          <div class="flex flex-col gap-1.5 items-end">
+            <button onclick="event.stopPropagation(); window.acceptSharedBook('${s.id}')" class="font-bold bg-white text-pink-500 px-3 py-1 rounded-full shadow-sm transition-all active:scale-95 flex items-center gap-1">
+              <i data-lucide="heart" class="w-3 h-3"></i> 有興趣
+            </button>
+<button onclick="event.stopPropagation(); window.deleteSharedBook('${s.id}')" class="font-bold bg-red-500 text-white hover:bg-red-600 border border-transparent px-3 py-1 rounded-full shadow-sm transition-all active:scale-95 flex items-center gap-1">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i> 刪除
+                </button>
+          </div>
         </div>
       </div>`;
     });
@@ -5463,6 +5515,10 @@ window.viewSharedBook = (shareId) => {
 window.acceptSharedBook = async (shareId) => {
   const s = window.myBookShares.find(x => x.id === shareId);
   if(!s) return;
+  
+  // 🌟 新增：加入確認視窗
+  if(!confirm(`確定要將《${s.bookData.title}》加入「有興趣」清單？`)) return;
+  
   const b = s.bookData;
   try {
     await db.collection("users").doc(currentUser.uid).collection("books").add({
