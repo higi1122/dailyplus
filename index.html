@@ -4742,17 +4742,6 @@ window.handleWishlistChange = () => {
   renderWishlist();
 };
 
-// 🌟 新增：「全選 / 反選」按鈕功能
-window.toggleAllWishlistFiltersBtn = () => {
-  const checkboxes = document.querySelectorAll('.wl-sub-filter');
-  // 檢查係咪 4 個都剔晒
-  const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-  
-  // 如果全部都剔咗，就一鍵取消；如果唔係，就一鍵全選
-  checkboxes.forEach(cb => cb.checked = !allChecked);
-  
-  handleWishlistChange(); // 重新整理書單
-};
 
 // 🌟 新增：有興趣清單點擊心心功能
 window.toggleWishlistHeart = async (bookId, currentHeartStatus) => {
