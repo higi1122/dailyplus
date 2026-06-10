@@ -3160,13 +3160,13 @@ books.forEach(book => {
             const disp = v.main || book;
             const hasBoth = !!v.sub;
             
-const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="absolute bottom-0.5 left-0.5 bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;"><i data-lucide="layers" class="w-3.5 h-3.5"></i></button>` : '';
+const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="absolute bottom-0.5 left-0.5 bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;"><i data-lucide="layers" class="w-3 h-3"></i></button>` : '';
 
             let stackedHtml = '';
             if (hasBoth) {
               stackedHtml = v.sub.cover
-                ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-1 -right-2 w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-slate-300 pointer-events-none brightness-90 z-0">`
-                : `<div id="cv_bg_img_${book.id}" class="absolute -top-1 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
+                ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-1 -right-1.5 w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-slate-300 pointer-events-none brightness-90 z-0">`
+                : `<div id="cv_bg_img_${book.id}" class="absolute -top-1.5 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
             }
 const mainCoverHtml = disp.cover 
               ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)]  pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
@@ -3381,18 +3381,22 @@ function renderSingleBookCard(book) {
   const disp = v.main || book;
   const hasBoth = !!v.sub;
   
-const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="absolute bottom-0.5 left-0.5 bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;"><i data-lucide="layers" class="w-3.5 h-3.5"></i></button>` : '';
+const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="absolute bottom-0.5 -left-2.5 bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;"><i data-lucide="layers" class="w-3.5 h-3.5"></i></button>` : '';
 
-  let stackedHtml = '';
+let stackedHtml = '';
+let mainCoverExtraClass = ''; 
+  
   if (hasBoth) {
+     mainCoverExtraClass = '-translate-x-3'; 
+     
      stackedHtml = v.sub.cover
-       ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-3 -right-3 w-full h-full object-cover rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0">`
+       ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-3 -right-1 w-full h-full object-cover rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0">`
        : `<div id="cv_bg_img_${book.id}" class="absolute -top-3 -right-3 w-full h-full bg-slate-200 rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0 flex items-center justify-center text-3xl font-bold text-slate-500 overflow-hidden text-center">📗</div>`;
-  }
+        }
 
   const coverHtml = `<div class="relative z-10 w-24 aspect-[2/3] flex-shrink-0 ml-1 mt-1">${toggleBtnHtml}${stackedHtml}` + (disp.cover 
-    ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-full h-full object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 bg-white">`
-    : `<div id="cv_img_${book.id}" class="relative w-full h-full bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 border border-black/5">📗</div>`) + `</div>`;
+    ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-full h-full object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 ${mainCoverExtraClass} transition-transform">`
+    : `<div id="cv_img_${book.id}" class="relative w-full h-full bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 border border-black/5 ${mainCoverExtraClass} transition-transform">📗</div>`) + `</div>`;
 
 
   // 🌟 核心修正：處理「已讀完」嘅顯示字串 (格式：d/m 已讀完)
@@ -4729,18 +4733,22 @@ const v = window.getBookVersions(book);
       const disp = v.main || book;
       const hasBoth = !!v.sub;
 
-const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="absolute bottom-0.5 left-0.5 bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;"><i data-lucide="layers" class="w-3.5 h-3.5"></i></button>` : '';
+const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="absolute bottom-0.5 -left-2.5 bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;"><i data-lucide="layers" class="w-3.5 h-3.5"></i></button>` : '';
 
-  let stackedHtml = '';
+let stackedHtml = '';
+let mainCoverExtraClass = ''; 
+  
   if (hasBoth) {
+     mainCoverExtraClass = '-translate-x-3'; 
+     
      stackedHtml = v.sub.cover
-       ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-3 -right-3 w-full h-full object-cover rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0">`
+       ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-3 -right-1 w-full h-full object-cover rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0">`
        : `<div id="cv_bg_img_${book.id}" class="absolute -top-3 -right-3 w-full h-full bg-slate-200 rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0 flex items-center justify-center text-3xl font-bold text-slate-500 overflow-hidden text-center">📗</div>`;
-  }
-      const coverHtml = `<div class="relative z-10 w-24 aspect-[2/3] flex-shrink-0 ml-1 mt-1">${toggleBtnHtml}${stackedHtml}` + (disp.cover 
-        ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-full h-full object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 bg-white">`
-        : `<div id="cv_img_${book.id}" class="relative w-full h-full bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 border border-black/5">📗</div>`) + `</div>`;
+        }
 
+  const coverHtml = `<div class="relative z-10 w-24 aspect-[2/3] flex-shrink-0 ml-1 mt-1">${toggleBtnHtml}${stackedHtml}` + (disp.cover 
+    ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-full h-full object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 ${mainCoverExtraClass} transition-transform">`
+    : `<div id="cv_img_${book.id}" class="relative w-full h-full bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 border border-black/5 ${mainCoverExtraClass} transition-transform">📗</div>`) + `</div>`;
       
 const categoryTagHtml = book.category 
         ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
