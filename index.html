@@ -3150,12 +3150,10 @@ function renderBooks() {
             <span class="w-2 h-2 rounded-full ${badgeColor}"></span>
             <h2 class="font-extrabold text-slate-800 text-base">${title} (${books.length})</h2>
           </div>
-           <div class="bg-[#ede0d3] pt-[20px] px-5 pb-6 rounded shadow-inner border-[3px] border-[#b39884] relative overflow-hidden" style="box-shadow: inset 0px 8px 8px rgba(0,0,0,0.08);">
-
-            <div class="absolute inset-0 opacity-15 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
-
+          <div class="bg-[#f4ebe1] pt-[20px] px-5 pb-6 rounded shadow-inner border-[3px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
+            <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
             <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-7 gap-y-8 relative z-10">`;
-
+              
 books.forEach(book => {
             const v = window.getBookVersions(book);
             const disp = v.main || book;
