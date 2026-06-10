@@ -3165,12 +3165,12 @@ const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" 
             let stackedHtml = '';
             if (hasBoth) {
               stackedHtml = v.sub.cover
-                ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute top-0 -right-2 w-[72px] h-[105px] object-cover rounded-[2px] shadow-sm border border-slate-300 pointer-events-none brightness-90 z-0">`
-                : `<div id="cv_bg_img_${book.id}" class="absolute top-0 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
+                ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-1 -right-2 w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-slate-300 pointer-events-none brightness-90 z-0">`
+                : `<div id="cv_bg_img_${book.id}" class="absolute -top-1 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
             }
 const mainCoverHtml = disp.cover 
-              ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)]  pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
-              : `<div id="cv_img_${book.id}" class="relative w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">${disp.title}</div>`;
+              ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)]  pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
+              : `<div id="cv_img_${book.id}" class="relative w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">${disp.title}</div>`;
               
             const coverHtml = toggleBtnHtml + stackedHtml + mainCoverHtml;
               
@@ -3561,7 +3561,7 @@ function openAddBookModal() {
     <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       <div class="flex justify-between items-center mb-4">
         <h3 class="font-extrabold text-lg text-primary flex items-center gap-2">➕ 新增閱讀記錄</h3>
-        <button onclick="event.preventDefault(); window.toggleDualVersion('add')" class="flex items-center gap-1 text-[11px] font-extrabold text-orange-500 bg-orange-50 hover:bg-orange-100 px-2 py-1.5 rounded-lg border border-orange-100 transition-colors shadow-sm active:scale-95">
+        <button onclick="event.preventDefault(); window.toggleDualVersion('add')" class="flex items-center gap-1 text-[11px] font-extrabold text-sky-500 bg-sky-50 hover:bg-sky-100 px-2 py-1.5 rounded-lg border border-sky-100 transition-colors shadow-sm active:scale-95">
           <i id="addDualBtnIcon" data-lucide="plus" class="w-3.5 h-3.5"></i> <span id="addDualBtnText">新增其他版本</span>
         </button>
       </div>
@@ -3824,7 +3824,7 @@ window.toggleDualVersion = (prefix) => {
   
   if (isDual) {
     container.classList.remove('hidden'); container.classList.add('flex');
-    if(btnText) btnText.innerText = '取消其他版本';
+    if(btnText) btnText.innerText = '取消';
     if(btnIcon) btnIcon.setAttribute('data-lucide', 'minus');
     window.switchBookVersionTab(prefix, 'sub');
   } else {
@@ -4183,7 +4183,7 @@ function editBookInfo(bookId) {
       
       <div class="flex justify-between items-center mb-4">
         <h3 class="font-extrabold text-lg text-primary flex items-center gap-2"><i data-lucide="pencil" class="w-5 h-5"></i>編輯書本資訊</h3>
-        <button onclick="event.preventDefault(); window.toggleDualVersion('edit')" class="flex items-center gap-1 text-[11px] font-extrabold text-orange-500 bg-orange-50 hover:bg-orange-100 px-2 py-1.5 rounded-lg border border-orange-100 transition-colors shadow-sm active:scale-95">
+        <button onclick="event.preventDefault(); window.toggleDualVersion('edit')" class="flex items-center gap-1 text-[11px] font-extrabold text-sky-500 bg-sky-50 hover:bg-sky-100 px-2 py-1.5 rounded-lg border border-sky-100 transition-colors shadow-sm active:scale-95">
           <i id="editDualBtnIcon" data-lucide="${isDual ? 'minus' : 'plus'}" class="w-3.5 h-3.5"></i> <span id="editDualBtnText">${isDual ? '取消' : '新增其他版本'}</span>
         </button>
       </div>
@@ -4577,7 +4577,7 @@ window.switchReadPage = (page) => {
      fab.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-pink-500', 'hover:bg-pink-600');
 if(page === 'shelf') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600'); renderBooks(); } 
      else if(page === 'wishlist') { fab.classList.add('bg-pink-500', 'hover:bg-pink-600'); window.renderWishlist(); }
-     else if(page === 'calendar') { fab.classList.add('bg-indigo-500', 'hover:bg-indigo-600'); window.renderReadCalendar(); }
+     else if(page === 'calendar') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600'); window.renderReadCalendar(); }
   }
   lucide.createIcons();
 };
