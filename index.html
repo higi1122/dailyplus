@@ -527,9 +527,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-firebase.firestore().settings({
-  experimentalForceLongPolling: true 
-});
+// firebase.firestore().settings({
+//   experimentalForceLongPolling: true 
+// });
 
 let currentUser = null;
 let recordsUnsubscribe = null;
