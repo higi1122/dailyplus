@@ -4621,10 +4621,26 @@ function exportBooksToCSV() {
 }
 // ========== 🧭 閱讀模塊導航控制 ==========
 let currentReadPage = 'shelf';
+window.readPageScrollPositions = {}; // 🌟 新增：儲存各頁面捲動位置
 
 window.switchReadPage = (page) => {
+  const scrollContainer = document.getElementById('bookMainContent');
+  
+  // 🌟 1. 判斷是否重覆點擊目前頁面：平滑捲動到最頂
+  if (currentReadPage === page) {
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    return;
+  }
+
+  // 🌟 2. 離開前：儲存目前頁面嘅捲動位置
+  if (scrollContainer) {
+    window.readPageScrollPositions[currentReadPage] = scrollContainer.scrollTop;
+  }
+
   currentReadPage = page;
-  const pages = ['shelf', 'calendar', 'wishlist', 'settings', 'friends']; // 🌟 加入 calendar
+  const pages = ['shelf', 'calendar', 'wishlist', 'settings', 'friends'];
   
   pages.forEach(p => {
     document.getElementById('read-page-'+p).classList.add('hidden');
@@ -4645,11 +4661,19 @@ window.switchReadPage = (page) => {
   } else {
      fab.classList.remove('hidden');
      fab.classList.remove('bg-orange-500', 'hover:bg-orange-600', 'bg-pink-500', 'hover:bg-pink-600');
-if(page === 'shelf') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600'); renderBooks(); } 
+     if(page === 'shelf') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600'); renderBooks(); } 
      else if(page === 'wishlist') { fab.classList.add('bg-pink-500', 'hover:bg-pink-600'); window.renderWishlist(); }
      else if(page === 'calendar') { fab.classList.add('bg-orange-500', 'hover:bg-orange-600'); window.renderReadCalendar(); }
   }
   lucide.createIcons();
+
+  // 🌟 3. 進入後：恢復新頁面嘅捲動位置 (如果未開過就預設 0 即最上面)
+  if (scrollContainer) {
+    // 使用 setTimeout 確保 DOM 渲染(例如 renderBooks) 完成後先設定高度
+    setTimeout(() => {
+      scrollContainer.scrollTop = window.readPageScrollPositions[page] || 0;
+    }, 10);
+  }
 };
 
 window.renderWishlist = () => {
