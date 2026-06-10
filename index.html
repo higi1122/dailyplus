@@ -3153,7 +3153,7 @@ function renderBooks() {
           <div class="bg-[#f4ebe1] pt-[20px] px-5 pb-6 rounded shadow-inner border-[3px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
             <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
             <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-7 gap-y-8 relative z-10">`;
-              
+
 books.forEach(book => {
             const v = window.getBookVersions(book);
             const disp = v.main || book;
@@ -3991,7 +3991,7 @@ window.viewBook = (bookId, groupIdsStr = '') => {
   else interactiveStatusHtml = `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-pink-50 text-pink-600 border border-pink-200 shadow-sm relative z-20">有興趣 🧐</span>`;
 
   let reviewHtml = '';
-  if (book.status === 'finished' && (book.rating > 0 || book.review)) {
+  if (book.status === 'finished') {
     let stars = `<svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false"><linearGradient id="half_grad_${book.id}_md" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;
     for(let i=1; i<=5; i++) {
        const isFull = book.rating >= i; const isHalf = book.rating === i - 0.5;
@@ -3999,7 +3999,33 @@ window.viewBook = (bookId, groupIdsStr = '') => {
        const fillAttr = isHalf ? `url(#half_grad_${book.id}_md)` : 'currentColor';
        stars += `<svg class="w-5 h-5 ${colorClass}" fill="${fillAttr}" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
     }
-    reviewHtml = `<div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100 relative"><h4 class="text-xs font-bold text-orange-600 mb-2 flex items-center gap-1"><i data-lucide="award" class="w-4 h-4"></i>整體評分與書評</h4>${book.rating > 0 ? `<div class="flex gap-1 mb-3">${stars}</div>` : ''}${book.review ? `<p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${book.review}</p>` : ''}</div>`;
+    
+    const emptyDisplay = (book.rating === 0 && !book.review) ? `<p class="text-sm text-slate-400 font-medium py-2 text-center">尚未評分及填寫書評</p>` : '';
+
+    reviewHtml = `
+      <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 mb-4 shadow-sm border border-orange-100 relative">
+        <div id="reviewDisplay_${book.id}">
+          <div class="flex justify-between items-start mb-2 border-b border-orange-100/50 pb-2">
+            <h4 class="text-xs font-bold text-orange-600 flex items-center gap-1"><i data-lucide="award" class="w-4 h-4"></i>整體評分與書評</h4>
+            <button onclick="window.toggleReviewEdit('${book.id}')" class="text-[10px] font-bold text-orange-600 bg-orange-200/50 hover:bg-orange-200 px-2 py-1 rounded-md transition flex items-center gap-1 shadow-sm active:scale-95"><i data-lucide="pencil" class="w-3 h-3"></i>${(book.rating === 0 && !book.review) ? '新增' : '編輯'}</button>
+          </div>
+          ${emptyDisplay}
+          ${book.rating > 0 ? `<div class="flex gap-1 mb-3">${stars}</div>` : ''}
+          ${book.review ? `<p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${book.review}</p>` : ''}
+        </div>
+        
+        <div id="reviewEdit_${book.id}" class="hidden">
+           <h4 class="text-xs font-bold text-orange-600 mb-2 flex items-center gap-1"><i data-lucide="pencil" class="w-4 h-4"></i>修改評分與書評</h4>
+           <div class="mb-3">
+             ${window.generateStarHTML(`quickRev_${book.id}`, book.rating || 0)}
+           </div>
+           <textarea id="quickRevText_${book.id}" rows="3" class="w-full border-2 border-orange-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-orange-400 text-slate-700 mb-2 bg-white/80" placeholder="寫低你對呢本書嘅感受...">${book.review || ''}</textarea>
+           <div class="flex justify-end gap-2 mt-2">
+             <button onclick="window.toggleReviewEdit('${book.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-white hover:bg-slate-50 rounded-lg transition border border-slate-200 shadow-sm active:scale-95">取消</button>
+             <button onclick="window.saveQuickReview('${book.id}')" class="text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition active:scale-95">儲存修改</button>
+           </div>
+        </div>
+      </div>`;
   }
 
  // 🌟 核心升級：主/次版本標籤與內容切換
@@ -4081,6 +4107,47 @@ window.viewBook = (bookId, groupIdsStr = '') => {
     </div>`;
   showModal(html);
   lucide.createIcons();
+};
+
+// 🌟 處理快速編輯書評介面切換
+window.toggleReviewEdit = (bookId) => {
+  const display = document.getElementById(`reviewDisplay_${bookId}`);
+  const edit = document.getElementById(`reviewEdit_${bookId}`);
+  if (display.classList.contains('hidden')) {
+    display.classList.remove('hidden');
+    edit.classList.add('hidden');
+  } else {
+    display.classList.add('hidden');
+    edit.classList.remove('hidden');
+  }
+};
+
+// 🌟 處理儲存快速修改的書評及評分
+window.saveQuickReview = async (bookId) => {
+  const ratingEl = document.getElementById(`quickRev_${bookId}Rating`);
+  const textEl = document.getElementById(`quickRevText_${bookId}`);
+  
+  if (!ratingEl || !textEl) return;
+  
+  const rating = parseFloat(ratingEl.value) || 0;
+  const review = textEl.value.trim();
+  
+  const btn = document.querySelector(`#reviewEdit_${bookId} button.bg-orange-500`);
+  if(btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 animate-spin inline-block"></i> 儲存中...'; }
+  lucide.createIcons();
+  
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({
+      rating: rating,
+      review: review
+    });
+    showToast('評分與書評已更新！', 'success');
+    viewBook(bookId); // 重新載入詳情頁畫面
+  } catch(e) {
+    console.error(e);
+    showToast('更新失敗，請檢查網絡', 'error');
+    if(btn) { btn.disabled = false; btn.textContent = '儲存修改'; }
+  }
 };
 
 function toggleQuickNoteInput(bookId) {
