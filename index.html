@@ -3169,7 +3169,7 @@ const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" 
                 : `<div id="cv_bg_img_${book.id}" class="absolute top-0 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
             }
 const mainCoverHtml = disp.cover 
-              ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
+              ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)]  pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
               : `<div id="cv_img_${book.id}" class="relative w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[4px_4px_10px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none z-10" style="-webkit-touch-callout: none; -webkit-user-select: none;">${disp.title}</div>`;
               
             const coverHtml = toggleBtnHtml + stackedHtml + mainCoverHtml;
