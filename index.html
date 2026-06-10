@@ -3159,8 +3159,11 @@ books.forEach(book => {
             const disp = v.main || book;
             const hasBoth = !!v.sub;
             
-const toggleBtnHtml = hasBoth ? `<button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="absolute bottom-0.5 -left-0.5 bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white z-30 transition-all active:scale-90" style="pointer-events: auto;"><i data-lucide="layers" class="w-3 h-3"></i></button>` : '';
-
+const toggleBtnHtml = hasBoth ? `
+  <div class="absolute bottom-0.5 -left-0.5 flex items-center gap-1 z-30" style="pointer-events: auto;">
+    <button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1 rounded text-slate-600 hover:bg-white transition-all active:scale-90"><i data-lucide="layers" class="w-3 h-3"></i></button>
+    <button id="cv_setmain_btn_${book.id}" onclick="event.stopPropagation(); window.quickSetMainVersion('${book.id}')" class="bg-white text-slate-700 shadow-sm border border-slate-300 px-1 py-0.5 rounded text-[9px] font-bold transition-all duration-300 opacity-0 pointer-events-none -translate-x-2 whitespace-nowrap hover:bg-slate-50">設為主要</button>
+  </div>` : '';
             let stackedHtml = '';
             let mainExtraClass = ''; // 🌟 1. 新增變數：用嚟裝主封面嘅額外樣式
             
@@ -3352,8 +3355,6 @@ function updateCategoryDropdown() {
 
 // 全局定義版本切換功能 (升級支援雙層封面對調)
 if (!window.toggleCardVersion) {
-  window.cardToggleTimers = {}; // 🌟 新增：用嚟記低每本書嘅 3 秒計時器
-
   window.toggleCardVersion = (e, id) => {
     if(e && e.stopPropagation) e.stopPropagation(); // 兼容模擬點擊
     const b = window.allBooks.find(x=>x.id===id); const vb = window.getBookVersions(b);
@@ -3385,26 +3386,15 @@ if (!window.toggleCardVersion) {
     if(author) author.innerText = frontDisp.author || '未知作者';
     btn.dataset.ver = isToMain ? 'main' : 'sub';
 
-    // 🌟 核心：計時器與「設為主要」按鈕邏輯
-    if (window.cardToggleTimers[id]) {
-      clearTimeout(window.cardToggleTimers[id]);
-      window.cardToggleTimers[id] = null;
-    }
-
+    // 🌟 判斷「設為主要」按鈕顯示邏輯 (移除計時器，永遠停留直到手動切換)
     if (!isToMain) {
-      // 轉咗去其他版本：滑出按鈕，並開始 3 秒倒數
+      // 轉咗去其他版本：滑出按鈕
       if (setMainBtn) {
         setMainBtn.classList.remove('opacity-0', 'pointer-events-none', '-translate-x-2');
         setMainBtn.classList.add('opacity-100', 'pointer-events-auto', 'translate-x-0');
       }
-      window.cardToggleTimers[id] = setTimeout(() => {
-        // 3秒後，如果仲係副封面，自動模擬點擊轉返轉頭
-        if (document.getElementById('cv_btn_'+id)?.dataset.ver === 'sub') {
-           window.toggleCardVersion({stopPropagation: ()=>{}}, id); 
-        }
-      }, 3000);
     } else {
-      // 轉返主要版本：收埋按鈕
+      // 手動轉返主要版本：收埋按鈕
       if (setMainBtn) {
         setMainBtn.classList.add('opacity-0', 'pointer-events-none', '-translate-x-2');
         setMainBtn.classList.remove('opacity-100', 'pointer-events-auto', 'translate-x-0');
@@ -3414,11 +3404,6 @@ if (!window.toggleCardVersion) {
 
   // 🌟 核心：快捷一鍵互換資料並寫入 Firebase
   window.quickSetMainVersion = async (bookId) => {
-    if (window.cardToggleTimers[bookId]) {
-      clearTimeout(window.cardToggleTimers[bookId]);
-      window.cardToggleTimers[bookId] = null;
-    }
-
     const book = window.allBooks.find(b => b.id === bookId);
     if (!book) return;
 
@@ -3454,9 +3439,9 @@ function renderSingleBookCard(book) {
   const hasBoth = !!v.sub;
   
 const toggleBtnHtml = hasBoth ? `
-  <div class="absolute bottom-0.5 -left-2.5 flex items-center gap-1 z-30" style="pointer-events: auto;">
+  <div class="absolute bottom-0.5 -left-2.5 flex items-center gap-1.5 z-30" style="pointer-events: auto;">
     <button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white transition-all active:scale-90"><i data-lucide="layers" class="w-3 h-3"></i></button>
-    <button id="cv_setmain_btn_${book.id}" onclick="event.stopPropagation(); window.quickSetMainVersion('${book.id}')" class="bg-white text-slate-700 shadow-sm border border-slate-300 px-1.5 py-1 rounded text-[9px] font-bold transition-all duration-300 opacity-0 pointer-events-none -translate-x-2 whitespace-nowrap hover:bg-slate-50">設為主要</button>
+    <button id="cv_setmain_btn_${book.id}" onclick="event.stopPropagation(); window.quickSetMainVersion('${book.id}')" class="bg-white text-slate-700 shadow-sm border border-slate-300 px-1.5 py-1 rounded text-[15px] font-bold transition-all duration-300 opacity-0 pointer-events-none -translate-x-2 whitespace-nowrap hover:bg-slate-50">設為主要</button>
       </div>` : '';
 let stackedHtml = '';
 let mainCoverExtraClass = ''; 
@@ -4900,7 +4885,7 @@ const v = window.getBookVersions(book);
       const hasBoth = !!v.sub;
 
 const toggleBtnHtml = hasBoth ? `
-  <div class="absolute bottom-0.5 -left-2.5 flex items-center gap-1 z-30" style="pointer-events: auto;">
+  <div class="absolute bottom-0.5 -left-2.5 flex items-center gap-1.5 z-30" style="pointer-events: auto;">
     <button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1.5 rounded-lg text-slate-600 hover:bg-white transition-all active:scale-90"><i data-lucide="layers" class="w-3.5 h-3.5"></i></button>
    <button id="cv_setmain_btn_${book.id}" onclick="event.stopPropagation(); window.quickSetMainVersion('${book.id}')" class="bg-white text-slate-700 shadow-sm border border-slate-300 px-1.5 py-1 rounded text-[10px] font-bold transition-all duration-300 opacity-0 pointer-events-none -translate-x-2 whitespace-nowrap hover:bg-slate-50">設為主要</button>
       </div>` : '';
