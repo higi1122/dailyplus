@@ -3356,6 +3356,7 @@ if (!window.toggleCardVersion) {
     e.stopPropagation();
     const b = window.allBooks.find(x=>x.id===id); const vb = window.getBookVersions(b);
     const title = document.getElementById('cv_title_'+id);
+    const author = document.getElementById('cv_author_'+id); // 🌟 新增作者 ID 綁定
     const btn = document.getElementById('cv_btn_'+id);
     if(!btn) return;
     
@@ -3378,6 +3379,7 @@ if (!window.toggleCardVersion) {
     }
     
     if(title) title.innerText = frontDisp.title;
+    if(author) author.innerText = frontDisp.author || '未知作者'; // 🌟 執行作者切換
     btn.dataset.ver = isToMain ? 'main' : 'sub';
   };
 }
@@ -3479,7 +3481,7 @@ let mainCoverExtraClass = '';
       </div>
       <div class="p-3 flex-1 flex flex-col bg-white">
        <h3 id="cv_title_${book.id}" class="font-extrabold text-sm text-slate-800 truncate mb-1">${disp.title}</h3>
-          <p class="text-[11px] font-bold text-slate-400 truncate">${disp.author || '未知作者'}</p>        ${ratingHtml}
+          <p id="cv_author_${book.id}" class="text-[11px] font-bold text-slate-400 truncate">${disp.author || '未知作者'}</p>        ${ratingHtml}
         ${categoryTagHtml}
         <div class="mt-auto pt-3 flex items-center">
           ${statusBadgeHtml}
@@ -4885,7 +4887,7 @@ const categoryTagHtml = book.category
         <div class="p-3 flex-1 flex flex-col bg-white">
 
           <h3 id="cv_title_${book.id}" class="font-extrabold text-sm text-slate-800 truncate mb-1">${disp.title}</h3>
-          <p class="text-[11px] font-bold text-slate-400 truncate">${disp.author || '未知作者'}</p>
+          <p id="cv_author_${book.id}" class="text-[11px] font-bold text-slate-400 truncate">${disp.author || '未知作者'}</p>
           ${categoryTagHtml}
           <div class="mt-auto pt-3 flex items-center">
              <button onclick="event.stopPropagation(); promptStartReading('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 text-[11px] font-bold py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1 shadow-sm relative z-20">
@@ -5511,7 +5513,12 @@ window.renderReadFriends = () => {
   // 1. Inbox (收到嘅好書)
   if(shares.length > 0) {
     html += `<div class="bg-gradient-to-r from-blue-400 to-primary rounded-2xl p-4 mb-4 shadow-sm text-white card-enter">
-      <h3 class="font-bold text-sm mb-3 flex items-center gap-1"><i data-lucide="inbox" class="w-5 h-5"></i> 收到嘅好書推介 (${shares.length})</h3>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold text-sm flex items-center gap-1"><i data-lucide="inbox" class="w-5 h-5"></i> 收到嘅好書推介 (${shares.length})</h3>
+        <button onclick="window.deleteAllSharedBooks()" class="text-[10px] font-bold bg-white/20 hover:bg-white/30 text-white px-2 py-1 rounded-md transition-colors flex items-center gap-1 shadow-sm active:scale-95">
+          <i data-lucide="trash-2" class="w-3 h-3"></i> 刪除全部
+        </button>
+      </div>
       <div class="space-y-2 max-h-64 overflow-y-auto pr-1">`;
 shares.forEach(s => {
       html += `<div onclick="window.viewSharedBook('${s.id}')" class="bg-white/20 p-3 rounded-xl cursor-pointer hover:bg-white/30 transition shadow-sm border border-white/20">
@@ -5697,12 +5704,38 @@ window.acceptSharedBook = async (shareId) => {
   } catch(e) { showToast('加入失敗', 'error'); }
 };
 
-window.deleteSharedBook = async (shareId) => {
-  if(!confirm('確定刪除呢個推介？')) return;
+// 🌟 批量刪除所有收到嘅好書推介
+window.deleteAllSharedBooks = async () => {
+  if (!window.myBookShares || window.myBookShares.length === 0) return;
+  if (!confirm('確定要清除 Inbox 內所有收到嘅推介嗎？\n(刪除後無法復原)')) return;
+
+  const btn = document.querySelector('button[onclick="window.deleteAllSharedBooks()"]');
+  if(btn) { 
+    btn.disabled = true; 
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i> 清理中...'; 
+    lucide.createIcons(); 
+  }
+
   try {
-    await db.collection("users").doc(currentUser.uid).collection("book_shares").doc(shareId).delete();
-    closeModal(); showToast('已刪除推介', 'info');
-  } catch(e) { showToast('刪除失敗', 'error'); }
+    // 使用 Firebase Batch 進行批量刪除，提高效能
+    const batch = db.batch();
+    window.myBookShares.forEach(s => {
+      const ref = db.collection("users").doc(currentUser.uid).collection("book_shares").doc(s.id);
+      batch.delete(ref);
+    });
+    
+    await batch.commit();
+    showToast('✅ 已清空所有收到嘅推介', 'success');
+    // 畫面會由 onSnapshot 自動重新繪製，唔需要手動 Call render
+  } catch(e) {
+    console.error(e);
+    showToast('刪除失敗，請檢查網絡', 'error');
+    if(btn) { 
+      btn.disabled = false; 
+      btn.innerHTML = '<i data-lucide="trash-2" class="w-3 h-3"></i> 刪除全部'; 
+      lucide.createIcons(); 
+    }
+  }
 };
 
 window.promptDeleteFriend = (friendUid, friendName) => {
