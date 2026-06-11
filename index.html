@@ -3877,6 +3877,21 @@ window.switchBookVersionTab = (prefix, version) => {
   document.getElementById(`${prefix}TabBtnSub`).className = version === 'sub' ? 'flex-1 py-2 text-sm font-bold border-b-2 border-orange-500 text-orange-600' : 'flex-1 py-2 text-sm font-bold border-b-2 border-transparent text-slate-400';
   document.getElementById(`${prefix}TabContentMain`).style.display = version === 'main' ? 'block' : 'none';
   document.getElementById(`${prefix}TabContentSub`).style.display = version === 'sub' ? 'block' : 'none';
+
+  // 🌟 智能連動：切換 Tab 時，自動將搜尋欄位換成該 Tab 嘅書名 (清空以便重新搜尋)
+  const searchInput = document.getElementById('bookSearchInput');
+  const searchResults = document.getElementById('bookSearchResults');
+  if (searchInput) {
+    const targetTitle = document.getElementById(`${prefix}${version === 'main' ? 'Main' : 'Sub'}Title`)?.value || '';
+    searchInput.value = targetTitle;
+    
+    // 如果係吉嘅（例如啱啱撳「新增其他版本」），自動 Focus 方便即刻打字
+    if (!targetTitle) {
+      setTimeout(() => searchInput.focus(), 100);
+    }
+  }
+  // 順手收埋之前嘅舊搜尋結果
+  if (searchResults) searchResults.classList.add('hidden');
 };
 
 window.toggleDualVersion = (prefix) => {
