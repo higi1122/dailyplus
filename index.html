@@ -133,7 +133,69 @@ tailwind.config = {
   </div>
   
   <!-- Modal Container -->
-  <div id="modalContainer"></div>
+ <div id="modalContainer"></div>
+
+<div id="bottomSyncIndicator" class="fixed bottom-[85px] left-1/2 -translate-x-1/2 z-[9990] bg-slate-800/90 backdrop-blur border border-slate-600 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-sm transition-all duration-500 pointer-events-none opacity-0 translate-y-4">
+    <div id="syncDot" class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
+    <span id="syncTextBottom" class="text-white text-[10px] font-bold tracking-wide">離線中</span>
+  </div>
+
+  <script>
+    window.syncHideTimeout = null;
+
+    // 處理底部同步狀態切換
+    window.updateBottomSync = (fromCache) => {
+      const indicator = document.getElementById('bottomSyncIndicator');
+      const dot = document.getElementById('syncDot');
+      const text = document.getElementById('syncTextBottom');
+      const hubScreen = document.getElementById('hubScreen'); // 偵測首頁
+      if(!indicator) return;
+
+      // 如果首頁顯示緊，強制收埋牌仔，唔好阻住
+      if(hubScreen && hubScreen.style.display !== 'none') {
+        indicator.classList.add('opacity-0', 'translate-y-4');
+        return;
+      }
+
+      // 清除之前嘅計時器
+      if(window.syncHideTimeout) clearTimeout(window.syncHideTimeout);
+
+      // 顯示牌仔
+      indicator.classList.remove('opacity-0', 'translate-y-4');
+
+      if(fromCache) {
+        // 🚨 離線狀態：紅色、長著
+        indicator.classList.remove('bg-emerald-600/90', 'border-emerald-500');
+        indicator.classList.add('bg-slate-800/90', 'border-slate-600');
+        dot.classList.remove('bg-emerald-300');
+        dot.classList.add('bg-red-400', 'animate-pulse');
+        text.innerText = '離線中';
+      } else {
+        // ✅ 同步狀態：綠色、1秒後消失
+        indicator.classList.remove('bg-slate-800/90', 'border-slate-600');
+        indicator.classList.add('bg-emerald-600/90', 'border-emerald-500');
+        dot.classList.remove('bg-red-400', 'animate-pulse');
+        dot.classList.add('bg-emerald-300');
+        text.innerText = '已同步';
+
+        window.syncHideTimeout = setTimeout(() => {
+          indicator.classList.add('opacity-0', 'translate-y-4');
+        }, 1000);
+      }
+    };
+
+    // 自動監聽：如果你喺入面撳返回掣出返首頁，自動一秒收埋牌仔
+    window.addEventListener('DOMContentLoaded', () => {
+      const hub = document.getElementById('hubScreen');
+      if(hub) {
+        new MutationObserver(() => {
+          if(hub.style.display !== 'none') {
+            document.getElementById('bottomSyncIndicator')?.classList.add('opacity-0', 'translate-y-4');
+          }
+        }).observe(hub, { attributes: true, attributeFilter: ['style'] });
+      }
+    });
+  </script>
 
   <!-- 💡 正確位置：將 Hub Screen 同新 APP 容器放喺 <script> 之前 -->
   
@@ -527,9 +589,15 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
- firebase.firestore().settings({
-   experimentalForceLongPolling: true 
- });
+// 🌟 1. 必須先設定 Settings (Long polling 及緩存大小)
+firebase.firestore().settings({
+   experimentalForceLongPolling: true,
+   cacheSizeBytes: 5242880 // 限制本地緩存最大 5MB
+});
+
+// 🌟 2. 然後先可以啟動 Firebase 離線緩存
+db.enablePersistence({ synchronizeTabs: true })
+  .catch(err => console.log("緩存啟動失敗:", err.code));
 
 let currentUser = null;
 let recordsUnsubscribe = null;
@@ -691,9 +759,10 @@ window.initReadingData = () => {
   if (window.booksUnsubscribe) return; 
   const user = firebase.auth().currentUser; if (!user) return;
   
-  window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot(snapshot => {
+  window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if(document.getElementById('readingApp').style.display === 'flex') renderBooks();
+    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
   });
   window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -711,9 +780,10 @@ window.initTodoData = () => {
   if (window.todosUnsubscribe) return;
   const user = firebase.auth().currentUser; if (!user) return;
   
-  window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot(snapshot => {
+  window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if(document.getElementById('todoApp').style.display === 'flex') { if(typeof window.renderTodos === 'function') window.renderTodos(); }
+    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
   });
 };
 
@@ -722,10 +792,11 @@ window.initGymData = () => {
   if (recordsUnsubscribe) return;
   const user = firebase.auth().currentUser; if (!user) return;
   
-  recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot(snapshot => {
+  recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
     document.getElementById('totalPoints').textContent = getTotalPoints().available;
     if(currentPage !== 'admin') renderCurrentPage();
+    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
   });
   
   window.chalUnsubscribe = db.collection("users").doc(user.uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
