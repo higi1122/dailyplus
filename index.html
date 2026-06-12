@@ -3830,7 +3830,13 @@ async function confirmQuickFinish(bookId) {
   }
 }
 
-function openAddBookModal() {
+window.openAddBookModal = (prefillData = null, returnMode = null) => {
+  window.addBookReturnMode = returnMode;
+  if (returnMode) {
+    // 🌟 記錄目前圖書館的畫面狀態，方便稍後還原
+    window.savedLibraryModalState = document.getElementById('modalContainer').innerHTML;
+  }
+
   let html = `
     <div class="modal-box max-w-md text-left" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
       <div class="flex justify-between items-center mb-4">
@@ -3840,7 +3846,7 @@ function openAddBookModal() {
         </button>
       </div>
       
-<div id="searchThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
+      <div id="searchThemeContainer" class="bg-orange-50 rounded-xl p-3 mb-4 border border-orange-100 shadow-inner">
         <label id="searchThemeLabel" class="text-[11px] font-extrabold text-orange-600 block mb-1">⚡ 選擇搜尋方式並輸入內容</label>
         
         <div class="flex gap-1.5">
@@ -3877,7 +3883,8 @@ function openAddBookModal() {
             <input id="bookEndDate" type="date" onchange="syncDateAndStatus('date', 'bookEndDate', 'bookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700">
           </div>
         </div>
-<div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
+
+        <div><label class="text-xs font-bold text-slate-500 block mb-1">狀態</label>
           <select id="bookStatus" onchange="syncDateAndStatus('status', 'bookEndDate', 'bookStatus')" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none transition font-bold text-slate-700 bg-white">
             <option value="reading" ${currentReadPage !== 'wishlist' ? 'selected' : ''}>📖 閱讀中</option>
             <option value="finished">✅ 已讀完</option>
@@ -3885,36 +3892,67 @@ function openAddBookModal() {
           </select>
         </div>
         
-        <!-- 💡 獨立出「官方簡介」欄位 -->
         <div id="bookReviewSection" class="hidden space-y-3 mt-3 pt-3 border-t border-slate-100">
           <div><label class="text-xs font-bold text-slate-500 block mb-1">評分 (滿分 5 星)</label>
           ${window.generateStarHTML('add', 0)}</div>
           <div><label class="text-xs font-bold text-slate-500 block mb-1">整體書評</label>
           <textarea id="addReviewText" rows="3" placeholder="讀完啦？寫低你嘅感受啦..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm"></textarea></div>
         </div>
-
-        <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (可自動獲取)</label><textarea id="bookDesc" rows="3" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm"></textarea></div>
         
-        <!-- 💡 個人首條筆記 -->
         <div><label class="text-xs font-bold text-slate-500 block mb-1">首條筆記 (選填)</label><textarea id="bookNotes" rows="2" placeholder="開始閱讀嘅心情..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-semibold text-sm"></textarea></div>
       </div>
 
-      <button onclick="saveNewBook()" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">儲存書籍 💾</button>
-      <button onclick="closeModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+      <button onclick="window.saveNewBook()" class="w-full mt-4 bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition">儲存書籍 💾</button>
+      <button onclick="window.closeAddBookModal()" class="w-full mt-2 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
     </div>
   `;
-  showModal(html);
   
-  // 💡 智能判斷：如果喺「有興趣」頁面新增，清空開始日期
-  if (currentReadPage === 'wishlist') {
-    document.getElementById('bookStartDate').value = '';
+  // 🌟 使用全新疊加模式顯示，避免破壞圖書館狀態
+  document.getElementById('modalContainer').innerHTML = `<div class="modal-overlay" onclick="if(event.target===this) window.closeAddBookModal()">${html}</div>`;
+
+  // 🌟 自動填寫資料
+  if (prefillData) {
+     document.getElementById('addMainTitle').value = prefillData.title || '';
+     document.getElementById('addMainAuthor').value = prefillData.author || '';
+     document.getElementById('addMainCover').value = prefillData.coverUrl || '';
+     // 智能搵簡介欄位填寫
+     const descField = document.getElementById('addMainDesc') || document.getElementById('bookDesc');
+     if (descField) descField.value = prefillData.description || '';
+     document.getElementById('addCategory').value = prefillData.category || '';
+     
+     // 隱藏 Search Container，避免畫面太長
+     const searchTheme = document.getElementById('searchThemeContainer');
+     if (searchTheme) searchTheme.classList.add('hidden');
+     
+     // 預設為「有興趣」，因為通常探索出嚟嘅都係想睇嘅
+     document.getElementById('bookStatus').value = 'wishlist';
+     syncDateAndStatus('status', 'bookEndDate', 'bookStatus');
+     document.getElementById('bookStartDate').value = '';
   } else {
-    document.getElementById('bookStartDate').valueAsDate = new Date();
+     if (currentReadPage === 'wishlist') {
+        document.getElementById('bookStartDate').value = '';
+     } else {
+        document.getElementById('bookStartDate').valueAsDate = new Date();
+     }
   }
   
-  window.updateModalTheme('bookStatus'); // 確保一打開就變色
+  window.updateModalTheme('bookStatus');
   lucide.createIcons();
-}
+};
+
+// 🌟 處理取消/返回按鈕邏輯
+window.closeAddBookModal = () => {
+  // 只要係由圖書館 (search 或 explore) 入嚟，取消嗰陣就還原返圖書館畫面
+  if (window.addBookReturnMode && window.savedLibraryModalState) {
+    document.getElementById('modalContainer').innerHTML = window.savedLibraryModalState;
+    lucide.createIcons();
+  } else {
+    // 如果係喺外面大堂撳「手動新增」，取消就直接閂閉
+    closeModal();
+  }
+  window.addBookReturnMode = null;
+  window.savedLibraryModalState = null;
+};
 
 
 // ========== 萬能自動抓取功能 (純 Google Books 專業版) ==========
@@ -4154,7 +4192,7 @@ window.generateBookLangForm = (prefix, book = {}) => {
       <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 (主要)</label><input id="${prefix}MainTitle" type="text" value="${m.title||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
       <div><label class="text-xs font-bold text-slate-500 block mb-1">作者 (主要)</label><input id="${prefix}MainAuthor" type="text" value="${m.author||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
       <div><label class="text-xs font-bold text-slate-500 block mb-1">封面網址 (主要)</label><input id="${prefix}MainCover" type="url" value="${m.cover||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold text-sm"></div>
-      <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (主要)</label><textarea id="${prefix}MainDesc" rows="3" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none font-medium text-slate-600 text-sm">${m.desc||''}</textarea></div>
+      <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (主要)</label><textarea id="${prefix}MainDesc" rows="6" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none font-medium text-slate-600 text-sm">${m.desc||''}</textarea></div>
     </div>
     
     <div id="${prefix}TabContentSub" class="space-y-3 hidden">
@@ -4162,7 +4200,7 @@ window.generateBookLangForm = (prefix, book = {}) => {
       <div><label class="text-xs font-bold text-slate-500 block mb-1">書名 (其他)</label><input id="${prefix}SubTitle" type="text" value="${s.title||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
       <div><label class="text-xs font-bold text-slate-500 block mb-1">作者 (其他)</label><input id="${prefix}SubAuthor" type="text" value="${s.author||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold"></div>
       <div><label class="text-xs font-bold text-slate-500 block mb-1">封面網址 (其他)</label><input id="${prefix}SubCover" type="url" value="${s.cover||''}" class="w-full border-2 border-sky2 rounded-xl px-3 py-2.5 focus:border-primary focus:outline-none font-semibold text-sm"></div>
-      <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (其他)</label><textarea id="${prefix}SubDesc" rows="3" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none font-medium text-slate-600 text-sm">${s.desc||''}</textarea></div>
+      <div><label class="text-xs font-bold text-slate-500 block mb-1">官方簡介 (其他)</label><textarea id="${prefix}SubDesc" rows="6" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none font-medium text-slate-600 text-sm">${s.desc||''}</textarea></div>
     </div>`;
 };
 
@@ -4187,7 +4225,7 @@ window.selectBookFromResult = (encodedDataStr) => {
   });
 };
 
-async function saveNewBook() {
+window.saveNewBook = async () => {
   const t1 = document.getElementById('addMainTitle').value.trim();
   const t2 = document.getElementById('addSubTitle').value.trim();
   if (!t1 && !t2) { showToast('請填寫主要書名', 'error'); return; }
@@ -4200,12 +4238,12 @@ async function saveNewBook() {
     title: t1 || t2, 
     author: document.getElementById('addMainAuthor').value.trim() || document.getElementById('addSubAuthor').value.trim(),
     coverUrl: document.getElementById('addMainCover').value.trim() || document.getElementById('addSubCover').value.trim(),
-    description: document.getElementById('addMainDesc').value.trim() || document.getElementById('addSubDesc').value.trim(),
+    description: document.getElementById('addMainDesc')?.value.trim() || document.getElementById('addSubDesc')?.value.trim() || document.getElementById('bookDesc')?.value.trim() || '',
     
     title2: t1 ? t2 : '', 
     author2: t1 ? document.getElementById('addSubAuthor').value.trim() : '', 
     coverUrl2: t1 ? document.getElementById('addSubCover').value.trim() : '', 
-    description2: t1 ? document.getElementById('addSubDesc').value.trim() : '',
+    description2: t1 ? document.getElementById('addSubDesc')?.value.trim() : '',
     
     category: document.getElementById('addCategory').value.trim(),
     startDate: document.getElementById('bookStartDate').value, endDate: document.getElementById('bookEndDate').value,
@@ -4213,9 +4251,25 @@ async function saveNewBook() {
     review: document.getElementById('addReviewText')?.value.trim() || '', notes: notesArray, timestamp: new Date().toISOString()
   };
 
-  try { await db.collection("users").doc(currentUser.uid).collection("books").add(bookData); closeModal(); showToast('書籍已加入書架！', 'success'); } 
+  try { 
+    await db.collection("users").doc(currentUser.uid).collection("books").add(bookData); 
+    showToast('書籍已加入！', 'success'); 
+    
+    // 🌟 智能退出邏輯
+    if (window.addBookReturnMode === 'search') {
+       closeModal(); // 精準搜尋：完全退出圖書館
+    } else if (window.addBookReturnMode === 'explore' && window.savedLibraryModalState) {
+       document.getElementById('modalContainer').innerHTML = window.savedLibraryModalState;
+       lucide.createIcons(); // 分類探索：無縫還原上一個結果畫面
+    } else {
+       closeModal(); // 一般手動新增：關閉
+    }
+    
+    window.addBookReturnMode = null;
+    window.savedLibraryModalState = null;
+  } 
   catch(e) { showToast('儲存失敗', 'error'); }
-}
+};
 
 // ========== 📖 書本詳情頁 (支援多本切換版) ==========
 window.viewBook = (bookId, groupIdsStr = '') => {
@@ -4979,9 +5033,15 @@ if (!document.getElementById('wishlistGrid')) {
                 </div>
               </div>
             </div>
-            <button onclick="toggleWishlistToolbar()" class="p-2 bg-pink-50 text-pink-500 rounded-lg border border-pink-100 hover:bg-pink-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
-              <i data-lucide="search" class="w-5 h-5"></i>
-            </button>
+            <div class="flex gap-2">
+              <button onclick="window.openRecommendationsModal()" class="px-3 py-2 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-lg shadow-sm hover:opacity-90 transition-all active:scale-90 flex items-center justify-center gap-1 font-bold text-xs" title="探索推介">
+                <i data-lucide="sparkles" class="w-4 h-4"></i> 探索
+              </button>
+              
+              <button onclick="toggleWishlistToolbar()" class="p-2 bg-pink-50 text-pink-500 rounded-lg border border-pink-100 hover:bg-pink-100 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center" title="打開/收起搜尋工具">
+                <i data-lucide="search" class="w-5 h-5"></i>
+              </button>
+            </div>
           </div>
 
           <div id="wishlistToolbar" class="hidden bg-white/50 backdrop-blur-md rounded-2xl p-3 mb-4 space-y-3 shadow-sm border border-white">
@@ -6844,6 +6904,330 @@ window.addTodo = async () => {
     if (btn) btn.disabled = false;
   }
 };
+
+// ========== 🌟 全新功能：探索推介 (自動抓取 API) ==========
+// ========== 🌟 全新雙模塊圖書館：搜尋 + 探索 ==========
+window.openRecommendationsModal = () => {
+  let html = `
+    <div class="modal-box text-left bg-slate-50 relative overflow-hidden p-0" onclick="event.stopPropagation()" style="max-height:85vh; max-width: 500px; display: flex; flex-direction: column;">
+
+      <div id="recMainView" class="flex flex-col h-full w-full overflow-y-auto custom-scrollbar p-4">
+        
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-black text-xl text-slate-800 flex items-center gap-2">
+            <i data-lucide="library" class="w-6 h-6 text-blue-500"></i> 圖書館
+          </h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 bg-slate-200/50 hover:bg-slate-200 rounded-full p-1.5 transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <div class="flex border-b border-slate-200 mb-4 flex-shrink-0">
+          <button onclick="window.switchLibTab('search')" id="tabBtn-search" class="flex-1 py-3 font-extrabold text-sm border-b-2 border-blue-500 text-blue-600 transition-colors flex items-center justify-center gap-1.5">
+            <i data-lucide="search" class="w-4 h-4"></i> 精準搜尋
+          </button>
+          <button onclick="window.switchLibTab('explore')" id="tabBtn-explore" class="flex-1 py-3 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1.5">
+            <i data-lucide="sparkles" class="w-4 h-4"></i> 分類探索
+          </button>
+        </div>
+
+        <div id="tabContent-search" class="flex gap-2 flex-shrink-0 mb-4 animate-fade-in w-full">
+          <select id="libSearchType" class="border-2 border-slate-200 rounded-xl px-2 py-3 text-sm font-extrabold text-slate-600 focus:outline-none focus:border-blue-400 bg-slate-50 cursor-pointer shadow-sm">
+            <option value="all">綜合</option>
+            <option value="intitle">書名</option>
+            <option value="inauthor">作者</option>
+            <option value="isbn">ISBN</option>
+          </select>
+          <input id="libSearchInput" type="text" placeholder="輸入關鍵字..." class="flex-1 min-w-0 border-2 border-slate-200 rounded-xl px-3 py-3 text-sm font-bold text-slate-700 focus:outline-none focus:border-blue-400 bg-white shadow-inner" onkeypress="if(event.key === 'Enter') window.fetchLibraryData('search')">
+          <button id="fetchSearchBtn" onclick="window.fetchLibraryData('search')" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center active:scale-95 flex-shrink-0">
+            <i data-lucide="search" class="w-5 h-5"></i>
+          </button>
+        </div>
+
+        <div id="tabContent-explore" class="hidden bg-white p-4 rounded-2xl shadow-sm border border-orange-100 mb-4 flex-shrink-0 animate-fade-in flex-col gap-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] font-extrabold text-slate-500 block mb-1">語言</label>
+              <select id="recLang" class="w-full border-2 border-orange-100 rounded-xl px-2 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-orange-400 bg-white">
+                <option value="zh">中文</option>
+                <option value="en">英文</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-extrabold text-slate-500 block mb-1">主題類別</label>
+              <select id="recCategory" class="w-full border-2 border-orange-100 rounded-xl px-2 py-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-orange-400 bg-white">
+                <option value="Fiction">小說 / 文學</option>
+                <option value="Business & Economics">商業 / 理財</option>
+                <option value="Psychology">心理學</option>
+                <option value="Self-Help">自我成長</option>
+                <option value="Health & Fitness">健康 / 養生</option>
+                <option value="Computers">電腦 / 科技</option>
+                <option value="Science">科學</option>
+                <option value="History">歷史</option>
+                <option value="Biography & Autobiography">傳記</option>
+              </select>
+            </div>
+          </div>
+          <button id="fetchExploreBtn" onclick="window.fetchLibraryData('explore')" class="w-full bg-gradient-to-r from-orange-400 to-pink-500 hover:from-orange-500 hover:to-pink-600 text-white font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm active:scale-95">
+            <i data-lucide="radar" class="w-4 h-4"></i> 開始尋寶
+          </button>
+        </div>
+
+        <div id="recResultsContainer" class="space-y-3">
+          <div class="text-center py-10 text-slate-400 flex flex-col items-center">
+            <div class="text-5xl mb-3 opacity-30 float-anim">📚</div>
+            <p class="text-xs font-bold">打字搜尋，或者切換去「分類探索」尋寶啦！</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="recDetailsView" class="hidden absolute inset-0 bg-white z-20 flex-col h-full w-full"></div>
+
+    </div>
+  `;
+  showModal(html);
+  lucide.createIcons();
+  
+  // 延遲一下 focus 搜尋框，方便電腦用家直接打字
+  setTimeout(() => { document.getElementById('libSearchInput')?.focus(); }, 100);
+};
+
+// 🌟 處理 Tab 切換邏輯
+window.switchLibTab = (tab) => {
+  const btnSearch = document.getElementById('tabBtn-search');
+  const btnExplore = document.getElementById('tabBtn-explore');
+  const contentSearch = document.getElementById('tabContent-search');
+  const contentExplore = document.getElementById('tabContent-explore');
+  const resultsContainer = document.getElementById('recResultsContainer');
+
+  if(tab === 'search') {
+    btnSearch.className = "flex-1 py-3 font-extrabold text-sm border-b-2 border-blue-500 text-blue-600 transition-colors flex items-center justify-center gap-1.5";
+    btnExplore.className = "flex-1 py-3 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1.5";
+    contentSearch.classList.remove('hidden');
+    contentExplore.classList.add('hidden');
+    resultsContainer.innerHTML = `<div class="text-center py-10 text-slate-400 flex flex-col items-center"><div class="text-5xl mb-3 opacity-30 float-anim">📚</div><p class="text-xs font-bold">輸入書名、作者或 ISBN 開始搜尋！</p></div>`;
+  } else {
+    btnExplore.className = "flex-1 py-3 font-extrabold text-sm border-b-2 border-orange-500 text-orange-600 transition-colors flex items-center justify-center gap-1.5";
+    btnSearch.className = "flex-1 py-3 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1.5";
+    contentExplore.classList.remove('hidden');
+    contentExplore.classList.add('flex');
+    contentSearch.classList.add('hidden');
+    resultsContainer.innerHTML = `<div class="text-center py-10 text-slate-400 flex flex-col items-center"><div class="text-5xl mb-3 opacity-40 float-anim">🪄</div><p class="text-xs font-bold">設定好條件，撳「開始尋寶」啦！</p></div>`;
+  }
+};
+
+// 🌟 統一處理搜尋同探索嘅 API 請求
+window.fetchLibraryData = async (mode) => {
+  window.currentLibraryMode = mode; // 🌟 記錄目前係「精準搜尋 (search)」定「分類探索 (explore)」
+  const resultsContainer = document.getElementById('recResultsContainer');
+  let apiUrl = '';
+  
+  // 處理按鈕狀態
+  const btnId = mode === 'search' ? 'fetchSearchBtn' : 'fetchExploreBtn';
+  const btn = document.getElementById(btnId);
+  const originalBtnHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>`;
+  lucide.createIcons();
+  
+  resultsContainer.innerHTML = `<div class="text-center py-12"><i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-400 mx-auto mb-3"></i><p class="text-xs font-bold text-slate-400">正在連接圖書館大數據...</p></div>`;
+
+  try {
+    let savedCategory = '未分類'; // 預設類別
+
+    if (mode === 'search') {
+      const searchType = document.getElementById('libSearchType').value;
+      const keyword = document.getElementById('libSearchInput').value.trim();
+      
+      if (!keyword) {
+        resultsContainer.innerHTML = `<p class="text-center text-red-500 text-sm font-bold py-6">請輸入搜尋關鍵字！</p>`;
+        btn.disabled = false; btn.innerHTML = originalBtnHtml; lucide.createIcons();
+        return;
+      }
+      
+      // 🌟 根據下拉選單，組合 Google API 專用搜尋指令
+      let q = keyword;
+      if (searchType !== 'all') {
+        q = `${searchType}:${keyword}`; // 例如會變成 intitle:哈利波特 或者 isbn:9781234567890
+      }
+      
+      apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=40`;
+    } 
+    else {
+      const lang = document.getElementById('recLang').value;
+      const category = document.getElementById('recCategory').value;
+      savedCategory = category; // 探索模式，直接用揀咗嘅類別 Save
+
+      const catMapZh = { 'Fiction': '小說', 'Business & Economics': '商業', 'Psychology': '心理', 'Self-Help': '勵志', 'Health & Fitness': '健康', 'Computers': '電腦', 'Science': '科學', 'History': '歷史', 'Biography & Autobiography': '傳記' };
+      let targetSubject = category;
+      if (lang === 'zh') targetSubject = catMapZh[category] || category;
+      
+      let q = `subject:${targetSubject}`;
+      const randomStartIndex = Math.floor(Math.random() * 10);
+      apiUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&orderBy=relevance&maxResults=40&startIndex=${randomStartIndex}`;
+      if (lang) apiUrl += `&langRestrict=${lang}`;
+    }
+
+    if (typeof GOOGLE_BOOKS_API_KEY !== 'undefined' && GOOGLE_BOOKS_API_KEY.trim() !== '') { apiUrl += `&key=${GOOGLE_BOOKS_API_KEY}`; }
+
+    const response = await fetch(apiUrl);
+    const data = await response.json();
+
+    if (data.items && data.items.length > 0) {
+      let html = '';
+      const finalBooks = data.items.filter(item => item.volumeInfo && item.volumeInfo.title);
+
+      if (finalBooks.length === 0) {
+        resultsContainer.innerHTML = `<p class="text-center text-slate-500 text-sm font-bold py-8">搵唔到合適嘅書，試吓改變字眼？</p>`;
+        return;
+      }
+
+      finalBooks.slice(0, 20).forEach(item => {
+        const info = item.volumeInfo;
+        const title = info.title || '未知書名';
+        const author = info.authors ? info.authors.join(', ') : '未知作者';
+        const cover = info.imageLinks?.thumbnail ? info.imageLinks.thumbnail.replace(/^http:\/\//i, 'https://').replace('&edge=curl', '') : '';
+        const desc = info.description || '暫無詳細簡介。';
+        const publishedDate = info.publishedDate || '未知日期';
+        const publisher = info.publisher || '未知出版社';
+        const pageCount = info.pageCount ? `${info.pageCount} 頁` : '未知頁數';
+        const rating = info.averageRating ? `${info.averageRating} ⭐ (${info.ratingsCount}人評分)` : '暫無評分';
+        const previewLink = info.previewLink || '';
+        
+        let isbn = '未知 ISBN';
+        if (info.industryIdentifiers) {
+          const isbnObj = info.industryIdentifiers.find(id => id.type === 'ISBN_13') || info.industryIdentifiers[0];
+          if (isbnObj) isbn = isbnObj.identifier;
+        }
+        
+        // 如果係 search 模式，嘗試從 Google 提取原本嘅分類；explore 模式就用 dropdown 嗰個
+        let finalCategory = savedCategory;
+        if (mode === 'search' && info.categories && info.categories.length > 0) {
+          finalCategory = info.categories[0]; 
+        }
+
+        const bookObj = { title, author, coverUrl: cover, description: desc, category: finalCategory, publisher, pageCount, rating, isbn, previewLink, publishedDate };
+        const encodedData = encodeURIComponent(JSON.stringify(bookObj)).replace(/'/g, "%27");
+
+        html += `
+          <div onclick="window.showBookDetails('${encodedData}')" class="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex gap-3 hover:shadow-md hover:border-blue-200 transition cursor-pointer group">
+            ${cover ? `<img src="${cover}" class="w-16 h-24 object-cover rounded shadow-sm border border-slate-200 flex-shrink-0 group-hover:scale-105 transition-transform">` : `<div class="w-16 h-24 bg-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-200 flex-shrink-0">無封面</div>`}
+            <div class="flex-1 min-w-0 flex flex-col justify-between">
+              <div>
+                <h4 class="font-extrabold text-sm text-slate-800 line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors">${title}</h4>
+                <p class="text-[10px] font-bold text-slate-500 truncate mt-1">${author}</p>
+                <div class="flex gap-2 mt-0.5">
+                  <span class="text-[9px] font-bold text-slate-400"><i data-lucide="calendar" class="w-2.5 h-2.5 inline align-text-top"></i> ${publishedDate}</span>
+                </div>
+              </div>
+              <div class="mt-2 text-right">
+                <button onclick="event.stopPropagation(); window.addRecToWishlist(event, '${encodedData}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm active:scale-95">
+                  ❤️ 加入清單
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      resultsContainer.innerHTML = html;
+    } else {
+      resultsContainer.innerHTML = `<p class="text-center text-slate-500 text-sm font-bold py-8">圖書館搵唔到，試吓其他字眼？</p>`;
+    }
+  } catch (error) {
+    resultsContainer.innerHTML = `<p class="text-center text-red-500 text-sm font-bold py-8">網絡錯誤，請稍後再試</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalBtnHtml;
+    lucide.createIcons();
+  }
+};
+
+// ========== 🌟 書本詳細資料與返回邏輯 ==========
+window.showBookDetails = (encodedDataStr) => {
+  const book = JSON.parse(decodeURIComponent(encodedDataStr));
+  window.currentViewingBook = book; // 🌟 記錄目前觀看嘅書，避免 HTML 字串傳遞出錯
+
+  let html = `
+      <div class="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50">
+        <button onclick="window.closeBookDetails()" class="text-slate-500 hover:text-slate-800 flex items-center gap-1 font-bold text-sm bg-white shadow-sm border border-slate-200 hover:bg-slate-50 rounded-xl px-3 py-1.5 transition-colors">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i> 返回列表
+        </button>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 bg-white shadow-sm border border-slate-200 hover:bg-slate-50 rounded-full p-1.5 transition-colors flex-shrink-0"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scrollbar flex-1">
+        <div class="flex gap-4 mb-6">
+          ${book.coverUrl ? `<img src="${book.coverUrl}" class="w-28 h-40 object-cover rounded-xl shadow-md border border-slate-200 flex-shrink-0">` : `<div class="w-28 h-40 bg-slate-100 rounded-xl flex items-center justify-center text-sm font-bold text-slate-400 border border-slate-200 flex-shrink-0">無封面</div>`}
+          
+          <div class="flex flex-col justify-start">
+            <h2 class="text-lg font-black text-slate-800 leading-snug mb-1">${book.title}</h2>
+            <p class="text-sm font-extrabold text-pink-500 mb-3">${book.author}</p>
+            
+            <div class="space-y-1.5 mt-auto">
+              <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="star" class="w-3.5 h-3.5 text-orange-400"></i> ${book.rating}</p>
+              <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="building" class="w-3.5 h-3.5 opacity-70"></i> ${book.publisher}</p>
+              <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 opacity-70"></i> ${book.publishedDate}</p>
+              <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="book-open" class="w-3.5 h-3.5 opacity-70"></i> ${book.pageCount}</p>
+              <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="barcode" class="w-3.5 h-3.5 opacity-70"></i> ISBN: ${book.isbn}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-2">
+          <h4 class="text-xs font-extrabold text-slate-800 mb-2 flex items-center gap-1"><i data-lucide="align-left" class="w-4 h-4 text-primary"></i> 內容簡介</h4>
+          <div class="text-xs font-semibold text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-2xl border border-slate-100">
+            ${book.description}
+          </div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-100 bg-white flex gap-3">
+        ${book.previewLink ? `
+        <a href="${book.previewLink}" target="_blank" class="flex-1 bg-white border-2 border-blue-100 text-blue-500 hover:bg-blue-50 hover:border-blue-200 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm text-center">
+          <i data-lucide="external-link" class="w-4 h-4"></i> Google 試閱
+        </a>` : ''}
+        <button onclick="window.addRecToWishlist(event)" class="flex-1 bg-gradient-to-r from-orange-400 to-pink-500 hover:from-orange-500 hover:to-pink-600 text-white font-bold py-3 rounded-xl transition shadow-sm flex items-center justify-center gap-2 text-sm active:scale-95">
+          <i data-lucide="heart" class="w-4 h-4"></i> 加入清單
+        </button>
+      </div>
+  `;
+  
+  const detailsView = document.getElementById('recDetailsView');
+  if (detailsView) {
+    detailsView.innerHTML = html;
+    detailsView.classList.remove('hidden');
+    detailsView.classList.add('flex'); // 展開為 flex 圖層充滿空間
+    lucide.createIcons();
+  }
+};
+
+// 🌟 新增：隱藏詳情頁面，直接顯示返原本嘅列表
+window.closeBookDetails = () => {
+  const detailsView = document.getElementById('recDetailsView');
+  if (detailsView) {
+    detailsView.classList.add('hidden');
+    detailsView.classList.remove('flex');
+    detailsView.innerHTML = ''; 
+  }
+};
+
+window.addRecToWishlist = (event, encodedDataStr) => {
+  // 獲取書本資料
+  let bookData;
+  if (encodedDataStr) {
+    bookData = JSON.parse(decodeURIComponent(encodedDataStr));
+  } else {
+    bookData = window.currentViewingBook; // 如果係詳情頁撳
+  }
+  
+  if (!bookData) return;
+
+  // 獲取來源模式 (search 或 explore)
+  const mode = window.currentLibraryMode || 'explore';
+  
+  // 打開手動輸入頁面並預填資料
+  window.openAddBookModal(bookData, mode);
+};
+
    </script>
 </body>
 </html>
