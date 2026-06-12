@@ -714,24 +714,33 @@ auth.onAuthStateChanged(async user => {
   if (user) {
     currentUser = user;
     
-    // 🌟 記錄登入狀態，下次開 App 就可以觸發上面嘅極速啟動魔法
+    // 🌟 記錄登入狀態，下次開 App 就可以觸發極速啟動魔法
     localStorage.setItem('gq_logged_in', 'true');
     const displayId = user.displayName || user.email.split('@')[0];
     localStorage.setItem('gq_user_name', displayId);
  
-    // 💡 智能顯示：隱藏登入畫面。如果用家喺極速啟動期間已經撳咗入其他 App，就唔好強行彈返去大堂
+    // 💡 智能顯示：隱藏登入畫面
     document.getElementById('loginScreen').style.display = 'none';
     
-    const isAppOpen = document.getElementById('app').style.display === 'flex' || 
-                      document.getElementById('readingApp').style.display === 'flex' || 
-                      document.getElementById('todoApp').style.display === 'flex';
+    // 🚨 核心修復：偵測用家是否在 Firebase Auth 完成前，已經「偷步」入咗功能
+    const isGymOpen = document.getElementById('app').style.display === 'flex';
+    const isReadOpen = document.getElementById('readingApp').style.display === 'flex';
+    const isTodoOpen = document.getElementById('todoApp').style.display === 'flex';
+    const isAppOpen = isGymOpen || isReadOpen || isTodoOpen;
                       
     if (!isAppOpen) {
+      // 乖乖地喺大堂等，就顯示大堂
       document.getElementById('hubScreen').style.display = 'flex';
+    } else {
+      // 🛠️ 補救機制：用家手速太快或 VPN 太慢，導致漏載數據，依家立刻補 Call 返！
+      if (isGymOpen) window.initGymData();
+      if (isReadOpen) window.initReadingData();
+      if (isTodoOpen) window.initTodoData();
     }
     
     document.getElementById('userBadge').textContent = displayId;
     document.getElementById('hubWelcomeName').textContent = `Hello，${displayId} ☺︎`;
+    
     
     // 🌟 核心優化：此處已移除初始連線風暴，改由功能開啟時按需載入 (Lazy Load)
     // --- 檢查是否 Admin，顯示按鈕 ---
@@ -901,7 +910,7 @@ window.clearAllListeners = () => {
   if(window.chalUnsubscribe) { window.chalUnsubscribe(); window.chalUnsubscribe = null; }
 };
 
-// ✅ 升級版：進入指定的應用模塊（完美解決 VPN 白畫面與時序問題）
+// ✅ 升級版：進入指定的應用模塊（修復雙重繪製閃爍問題）
 function enterApp(appName) {
   document.getElementById('hubScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
@@ -911,25 +920,17 @@ function enterApp(appName) {
   window.clearAllListeners();
 
   if (appName === 'gymigogo') {
-    // 1. 先顯示容器，破解 display:none 的 Race Condition
-    document.getElementById('app').style.display = 'flex';
-    // 2. 啟動 Firebase 監聽
     window.initGymData(); 
-    // 3. 🌟 補回手動渲染！立刻用記憶體現有數據畫畫面，打破空白
-    renderCurrentPage();
+    document.getElementById('app').style.display = 'flex';
     lucide.createIcons();
-    
   } else if (appName === 'reading') {
-    document.getElementById('readingApp').style.display = 'flex';
     window.initReadingData(); 
-    // 🌟 補回手動渲染！
-    renderBooks(); 
-    
+    document.getElementById('readingApp').style.display = 'flex';
+    // ❌ 已刪除手動 renderBooks()，等 Firebase 自動彈出，唔會再閃
   } else if (appName === 'todo') {
-    document.getElementById('todoApp').style.display = 'flex';
     window.initTodoData(); 
-    // 🌟 補回手動渲染！
-    if(typeof window.renderTodos === 'function') window.renderTodos();
+    document.getElementById('todoApp').style.display = 'flex';
+    // ❌ 已刪除手動 renderTodos()，等 Firebase 自動彈出，唔會再閃
   }
 }
 
