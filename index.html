@@ -262,7 +262,7 @@ tailwind.config = {
         <div class="relative z-10 flex items-center gap-4">
           <div class="bg-emerald-100 text-emerald-600 p-3.5 rounded-2xl shadow-inner flex items-center justify-center text-xl w-14 h-14">✅</div>
           <div>
-            <h2 class="font-extrabold text-slate-800 text-lg tracking-wide">Daily+ To-do</h2>
+            <h2 class="font-extrabold text-slate-800 text-lg tracking-wide">Daily To-do</h2>
             <p class="text-[11px] text-slate-500 font-bold mt-0.5">安排你的專屬日程與清單</p>
           </div>
         </div>
@@ -273,8 +273,14 @@ tailwind.config = {
 
     </div>
     
+<!-- 4. 底部登出按鈕 -->
     <button onclick="doLogout()" class="z-10 mt-8 px-4 py-2 rounded-full bg-white/60 backdrop-blur border border-slate-200 text-xs font-bold text-slate-400 hover:text-red-500 hover:bg-white hover:shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
       <i data-lucide="log-out" class="w-3.5 h-3.5"></i> 登出帳號
+    </button>
+
+    <!-- 🌟 新增：右下角大堂設定按鈕 (低調幽靈版) -->
+    <button onclick="window.openHubSettings()" class="absolute bottom-5 right-5 w-12 h-12 flex items-center justify-center text-slate-300 hover:text-slate-500 hover:bg-slate-200/50 rounded-full transition-all active:scale-90 z-20" title="系統設定">
+      <i data-lucide="settings" class="w-6 h-6"></i>
     </button>
   </div>
 
@@ -391,7 +397,7 @@ tailwind.config = {
     <header class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
       <div class="flex items-center gap-2">
         <span class="text-2xl">✅</span>
-        <span class="font-extrabold text-emerald-500 text-lg">Daily+ To-do</span>
+        <span class="font-extrabold text-emerald-500 text-lg">Daily To-do</span>
       </div>
       <div class="flex items-center gap-2">
         <button onclick="window.toggleTodoMode()" class="p-2 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition flex items-center justify-center shadow-sm active:scale-90 border border-emerald-100" title="切換列表/日曆模式">
@@ -913,6 +919,56 @@ function backToHub() {
   document.getElementById('todoApp').style.display = 'none'; // 🌟 新增隱藏 Todo
   document.getElementById('hubScreen').style.display = 'flex';
 }
+
+// 🌟 新增：大堂專用系統設定 Modal
+window.openHubSettings = () => {
+  let html = `
+    <div class="modal-box text-left border border-slate-100 card-enter" onclick="event.stopPropagation()">
+      <div class="flex items-center gap-3 mb-5 border-b border-slate-100 pb-4">
+        <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center shadow-inner">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 class="font-extrabold text-lg text-slate-800">系統設定</h3>
+          <p class="text-[11px] font-bold text-slate-400">大堂及全域偏好設定</p>
+        </div>
+      </div>
+      
+      <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-5 shadow-sm">
+        <label class="text-xs font-extrabold text-slate-600 block mb-2 flex items-center gap-1.5"><i data-lucide="power" class="w-3.5 h-3.5 text-primary"></i>登入後預設顯示畫面</label>
+        <select id="hubSettingDefaultApp" onchange="window.saveHubSettings()" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold focus:border-primary focus:outline-none bg-white transition-colors text-slate-700">
+          <option value="hub" ${window.defaultStartupApp === 'hub' ? 'selected' : ''}>🏠 應用大堂 (選擇畫面)</option>
+          <option value="gymigogo" ${window.defaultStartupApp === 'gymigogo' ? 'selected' : ''}>🦊 Gymigogo 運動記錄</option>
+          <option value="reading" ${window.defaultStartupApp === 'reading' ? 'selected' : ''}>📚 My Reading Record</option>
+          <option value="todo" ${window.defaultStartupApp === 'todo' ? 'selected' : ''}>✅ Daily To-do</option>
+        </select>
+        <p class="text-[10px] text-slate-400 mt-2 font-semibold">下次登入時會自動幫你打開呢個功能。</p>
+      </div>
+
+      <button onclick="closeModal()" class="w-full bg-slate-800 text-white font-bold py-3.5 rounded-xl hover:bg-slate-900 shadow-md transition-all active:scale-95">完成</button>
+    </div>
+  `;
+  showModal(html);
+  lucide.createIcons();
+};
+
+window.saveHubSettings = async () => {
+  const defaultApp = document.getElementById('hubSettingDefaultApp').value;
+  window.defaultStartupApp = defaultApp;
+  
+  if(currentUser) {
+    try {
+      await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").set({
+        defaultStartupApp: defaultApp
+      }, { merge: true });
+      showToast('⚙️ 預設啟動畫面已更新', 'success');
+    } catch(e) {
+      console.error(e);
+      showToast('儲存失敗', 'error');
+    }
+  }
+};
+
 // 🌟 新增功能：雙模塊快速導航切換面板 (Quick Switcher Modal)
 window.openQuickSwitcher = () => {
   // 智能偵測用家目前正身處邊個模塊
@@ -958,7 +1014,7 @@ window.openQuickSwitcher = () => {
               My Reading Record
               ${isRead ? '<span class="text-[9px] bg-orange-500 text-white px-1.5 py-0.5 rounded-md font-bold">目前頁面</span>' : ''}
             </h4>
-            <p class="text-[10px] text-slate-400 font-medium truncate">打開專屬立體書架與閱讀筆記</p>
+            <p class="text-[10px] text-slate-400 font-medium truncate">打開書架與閱讀筆記</p>
           </div>
           <i data-lucide="chevron-right" class="w-4 h-4 text-orange-300 group-hover:text-orange-500 transition-colors"></i>
         </button>
@@ -967,10 +1023,10 @@ window.openQuickSwitcher = () => {
           <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-xl shadow-sm border border-emerald-100">✅</div>
           <div class="flex-1 min-w-0">
             <h4 class="font-extrabold text-emerald-500 text-sm flex items-center gap-1.5">
-              Daily+ To-do
+              Daily To-do
               ${document.getElementById('todoApp').style.display === 'flex' ? '<span class="text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-md font-bold">目前頁面</span>' : ''}
             </h4>
-            <p class="text-[10px] text-slate-400 font-medium truncate">安排你的專屬日程與清單</p>
+            <p class="text-[10px] text-slate-400 font-medium truncate">安排你的日程與清單</p>
           </div>
           <i data-lucide="chevron-right" class="w-4 h-4 text-emerald-300 group-hover:text-emerald-500 transition-colors"></i>
         </button>
@@ -5244,18 +5300,9 @@ window.renderReadSettings = () => {
   let html = `<h2 class="font-extrabold text-xl text-primary mb-4">⚙️ 閱讀設定</h2>
   
     <div class="bg-white rounded-2xl shadow-sm p-4 mb-3 card-enter">
-      <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="monitor-smartphone" class="w-4 h-4"></i> 顯示與啟動設定</h3>
-      
-      <div class="mb-3">
-        <label class="text-xs font-bold text-slate-500 block mb-1">登入後預設顯示畫面</label>
-        <select id="settingDefaultApp" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
-          <option value="hub" ${window.defaultStartupApp === 'hub' ? 'selected' : ''}>🏠 應用大堂 (選擇畫面)</option>
-          <option value="reading" ${window.defaultStartupApp === 'reading' ? 'selected' : ''}>📚 Daily+ Read (閱讀)</option>
-          <option value="gymigogo" ${window.defaultStartupApp === 'gymigogo' ? 'selected' : ''}>🦊 Gymigogo (健身)</option>
-        </select>
-      </div>
+      <h3 class="font-bold text-sm text-primary mb-3 flex items-center gap-1"><i data-lucide="monitor-smartphone" class="w-4 h-4"></i> 顯示與模式設定</h3>
 
-<div class="mb-3">
+      <div class="mb-3">
         <label class="text-xs font-bold text-slate-500 block mb-1">書架預設模式</label>
         <select id="settingShelfMode" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
           <option value="list" ${window.shelfDisplayMode === 'list' ? 'selected' : ''}>📄 列表模式</option>
@@ -5284,11 +5331,9 @@ window.renderReadSettings = () => {
 
 // 🌟 新增：儲存設定上 Firebase
 window.saveReadSettings = async () => {
-  const defaultApp = document.getElementById('settingDefaultApp').value;
   const shelfMode = document.getElementById('settingShelfMode').value;
   const showCoverStars = document.getElementById('settingShowCoverStars').checked;
   
-  window.defaultStartupApp = defaultApp;
   window.shelfDisplayMode = shelfMode;
   window.showCoverStars = showCoverStars;
   
