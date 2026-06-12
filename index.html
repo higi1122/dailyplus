@@ -901,7 +901,7 @@ window.clearAllListeners = () => {
   if(window.chalUnsubscribe) { window.chalUnsubscribe(); window.chalUnsubscribe = null; }
 };
 
-// ✅ 升級版：進入指定的應用模塊（修復雙重繪製閃爍問題）
+// ✅ 升級版：進入指定的應用模塊（完美解決 VPN 白畫面與時序問題）
 function enterApp(appName) {
   document.getElementById('hubScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
@@ -911,17 +911,25 @@ function enterApp(appName) {
   window.clearAllListeners();
 
   if (appName === 'gymigogo') {
-    window.initGymData(); 
+    // 1. 先顯示容器，破解 display:none 的 Race Condition
     document.getElementById('app').style.display = 'flex';
+    // 2. 啟動 Firebase 監聽
+    window.initGymData(); 
+    // 3. 🌟 補回手動渲染！立刻用記憶體現有數據畫畫面，打破空白
+    renderCurrentPage();
     lucide.createIcons();
+    
   } else if (appName === 'reading') {
-    window.initReadingData(); 
     document.getElementById('readingApp').style.display = 'flex';
-    // ❌ 已刪除手動 renderBooks()，等 Firebase 自動彈出，唔會再閃
+    window.initReadingData(); 
+    // 🌟 補回手動渲染！
+    renderBooks(); 
+    
   } else if (appName === 'todo') {
-    window.initTodoData(); 
     document.getElementById('todoApp').style.display = 'flex';
-    // ❌ 已刪除手動 renderTodos()，等 Firebase 自動彈出，唔會再閃
+    window.initTodoData(); 
+    // 🌟 補回手動渲染！
+    if(typeof window.renderTodos === 'function') window.renderTodos();
   }
 }
 
