@@ -123,24 +123,37 @@ tailwind.config = {
   <button onclick="switchPage('admin')" id="nav-admin" class="hidden flex-col items-center gap-0.5 px-4 py-1 rounded-xl transition-all"> <i data-lucide="shield" class="w-5 h-5"></i><span class="text-xs font-semibold">管理</span> </button>
  </nav>
   </div><!-- Login Screen -->
-  <div id="loginScreen" class="h-full w-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-sky1 to-sky2">
-   <div class="float-anim text-7xl mb-4 drop-shadow-md">
-    ☀️📱
-   </div>
-<h1 class="text-4xl font-extrabold text-primary mb-1 tracking-tight">Daily+</h1>
-   <p class="text-white font-bold mb-8 drop-shadow-sm">管理你的美好日常 ✨</p>
-<div class="bg-white rounded-2xl shadow-lg p-6 w-full max-w-sm text-left">
-<div class="mb-4">
-      <label class="block text-sm font-bold text-slate-600 mb-2">帳號 (ID)</label> 
-      <input id="nameInput" type="text" placeholder="輸入帳號..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold" maxlength="20">
+  <div id="loginScreen" class="h-full w-full flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#f8fafc]">
+    
+    <div class="absolute top-[-10%] left-[-10%] w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob pointer-events-none"></div>
+    <div class="absolute top-[20%] right-[-10%] w-72 h-72 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob animation-delay-2000 pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] left-[20%] w-72 h-72 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob animation-delay-4000 pointer-events-none"></div>
+
+    <div class="z-10 flex flex-col items-center mb-8">
+      <div class=" flex items-center justify-center text-4xl mb-5 float-anim relative">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent rounded-3xl opacity-50"></div>
+        <span class="relative z-10 drop-shadow-sm">☀️</span>
+      </div>
+      <h1 class="text-4xl font-black text-slate-800 tracking-tight mb-2">Daily<span class="text-primary">+</span></h1>
+      <p class="text-xs font-extrabold text-slate-500 bg-white/60 px-4 py-1.5 rounded-full backdrop-blur-sm border border-white shadow-sm tracking-wide">管理你的美好日常 ✨</p>
     </div>
- <div class="mb-4">
-      <label class="block text-sm font-bold text-slate-600 mb-2">密碼</label> 
-      <input id="pwdInput" type="password" placeholder="輸入密碼..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full border-2 border-sky2 rounded-xl px-4 py-3 focus:border-primary focus:outline-none transition-colors font-semibold">
+
+    <div class="z-10 w-full max-w-sm bg-white/60 backdrop-blur-xl rounded-[2rem] shadow-lg border border-white p-6 card-enter">
+      <div class="mb-4">
+        <label class="block text-xs font-extrabold text-slate-500 mb-2 flex items-center gap-1.5 ml-1"><i data-lucide="user" class="w-3.5 h-3.5 text-primary"></i>帳號 (ID)</label> 
+        <input id="nameInput" type="text" placeholder="輸入帳號..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full bg-white/80 border-2 border-slate-200/80 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all placeholder-slate-400 shadow-inner" maxlength="20">
+      </div>
+      <div class="mb-6">
+        <label class="block text-xs font-extrabold text-slate-500 mb-2 flex items-center gap-1.5 ml-1"><i data-lucide="lock" class="w-3.5 h-3.5 text-primary"></i>密碼</label> 
+        <input id="pwdInput" type="password" placeholder="輸入密碼..." onkeypress="if(event.key === 'Enter') doLogin()" class="w-full bg-white/80 border-2 border-slate-200/80 rounded-2xl px-4 py-3.5 text-sm font-bold text-slate-700 focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 focus:outline-none transition-all placeholder-slate-400 shadow-inner">
+      </div>
+      
+      <p id="loginError" class="text-red-500 text-xs font-bold mb-4 hidden text-center bg-red-50 py-2.5 rounded-xl border border-red-100 shadow-sm">請輸入帳號同密碼</p>
+      
+<button id="loginBtn" onclick="doLogin()" class="w-full bg-white/20 backdrop-blur-md border border-white/30 text-slate-700 font-bold py-3.5 rounded-2xl hover:bg-slate-200/40 hover:border-slate-300/50 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 text-xs tracking-wide shadow-md">
+        開始旅程 <i data-lucide="arrow-right" class="w-3.5 h-3.5 opacity-50"></i>
+      </button>
     </div>
-    <p id="loginError" class="text-red-400 text-sm font-semibold mb-2 hidden text-center">請輸入帳號同密碼</p>
-    <button id="loginBtn" onclick="doLogin()" class="w-full bg-primary hover:bg-primaryDk text-white font-bold py-3 rounded-xl transition-colors"> 開始旅程 🚀 </button>
-   </div>
   </div>
   
   <!-- Modal Container -->
@@ -218,12 +231,12 @@ tailwind.config = {
 
 <!-- 2. 歡迎區 (頭像 + 問候語) -->
     <div class="z-10 w-full max-w-md mb-8 text-center flex flex-col items-center mt-[-40px]">
-      <div class="inline-flex items-center justify-center h-[72px] rounded-full bg-white shadow-md mb-5 relative border-4 border-white px-3 gap-1">
+      <div class="inline-flex items-center justify-center  gap-1">
         <span class="text-[40px] drop-shadow-sm float-anim">🦊</span>
         <span class="text-[40px] drop-shadow-sm float-anim animation-delay-2000">🐰</span>
       </div>
 
-      <h1 id="hubWelcomeName" class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2 leading-snug">準備好今日嘅任務未呀？</h1>
+      <h1 id="hubWelcomeName" class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2 leading-snug">Hellooo</h1>
       <p class="text-sm font-bold text-slate-400">揀一個功能開始你嘅一天啦 🚀</p>
     </div>
 
@@ -248,7 +261,7 @@ tailwind.config = {
         <div class="relative z-10 flex items-center gap-4">
           <div class="bg-orange-100 text-orange-600 p-3.5 rounded-2xl shadow-inner flex items-center justify-center text-xl w-14 h-14">📚</div>
           <div>
-            <h2 class="font-extrabold text-slate-800 text-lg tracking-wide">My Reading Record</h2>
+            <h2 class="font-extrabold text-slate-800 text-lg tracking-wide">My Reading</h2>
             <p class="text-[11px] text-slate-500 font-bold mt-0.5">打開專屬立體書架與閱讀筆記</p>
           </div>
         </div>
@@ -290,7 +303,7 @@ tailwind.config = {
     <header class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
       <div class="flex items-center gap-2">
         <span class="text-2xl">📚</span> 
-        <span class="font-extrabold text-orange-500 text-lg">Daily+ Read</span>
+        <span class="font-extrabold text-orange-500 text-lg">My Reading</span>
       </div>
       <div class="flex items-center gap-2">
         <!-- 🌟 新增：書友與分享按鈕 -->
@@ -650,7 +663,7 @@ if (localStorage.getItem('gq_logged_in') === 'true') {
   if (savedName) {
     const hubTitle = document.getElementById('hubWelcomeName');
     const badge = document.getElementById('userBadge');
-    if(hubTitle) hubTitle.textContent = `準備好今日嘅任務未呀，${savedName}？`;
+    if(hubTitle) hubTitle.textContent = `Hello，${savedName} ☺︎`;
     if(badge) badge.textContent = savedName;
   }
 }
@@ -718,7 +731,7 @@ auth.onAuthStateChanged(async user => {
     }
     
     document.getElementById('userBadge').textContent = displayId;
-    document.getElementById('hubWelcomeName').textContent = `準備好今日嘅任務未呀，${displayId}？`;
+    document.getElementById('hubWelcomeName').textContent = `Hello，${displayId} ☺︎`;
     
     // 🌟 核心優化：此處已移除初始連線風暴，改由功能開啟時按需載入 (Lazy Load)
     // --- 檢查是否 Admin，顯示按鈕 ---
@@ -939,7 +952,7 @@ window.openHubSettings = () => {
         <select id="hubSettingDefaultApp" onchange="window.saveHubSettings()" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2.5 text-sm font-bold focus:border-primary focus:outline-none bg-white transition-colors text-slate-700">
           <option value="hub" ${window.defaultStartupApp === 'hub' ? 'selected' : ''}>🏠 應用大堂 (選擇畫面)</option>
           <option value="gymigogo" ${window.defaultStartupApp === 'gymigogo' ? 'selected' : ''}>🦊 Gymigogo 運動記錄</option>
-          <option value="reading" ${window.defaultStartupApp === 'reading' ? 'selected' : ''}>📚 My Reading Record</option>
+          <option value="reading" ${window.defaultStartupApp === 'reading' ? 'selected' : ''}>📚 My Reading</option>
           <option value="todo" ${window.defaultStartupApp === 'todo' ? 'selected' : ''}>✅ Daily To-do</option>
         </select>
         <p class="text-[10px] text-slate-400 mt-2 font-semibold">下次登入時會自動幫你打開呢個功能。</p>
@@ -1011,7 +1024,7 @@ window.openQuickSwitcher = () => {
           <div class="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center text-xl shadow-sm border border-orange-100">📚</div>
           <div class="flex-1 min-w-0">
             <h4 class="font-extrabold text-orange-500 text-sm flex items-center gap-1.5">
-              My Reading Record
+              My Reading
               ${isRead ? '<span class="text-[9px] bg-orange-500 text-white px-1.5 py-0.5 rounded-md font-bold">目前頁面</span>' : ''}
             </h4>
             <p class="text-[10px] text-slate-400 font-medium truncate">打開書架與閱讀筆記</p>
