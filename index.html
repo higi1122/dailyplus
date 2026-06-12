@@ -706,6 +706,7 @@ async function doLogin() {
 function doLogout() {
   localStorage.removeItem('gq_logged_in');
   localStorage.removeItem('gq_user_name');
+  localStorage.removeItem('gq_uid'); // 👈 🌟 新增呢句
   auth.signOut();
 }
 
@@ -716,6 +717,7 @@ auth.onAuthStateChanged(async user => {
     
     // 🌟 記錄登入狀態，下次開 App 就可以觸發極速啟動魔法
     localStorage.setItem('gq_logged_in', 'true');
+    localStorage.setItem('gq_uid', user.uid); // 👈 🌟 新增呢句：記低 UID
     const displayId = user.displayName || user.email.split('@')[0];
     localStorage.setItem('gq_user_name', displayId);
  
@@ -824,10 +826,11 @@ auth.onAuthStateChanged(async user => {
 });
 // 🌟 新增：獨立出「共用社交數據」(好友、邀請)，確保跨模塊同步
 window.initSocialData = () => {
-  const user = firebase.auth().currentUser; if (!user) return;
+  const uid = firebase.auth().currentUser?.uid || localStorage.getItem('gq_uid'); 
+  if (!uid) return;
   
   if (!window.friendsUnsubscribe) {
-    window.friendsUnsubscribe = db.collection("users").doc(user.uid).collection("friends").onSnapshot(snap => {
+    window.friendsUnsubscribe = db.collection("users").doc(uid).collection("friends").onSnapshot(snap => {
       window.myFriends = snap.docs.map(d => ({uid: d.id, ...d.data()}));
       if(typeof currentPage !== 'undefined' && currentPage === 'friends') renderFriends();
       if(typeof currentReadPage !== 'undefined' && currentReadPage === 'friends') window.renderReadFriends();
@@ -835,7 +838,7 @@ window.initSocialData = () => {
   }
   
   if (!window.reqsUnsubscribe) {
-    window.reqsUnsubscribe = db.collection("users").doc(user.uid).collection("friend_requests").onSnapshot(snap => {
+    window.reqsUnsubscribe = db.collection("users").doc(uid).collection("friend_requests").onSnapshot(snap => {
       window.myRequests = snap.docs.map(d => ({uid: d.id, ...d.data()}));
       const gymNotif = document.getElementById('friendNotif');
       if(gymNotif) { const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0); if(count > 0) gymNotif.classList.remove('hidden'); else gymNotif.classList.add('hidden'); }
@@ -847,22 +850,24 @@ window.initSocialData = () => {
 
 // 🌟 功能模塊按需讀取
 window.initReadingData = () => {
-  window.initSocialData(); // 同步加載好友名單！
+  window.initSocialData(); 
   if (window.booksUnsubscribe) return; 
-  const user = firebase.auth().currentUser; if (!user) return;
   
-  window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
+  const uid = firebase.auth().currentUser?.uid || localStorage.getItem('gq_uid'); 
+  if (!uid) return;
+  
+  window.booksUnsubscribe = db.collection("users").doc(uid).collection("books").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if(document.getElementById('readingApp').style.display === 'flex') renderBooks();
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
+    window.updateBottomSync(snapshot.metadata.fromCache); 
   });
-  window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
+  window.bookSharesUnsubscribe = db.collection("users").doc(uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
     const notif = document.getElementById('readFriendNotif');
     if(notif) { if(window.myBookShares.length > 0) notif.classList.remove('hidden'); else notif.classList.add('hidden'); }
     if(typeof currentReadPage !== 'undefined' && currentReadPage === 'friends') window.renderReadFriends();
   });
-  window.sentSharesUnsubscribe = db.collection("users").doc(user.uid).collection("sent_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
+  window.sentSharesUnsubscribe = db.collection("users").doc(uid).collection("sent_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.mySentShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
     if(typeof currentReadPage !== 'undefined' && currentReadPage === 'friends') window.renderReadFriends();
   });
@@ -870,28 +875,30 @@ window.initReadingData = () => {
 
 window.initTodoData = () => {
   if (window.todosUnsubscribe) return;
-  const user = firebase.auth().currentUser; if (!user) return;
+  const uid = firebase.auth().currentUser?.uid || localStorage.getItem('gq_uid'); 
+  if (!uid) return;
   
-  window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
+  window.todosUnsubscribe = db.collection("users").doc(uid).collection("todos").orderBy("timestamp", "asc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     if(document.getElementById('todoApp').style.display === 'flex') { if(typeof window.renderTodos === 'function') window.renderTodos(); }
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
+    window.updateBottomSync(snapshot.metadata.fromCache);
   });
 };
 
 window.initGymData = () => {
-  window.initSocialData(); // 同步加載好友名單！
+  window.initSocialData(); 
   if (recordsUnsubscribe) return;
-  const user = firebase.auth().currentUser; if (!user) return;
+  const uid = firebase.auth().currentUser?.uid || localStorage.getItem('gq_uid'); 
+  if (!uid) return;
   
-  recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot({ includeMetadataChanges: true }, snapshot => {
+  recordsUnsubscribe = db.collection("users").doc(uid).collection("records").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
     document.getElementById('totalPoints').textContent = getTotalPoints().available;
     if(currentPage !== 'admin') renderCurrentPage();
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
+    window.updateBottomSync(snapshot.metadata.fromCache); 
   });
   
-  window.chalUnsubscribe = db.collection("users").doc(user.uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
+  window.chalUnsubscribe = db.collection("users").doc(uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myChallenges = snap.docs.map(d => ({id: d.id, ...d.data()}));
     const gymNotif = document.getElementById('friendNotif');
     if(gymNotif) { const count = (window.myRequests?.length || 0) + (window.myChallenges?.length || 0); if(count > 0) gymNotif.classList.remove('hidden'); else gymNotif.classList.add('hidden'); }
@@ -910,7 +917,7 @@ window.clearAllListeners = () => {
   if(window.chalUnsubscribe) { window.chalUnsubscribe(); window.chalUnsubscribe = null; }
 };
 
-// ✅ 升級版：進入指定的應用模塊（修復雙重繪製閃爍問題）
+// ✅ 終極版：完美解決斷網白畫面與時序問題
 function enterApp(appName) {
   document.getElementById('hubScreen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
@@ -920,17 +927,20 @@ function enterApp(appName) {
   window.clearAllListeners();
 
   if (appName === 'gymigogo') {
-    window.initGymData(); 
-    document.getElementById('app').style.display = 'flex';
+    document.getElementById('app').style.display = 'flex'; // 👈 1. 必須先顯示容器
+    window.initGymData();                                  // 👈 2. 然後先 Call 數據
+    renderCurrentPage();                                   // 👈 3. 手動畫底灰
     lucide.createIcons();
+    
   } else if (appName === 'reading') {
+    document.getElementById('readingApp').style.display = 'flex'; // 👈 1. 先顯示容器
     window.initReadingData(); 
-    document.getElementById('readingApp').style.display = 'flex';
-    // ❌ 已刪除手動 renderBooks()，等 Firebase 自動彈出，唔會再閃
+    renderBooks();                                                // 👈 3. 手動畫底灰
+    
   } else if (appName === 'todo') {
+    document.getElementById('todoApp').style.display = 'flex';    // 👈 1. 先顯示容器
     window.initTodoData(); 
-    document.getElementById('todoApp').style.display = 'flex';
-    // ❌ 已刪除手動 renderTodos()，等 Firebase 自動彈出，唔會再閃
+    if(typeof window.renderTodos === 'function') window.renderTodos(); // 👈 3. 手動畫底灰
   }
 }
 
