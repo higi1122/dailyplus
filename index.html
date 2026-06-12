@@ -896,7 +896,7 @@ window.initGymData = () => {
     document.getElementById('totalPoints').textContent = getTotalPoints().available;
     if(currentPage !== 'admin') renderCurrentPage();
     window.updateBottomSync(snapshot.metadata.fromCache); 
-  });
+  });f
   
   window.chalUnsubscribe = db.collection("users").doc(uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myChallenges = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -929,18 +929,16 @@ function enterApp(appName) {
   if (appName === 'gymigogo') {
     document.getElementById('app').style.display = 'flex'; // 👈 1. 必須先顯示容器
     window.initGymData();                                  // 👈 2. 然後先 Call 數據
-    renderCurrentPage();                                   // 👈 3. 手動畫底灰
     lucide.createIcons();
     
-  } else if (appName === 'reading') {
-    document.getElementById('readingApp').style.display = 'flex'; // 👈 1. 先顯示容器
+} else if (appName === 'reading') {
     window.initReadingData(); 
-    renderBooks();                                                // 👈 3. 手動畫底灰
-    
+    document.getElementById('readingApp').style.display = 'flex';
+    // ❌ 已刪除手動 renderBooks()，等 Firebase 自動彈出，唔會再閃
   } else if (appName === 'todo') {
-    document.getElementById('todoApp').style.display = 'flex';    // 👈 1. 先顯示容器
     window.initTodoData(); 
-    if(typeof window.renderTodos === 'function') window.renderTodos(); // 👈 3. 手動畫底灰
+    document.getElementById('todoApp').style.display = 'flex';
+    // ❌ 已刪除手動 renderTodos()，等 Firebase 自動彈出，唔會再閃
   }
 }
 
