@@ -135,7 +135,7 @@ tailwind.config = {
   <!-- Modal Container -->
  <div id="modalContainer"></div>
 
-<div id="bottomSyncIndicator" class="fixed bottom-[85px] left-1/2 -translate-x-1/2 z-[9990] bg-slate-800/90 backdrop-blur border border-slate-600 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-sm transition-all duration-500 pointer-events-none opacity-0 translate-y-4">
+<div id="bottomSyncIndicator" class="fixed bottom-[85px] left-1/2 -translate-x-1/2 z-[9990] bg-slate-800/90 backdrop-blur border border-slate-600 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-sm transition-opacity duration-500 pointer-events-none opacity-0">
     <div id="syncDot" class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></div>
     <span id="syncTextBottom" class="text-white text-[10px] font-bold tracking-wide">離線中</span>
   </div>
@@ -153,15 +153,15 @@ tailwind.config = {
 
       // 如果首頁顯示緊，強制收埋牌仔，唔好阻住
       if(hubScreen && hubScreen.style.display !== 'none') {
-        indicator.classList.add('opacity-0', 'translate-y-4');
+        indicator.classList.add('opacity-0');
         return;
       }
 
       // 清除之前嘅計時器
       if(window.syncHideTimeout) clearTimeout(window.syncHideTimeout);
 
-      // 顯示牌仔
-      indicator.classList.remove('opacity-0', 'translate-y-4');
+      // 顯示牌仔 (移走 opacity-0 就會慢慢 Fade in)
+      indicator.classList.remove('opacity-0');
 
       if(fromCache) {
         // 🚨 離線狀態：紅色、長著
@@ -179,7 +179,7 @@ tailwind.config = {
         text.innerText = '已同步';
 
         window.syncHideTimeout = setTimeout(() => {
-          indicator.classList.add('opacity-0', 'translate-y-4');
+          indicator.classList.add('opacity-0'); // 加上 opacity-0 就會慢慢 Fade out
         }, 1000);
       }
     };
@@ -190,7 +190,7 @@ tailwind.config = {
       if(hub) {
         new MutationObserver(() => {
           if(hub.style.display !== 'none') {
-            document.getElementById('bottomSyncIndicator')?.classList.add('opacity-0', 'translate-y-4');
+            document.getElementById('bottomSyncIndicator')?.classList.add('opacity-0');
           }
         }).observe(hub, { attributes: true, attributeFilter: ['style'] });
       }
