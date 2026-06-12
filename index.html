@@ -595,8 +595,8 @@ firebase.firestore().settings({
    cacheSizeBytes: 5242880 // 限制本地緩存最大 5MB
 });
 
-// 🌟 2. 然後先可以啟動 Firebase 離線緩存
-db.enablePersistence({ synchronizeTabs: true })
+// 🌟 2. 然後啟動 Firebase 離線緩存 (極致慳 Data + 離線可用)
+db.enablePersistence()
   .catch(err => console.log("緩存啟動失敗:", err.code));
 
 let currentUser = null;
