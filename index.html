@@ -601,6 +601,20 @@ db.enablePersistence()
 
 let currentUser = null;
 let recordsUnsubscribe = null;
+
+// 🌟 極速啟動魔法：利用 LocalStorage 記低登入狀態，秒速顯示大堂 (跳過等待 Firebase 驗證嘅時間)
+if (localStorage.getItem('gq_logged_in') === 'true') {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('hubScreen').style.display = 'flex';
+  
+  const savedName = localStorage.getItem('gq_user_name');
+  if (savedName) {
+    const hubTitle = document.getElementById('hubWelcomeName');
+    const badge = document.getElementById('userBadge');
+    if(hubTitle) hubTitle.textContent = `準備好今日嘅任務未呀，${savedName}？`;
+    if(badge) badge.textContent = savedName;
+  }
+}
     
 async function doLogin() {
   const nameInput = document.getElementById('nameInput');
@@ -638,6 +652,8 @@ async function doLogin() {
 }
 
 function doLogout() {
+  localStorage.removeItem('gq_logged_in');
+  localStorage.removeItem('gq_user_name');
   auth.signOut();
 }
 
@@ -645,14 +661,23 @@ function doLogout() {
 auth.onAuthStateChanged(async user => {
   if (user) {
     currentUser = user;
- 
-    // 💡 修改部分：隱藏登入畫面，顯示 Hub Screen，而唔係直接入運動 APP
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('readingApp').style.display = 'none';
-    document.getElementById('hubScreen').style.display = 'flex';
     
+    // 🌟 記錄登入狀態，下次開 App 就可以觸發上面嘅極速啟動魔法
+    localStorage.setItem('gq_logged_in', 'true');
     const displayId = user.displayName || user.email.split('@')[0];
+    localStorage.setItem('gq_user_name', displayId);
+ 
+    // 💡 智能顯示：隱藏登入畫面。如果用家喺極速啟動期間已經撳咗入其他 App，就唔好強行彈返去大堂
+    document.getElementById('loginScreen').style.display = 'none';
+    
+    const isAppOpen = document.getElementById('app').style.display === 'flex' || 
+                      document.getElementById('readingApp').style.display === 'flex' || 
+                      document.getElementById('todoApp').style.display === 'flex';
+                      
+    if (!isAppOpen) {
+      document.getElementById('hubScreen').style.display = 'flex';
+    }
+    
     document.getElementById('userBadge').textContent = displayId;
     document.getElementById('hubWelcomeName').textContent = `準備好今日嘅任務未呀，${displayId}？`;
     
@@ -694,11 +719,16 @@ auth.onAuthStateChanged(async user => {
         if (doc.data().shelfDisplayMode) window.shelfDisplayMode = doc.data().shelfDisplayMode;
         if (doc.data().showCoverStars !== undefined) window.showCoverStars = doc.data().showCoverStars; // 🌟 載入星星顯示設定
         
-        // 🌟 自動跳轉到預設 App 首頁
-        if (window.defaultStartupApp === 'gymigogo') {
-          enterApp('gymigogo');
-        } else if (window.defaultStartupApp === 'reading') {
-          enterApp('reading');
+        // 🌟 自動跳轉到預設 App 首頁 (加多重防護：如果用家已經手動入咗功能，就唔好彈走佢)
+        const currentlyOpen = document.getElementById('app').style.display === 'flex' || 
+                              document.getElementById('readingApp').style.display === 'flex' || 
+                              document.getElementById('todoApp').style.display === 'flex';
+        if (!currentlyOpen) {
+          if (window.defaultStartupApp === 'gymigogo') {
+            enterApp('gymigogo');
+          } else if (window.defaultStartupApp === 'reading') {
+            enterApp('reading');
+          }
         }
       } else {
         exerciseData = JSON.parse(JSON.stringify(globalExerciseData)); // 繼承系統預設
@@ -711,14 +741,15 @@ auth.onAuthStateChanged(async user => {
       if(currentPage === 'shop') renderShop();
     });
 
-    // 🌟 已成功轉移至按需延遲加載 (Lazy Load) 模塊，登入時不再請求此處數據
     switchPage('calendar');
     lucide.createIcons();
 } else {
     currentUser = null;
+    localStorage.removeItem('gq_logged_in'); // 🌟 清除極速啟動狀態
     if(window.clearAllListeners) window.clearAllListeners();
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
+    document.getElementById('hubScreen').style.display = 'none'; // 確保隱藏大堂
     
     // 登出後重設登入按鈕狀態，並清空密碼
     const loginBtn = document.getElementById('loginBtn');
