@@ -52,6 +52,17 @@ input[type="number"] { -moz-appearance: textfield; }
 @keyframes toastIn { from { opacity:0; transform: translateX(-50%) translateY(-20px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
 .modal-box { background: white; border-radius: 20px; padding: 24px; max-width: 340px; width: 90%; text-align: center; }
+
+/* 🌟 大堂專用：背景光影飄浮動畫 */
+    @keyframes blob {
+      0% { transform: translate(0px, 0px) scale(1); }
+      33% { transform: translate(30px, -50px) scale(1.1); }
+      66% { transform: translate(-20px, 20px) scale(0.9); }
+      100% { transform: translate(0px, 0px) scale(1); }
+    }
+    .animate-blob { animation: blob 7s infinite; }
+    .animation-delay-2000 { animation-delay: 2s; }
+    .animation-delay-4000 { animation-delay: 4s; }
 </style>
 <script>
 tailwind.config = {
@@ -199,50 +210,72 @@ tailwind.config = {
 
   <!-- 💡 正確位置：將 Hub Screen 同新 APP 容器放喺 <script> 之前 -->
   
-  <!-- Main Hub Screen -->
-  <div id="hubScreen" class="h-full w-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-sky1 to-sky2" style="display:none;">
+ <div id="hubScreen" class="hidden min-h-screen bg-[#f8fafc] flex-col items-center justify-center p-6 relative overflow-hidden" style="display: none;">
     
-    <!-- 歡迎語句 -->
-    <div class="text-center mb-8">
-      <div class="text-6xl mb-4 float-anim">👋</div>
-      <h1 class="text-3xl font-extrabold text-primary mb-2">歡迎回來！</h1>
-      <p class="text-slate-600 font-semibold" id="hubWelcomeName">請選擇你要使用嘅功能</p>
+    <div class="absolute top-[-10%] left-[-10%] w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob pointer-events-none"></div>
+    <div class="absolute top-[20%] right-[-10%] w-72 h-72 bg-orange-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000 pointer-events-none"></div>
+    <div class="absolute bottom-[-10%] left-[20%] w-72 h-72 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000 pointer-events-none"></div>
+
+<!-- 2. 歡迎區 (頭像 + 問候語) -->
+    <div class="z-10 w-full max-w-md mb-8 text-center flex flex-col items-center mt-[-40px]">
+      <div class="inline-flex items-center justify-center h-[72px] rounded-full bg-white shadow-md mb-5 relative border-4 border-white px-3 gap-1">
+        <span class="text-[40px] drop-shadow-sm float-anim">🦊</span>
+        <span class="text-[40px] drop-shadow-sm float-anim animation-delay-2000">🐰</span>
+      </div>
+
+      <h1 id="hubWelcomeName" class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2 leading-snug">準備好今日嘅任務未呀？</h1>
+      <p class="text-sm font-bold text-slate-400">揀一個功能開始你嘅一天啦 🚀</p>
     </div>
 
-    <!-- 功能選擇卡片 -->
-    <div class="w-full max-w-sm space-y-4">
-      
-      <!-- 選項 1：原本嘅運動 APP -->
-      <button onclick="enterApp('gymigogo')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-sky3 group">
-        <div class="w-14 h-14 rounded-full bg-sky1 flex items-center justify-center text-2xl group-hover:bg-sky2 transition-colors">🦊</div>
-        <div class="flex-1">
-          <h2 class="font-extrabold text-lg text-primary">Gymigogo 運動記錄</h2>
-          <p class="text-xs text-slate-500 mt-1">繼續你嘅 Work(out) Hard 旅程</p>
+    <div class="z-10 w-full max-w-md flex flex-col gap-4">
+
+      <button onclick="enterApp('gymigogo')" class="w-full group relative overflow-hidden rounded-3xl bg-white p-5 shadow-sm border border-slate-100 hover:shadow-lg hover:border-blue-200 transition-all duration-300 active:scale-[0.98] text-left flex items-center justify-between">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="relative z-10 flex items-center gap-4">
+          <div class="bg-blue-100 text-blue-600 p-3.5 rounded-2xl shadow-inner flex items-center justify-center text-xl w-14 h-14">🦊</div>
+          <div>
+            <h2 class="font-extrabold text-slate-800 text-lg tracking-wide">Gymigogo 運動記錄</h2>
+            <p class="text-[11px] text-slate-500 font-bold mt-0.5">繼續你嘅 Work(out) Hard 旅程</p>
+          </div>
         </div>
-        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-primary"></i>
+        <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-500 transition-colors relative z-10">
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:text-white transition-colors"></i>
+        </div>
       </button>
 
-      <!-- 選項 2：新功能區 (Daily+) -->
-      <button onclick="enterApp('reading')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-orange-300 group">
-        <div class="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center text-2xl group-hover:bg-orange-100 transition-colors">📚</div>
-        <div class="flex-1">
-          <h2 class="font-extrabold text-lg text-orange-500">My Reading Record</h2>
-          <p class="text-xs text-slate-500 mt-1">你的專屬閱讀書架</p>
+      <button onclick="enterApp('reading')" class="w-full group relative overflow-hidden rounded-3xl bg-white p-5 shadow-sm border border-slate-100 hover:shadow-lg hover:border-orange-200 transition-all duration-300 active:scale-[0.98] text-left flex items-center justify-between">
+        <div class="absolute inset-0 bg-gradient-to-r from-orange-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="relative z-10 flex items-center gap-4">
+          <div class="bg-orange-100 text-orange-600 p-3.5 rounded-2xl shadow-inner flex items-center justify-center text-xl w-14 h-14">📚</div>
+          <div>
+            <h2 class="font-extrabold text-slate-800 text-lg tracking-wide">My Reading Record</h2>
+            <p class="text-[11px] text-slate-500 font-bold mt-0.5">打開專屬立體書架與閱讀筆記</p>
+          </div>
         </div>
-        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-orange-500"></i>
+        <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-orange-500 transition-colors relative z-10">
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:text-white transition-colors"></i>
+        </div>
       </button>
 
-<button onclick="enterApp('todo')" class="w-full bg-white rounded-2xl shadow-sm p-5 hover:shadow-md hover:scale-[1.02] transition-all text-left flex items-center gap-4 border-2 border-transparent hover:border-emerald-300 group">
-        <div class="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-2xl group-hover:bg-emerald-100 transition-colors border border-emerald-100 shadow-inner">✅</div>        <div class="flex-1">
-          <h2 class="font-extrabold text-lg text-emerald-500">Daily+ Todo</h2>
-          <p class="text-[11px] font-bold text-slate-400 mt-0.5">安排你的專屬日程與清單</p>
+      <button onclick="enterApp('todo')" class="w-full group relative overflow-hidden rounded-3xl bg-white p-5 shadow-sm border border-slate-100 hover:shadow-lg hover:border-emerald-200 transition-all duration-300 active:scale-[0.98] text-left flex items-center justify-between">
+        <div class="absolute inset-0 bg-gradient-to-r from-emerald-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+        <div class="relative z-10 flex items-center gap-4">
+          <div class="bg-emerald-100 text-emerald-600 p-3.5 rounded-2xl shadow-inner flex items-center justify-center text-xl w-14 h-14">✅</div>
+          <div>
+            <h2 class="font-extrabold text-slate-800 text-lg tracking-wide">Daily+ To-do</h2>
+            <p class="text-[11px] text-slate-500 font-bold mt-0.5">安排你的專屬日程與清單</p>
+          </div>
         </div>
-        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-emerald-500"></i>
+        <div class="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-emerald-500 transition-colors relative z-10">
+          <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 group-hover:text-white transition-colors"></i>
+        </div>
       </button>
+
     </div>
     
-    <!-- 登出按鈕 -->
-    <button onclick="doLogout()" class="mt-8 text-sm font-bold text-slate-500 hover:text-red-500 transition-colors px-4 py-2 bg-white/50 rounded-xl">登出帳戶</button>
+    <button onclick="doLogout()" class="z-10 mt-8 px-4 py-2 rounded-full bg-white/60 backdrop-blur border border-slate-200 text-xs font-bold text-slate-400 hover:text-red-500 hover:bg-white hover:shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
+      <i data-lucide="log-out" class="w-3.5 h-3.5"></i> 登出帳號
+    </button>
   </div>
 
 <!-- DailyPlus Read 書架容器 -->
@@ -358,7 +391,7 @@ tailwind.config = {
     <header class="bg-white/80 backdrop-blur-sm px-4 py-3 flex items-center justify-between shadow-sm flex-shrink-0 z-10">
       <div class="flex items-center gap-2">
         <span class="text-2xl">✅</span>
-        <span class="font-extrabold text-emerald-500 text-lg">Daily+ Todo</span>
+        <span class="font-extrabold text-emerald-500 text-lg">Daily+ To-do</span>
       </div>
       <div class="flex items-center gap-2">
         <button onclick="window.toggleTodoMode()" class="p-2 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition flex items-center justify-center shadow-sm active:scale-90 border border-emerald-100" title="切換列表/日曆模式">
@@ -934,7 +967,7 @@ window.openQuickSwitcher = () => {
           <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-xl shadow-sm border border-emerald-100">✅</div>
           <div class="flex-1 min-w-0">
             <h4 class="font-extrabold text-emerald-500 text-sm flex items-center gap-1.5">
-              Daily+ Todo
+              Daily+ To-do
               ${document.getElementById('todoApp').style.display === 'flex' ? '<span class="text-[9px] bg-emerald-500 text-white px-1.5 py-0.5 rounded-md font-bold">目前頁面</span>' : ''}
             </h4>
             <p class="text-[10px] text-slate-400 font-medium truncate">安排你的專屬日程與清單</p>
