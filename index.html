@@ -3437,11 +3437,63 @@ const toggleBtnHtml = hasBoth ? `
 
     html += renderWoodenShelf(readingBooks, '正在閱讀', 'bg-orange-500 animate-pulse');
     
-    if (sortVal === 'recent') finishedBooks.sort((a,b) => (b.endDate||'').localeCompare(a.endDate||''));
-    else if (sortVal === 'oldest') finishedBooks.sort((a,b) => (a.endDate||'').localeCompare(b.endDate||''));
-    else finishedBooks.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
+    // 🌟 新增：已讀完書籍「每半年一個書櫃」智能分組邏輯
+    if (finishedBooks.length > 0) {
+      const groups = {};
+      
+      // 1. 將書本按半年分組
+      finishedBooks.forEach(book => {
+        // 攞結束日期，無就用加入時間
+        const dateStr = book.endDate || book.timestamp || '';
+        let label = '日期不詳 / 較早前';
+        let sortKey = 0;
+        
+        if (dateStr) {
+          const d = new Date(dateStr);
+          if (!isNaN(d)) {
+            const year = d.getFullYear();
+            const month = d.getMonth() + 1;
+            const isFirstHalf = month <= 6;
+            label = `${year}年 ${isFirstHalf ? '1月-6月' : '7月-12月'}`;
+            // 製作排序匙 (例如 2024 下半年 = 20242, 上半年 = 20241)
+            sortKey = year * 10 + (isFirstHalf ? 1 : 2);
+          }
+        }
+        
+        if (!groups[label]) groups[label] = { label, sortKey, books: [] };
+        groups[label].books.push(book);
+      });
+
+      // 2. 排列群組 (最新嘅半年排最先)
+      const sortedGroups = Object.values(groups).sort((a, b) => b.sortKey - a.sortKey);
+
+      // 3. 渲染每個書櫃
+      sortedGroups.forEach((group, index) => {
+        // 根據使用者選擇嘅排序方式，排列每個櫃入面嘅書
+        if (sortVal === 'recent') group.books.sort((a,b) => (b.endDate||'').localeCompare(a.endDate||''));
+        else if (sortVal === 'oldest') group.books.sort((a,b) => (a.endDate||'').localeCompare(b.endDate||''));
+        else group.books.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
+
+        // 第 3 個群組開始 (即一年以前) 預設加入 hidden 隱藏
+        const isOlder = index >= 2; 
+        
+        html += `<div class="${isOlder ? 'hidden older-bookshelf-group' : ''} transition-all duration-500">`;
+        html += renderWoodenShelf(group.books, `已經讀完 (${group.label})`, 'bg-green-500');
+        html += `</div>`;
+      });
+
+      // 4. 加入「查看更多」按鈕 (每次動態多秀一整年/兩組書櫃)
+      if (sortedGroups.length > 2) {
+        html += `
+          <div class="text-center mt-[-10px] mb-8 relative z-10" id="viewMoreBookshelfBtn">
+            <button onclick="const hidden = document.querySelectorAll('.older-bookshelf-group.hidden'); for(let i=0; i<Math.min(hidden.length, 2); i++) { hidden[i].classList.remove('hidden'); } if(document.querySelectorAll('.older-bookshelf-group.hidden').length === 0) { document.getElementById('viewMoreBookshelfBtn').style.display = 'none'; } lucide.createIcons();" class="bg-white/80 backdrop-blur-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold text-xs px-5 py-3 rounded-full transition-all shadow-sm flex items-center justify-center gap-1.5 mx-auto active:scale-95 border border-slate-200">
+              <i data-lucide="library" class="w-4 h-4"></i> 查看更多
+            </button>
+          </div>
+        `;
+      }
+    }
     
-    html += renderWoodenShelf(finishedBooks, '已經讀完', 'bg-green-500');
     html += renderWoodenShelf(archivedBooks, '封存庫', 'bg-slate-500');
 
   } else {
