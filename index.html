@@ -3386,13 +3386,13 @@ const toggleBtnHtml = hasBoth ? `
               mainExtraClass = '-translate-x-[4px] transition-transform'; 
               
               stackedHtml = v.sub.cover
-                ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-0 -right-1.5 w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-slate-300 pointer-events-none brightness-90 z-0">`
+                ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" loading="lazy" class="absolute -top-0 -right-1.5 w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-slate-300 pointer-events-none brightness-90 z-0">`
                 : `<div id="cv_bg_img_${book.id}" class="absolute -top-0 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
             }
             
             // 🌟 3. 將 ${mainExtraClass} 注入到 mainCoverHtml 嘅 class 入面
             const mainCoverHtml = disp.cover 
-              ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] pointer-events-none select-none z-10 ${mainExtraClass}" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
+              ? `<img id="cv_img_${book.id}" src="${disp.cover}" loading="lazy" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] pointer-events-none select-none z-10 ${mainExtraClass}" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
               : `<div id="cv_img_${book.id}" class="relative w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none z-10 ${mainExtraClass}" style="-webkit-touch-callout: none; -webkit-user-select: none;">${disp.title}</div>`;
               
             const coverHtml = toggleBtnHtml + stackedHtml + mainCoverHtml;
@@ -3716,12 +3716,12 @@ let mainCoverExtraClass = '';
      mainCoverExtraClass = '-translate-x-3'; 
      
      stackedHtml = v.sub.cover
-       ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" class="absolute -top-3 -right-1 w-full h-full object-cover rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0">`
+       ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" loading="lazy" class="absolute -top-3 -right-1 w-full h-full object-cover rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0">`
        : `<div id="cv_bg_img_${book.id}" class="absolute -top-3 -right-3 w-full h-full bg-slate-200 rounded-sm shadow-sm border border-slate-200 pointer-events-none brightness-90 z-0 flex items-center justify-center text-3xl font-bold text-slate-500 overflow-hidden text-center">📗</div>`;
         }
 
   const coverHtml = `<div class="relative z-10 w-24 aspect-[2/3] flex-shrink-0 ml-1 mt-1">${toggleBtnHtml}${stackedHtml}` + (disp.cover 
-    ? `<img id="cv_img_${book.id}" src="${disp.cover}" class="relative w-full h-full object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 ${mainCoverExtraClass} transition-transform">`
+    ? `<img id="cv_img_${book.id}" src="${disp.cover}" loading="lazy" class="relative w-full h-full object-cover rounded-sm shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 ${mainCoverExtraClass} transition-transform">`
     : `<div id="cv_img_${book.id}" class="relative w-full h-full bg-slate-200 rounded-sm flex items-center justify-center text-3xl shadow-[4px_4px_12px_rgba(0,0,0,0.15)] z-10 border border-black/5 ${mainCoverExtraClass} transition-transform">📗</div>`) + `</div>`;
 
 
