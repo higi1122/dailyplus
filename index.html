@@ -780,6 +780,8 @@ auth.onAuthStateChanged(async user => {
         if (doc.data().defaultStartupApp) window.defaultStartupApp = doc.data().defaultStartupApp;
         if (doc.data().shelfDisplayMode) window.shelfDisplayMode = doc.data().shelfDisplayMode;
         if (doc.data().showCoverStars !== undefined) window.showCoverStars = doc.data().showCoverStars; // 🌟 載入星星顯示設定
+        if (doc.data().shelfGroupInterval) window.shelfGroupInterval = doc.data().shelfGroupInterval;
+        if (doc.data().shelfHideThreshold) window.shelfHideThreshold = doc.data().shelfHideThreshold;
         
         // 🌟 自動跳轉到預設 App 首頁 (加多重防護：如果用家已經手動入咗功能，就唔好彈走佢)
         const currentlyOpen = document.getElementById('app').style.display === 'flex' || 
@@ -3288,8 +3290,10 @@ window.toggleArchiveMode = () => {
   renderBooks(); // 重新渲染列表
 };
 
-window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'list';
+window.shelfDisplayMode = localStorage.getItem('gq_shelf_mode') || 'shelf'; // 🌟 預設：立體書櫃模式
 window.showCoverStars = localStorage.getItem('gq_show_cover_stars') !== 'false'; // 🌟 預設為開啟 (true)
+window.shelfGroupInterval = localStorage.getItem('gq_shelf_group') || '1y'; // 🌟 預設：每年一個書櫃
+window.shelfHideThreshold = localStorage.getItem('gq_shelf_hide') || '2y'; // 🌟 預設：隱藏兩年以前
 window.toggleShelfMode = async () => {
   window.shelfDisplayMode = window.shelfDisplayMode === 'list' ? 'shelf' : 'list';
   localStorage.setItem('gq_shelf_mode', window.shelfDisplayMode);
@@ -3437,13 +3441,14 @@ const toggleBtnHtml = hasBoth ? `
 
     html += renderWoodenShelf(readingBooks, '正在閱讀', 'bg-orange-500 animate-pulse');
     
-    // 🌟 新增：已讀完書籍「每半年一個書櫃」智能分組邏輯
+// 🌟 智能分組邏輯 (根據用家設定: 半年/一年/兩年)
     if (finishedBooks.length > 0) {
       const groups = {};
+      const interval = window.shelfGroupInterval || '6m';
+      const hideThreshold = window.shelfHideThreshold || '1y';
       
-      // 1. 將書本按半年分組
+      // 1. 將書本按設定分組
       finishedBooks.forEach(book => {
-        // 攞結束日期，無就用加入時間
         const dateStr = book.endDate || book.timestamp || '';
         let label = '日期不詳 / 較早前';
         let sortKey = 0;
@@ -3453,10 +3458,19 @@ const toggleBtnHtml = hasBoth ? `
           if (!isNaN(d)) {
             const year = d.getFullYear();
             const month = d.getMonth() + 1;
-            const isFirstHalf = month <= 6;
-            label = `${year}年 ${isFirstHalf ? '1月-6月' : '7月-12月'}`;
-            // 製作排序匙 (例如 2024 下半年 = 20242, 上半年 = 20241)
-            sortKey = year * 10 + (isFirstHalf ? 1 : 2);
+            
+            if (interval === '2y') {
+               const startYear = year % 2 === 0 ? year : year - 1;
+               label = `${startYear} - ${startYear + 1}年`;
+               sortKey = startYear;
+            } else if (interval === '1y') {
+               label = `${year}年`;
+               sortKey = year;
+            } else { // 預設 6m
+               const isFirstHalf = month <= 6;
+               label = `${year}年 ${isFirstHalf ? '1月-6月' : '7月-12月'}`;
+               sortKey = year * 10 + (isFirstHalf ? 1 : 2);
+            }
           }
         }
         
@@ -3464,29 +3478,48 @@ const toggleBtnHtml = hasBoth ? `
         groups[label].books.push(book);
       });
 
-      // 2. 排列群組 (最新嘅半年排最先)
+      // 2. 排列群組 (最新嘅排最先)
       const sortedGroups = Object.values(groups).sort((a, b) => b.sortKey - a.sortKey);
+
+      // 計算需要隱藏的閥值及「查看更多」每次展開嘅步數
+      let visibleGroups = 999;
+      let stepGroups = 2; 
+      
+      if (interval === '6m') {
+          stepGroups = 2; // 每次開一年 (即 2 個半年)
+          if (hideThreshold === '1y') visibleGroups = 2;
+          else if (hideThreshold === '2y') visibleGroups = 4;
+          else if (hideThreshold === '3y') visibleGroups = 6;
+      } else if (interval === '1y') {
+          stepGroups = 1; // 每次開一年 (即 1 個年份)
+          if (hideThreshold === '1y') visibleGroups = 1;
+          else if (hideThreshold === '2y') visibleGroups = 2;
+          else if (hideThreshold === '3y') visibleGroups = 3;
+      } else if (interval === '2y') {
+          stepGroups = 1; // 每次開一組 (兩年)
+          if (hideThreshold === '1y') visibleGroups = 1; 
+          else if (hideThreshold === '2y') visibleGroups = 1;
+          else if (hideThreshold === '3y') visibleGroups = 2;
+      }
 
       // 3. 渲染每個書櫃
       sortedGroups.forEach((group, index) => {
-        // 根據使用者選擇嘅排序方式，排列每個櫃入面嘅書
         if (sortVal === 'recent') group.books.sort((a,b) => (b.endDate||'').localeCompare(a.endDate||''));
         else if (sortVal === 'oldest') group.books.sort((a,b) => (a.endDate||'').localeCompare(b.endDate||''));
         else group.books.sort((a, b) => a.title.localeCompare(b.title, 'zh-HK'));
 
-        // 第 3 個群組開始 (即一年以前) 預設加入 hidden 隱藏
-        const isOlder = index >= 2; 
+        const isOlder = hideThreshold !== 'all' && index >= visibleGroups; 
         
         html += `<div class="${isOlder ? 'hidden older-bookshelf-group' : ''} transition-all duration-500">`;
         html += renderWoodenShelf(group.books, `已經讀完 (${group.label})`, 'bg-green-500');
         html += `</div>`;
       });
 
-      // 4. 加入「查看更多」按鈕 (每次動態多秀一整年/兩組書櫃)
-      if (sortedGroups.length > 2) {
+      // 4. 加入「查看更多」按鈕
+      if (hideThreshold !== 'all' && sortedGroups.length > visibleGroups) {
         html += `
           <div class="text-center mt-[-10px] mb-8 relative z-10" id="viewMoreBookshelfBtn">
-            <button onclick="const hidden = document.querySelectorAll('.older-bookshelf-group.hidden'); for(let i=0; i<Math.min(hidden.length, 2); i++) { hidden[i].classList.remove('hidden'); } if(document.querySelectorAll('.older-bookshelf-group.hidden').length === 0) { document.getElementById('viewMoreBookshelfBtn').style.display = 'none'; } lucide.createIcons();" class="bg-white/80 backdrop-blur-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold text-xs px-5 py-3 rounded-full transition-all shadow-sm flex items-center justify-center gap-1.5 mx-auto active:scale-95 border border-slate-200">
+            <button onclick="const hidden = document.querySelectorAll('.older-bookshelf-group.hidden'); for(let i=0; i<Math.min(hidden.length, ${stepGroups}); i++) { hidden[i].classList.remove('hidden'); } if(document.querySelectorAll('.older-bookshelf-group.hidden').length === 0) { document.getElementById('viewMoreBookshelfBtn').style.display = 'none'; } lucide.createIcons();" class="bg-white/80 backdrop-blur-sm text-slate-500 hover:bg-slate-50 hover:text-slate-700 font-bold text-xs px-5 py-3 rounded-full transition-all shadow-sm flex items-center justify-center gap-1.5 mx-auto active:scale-95 border border-slate-200">
               <i data-lucide="library" class="w-4 h-4"></i> 查看更多
             </button>
           </div>
@@ -5445,6 +5478,25 @@ window.renderReadSettings = () => {
         </select>
       </div>
 
+      <div class="mb-3">
+        <label class="text-xs font-bold text-slate-500 block mb-1">書櫃分組方式 (已讀完)</label>
+        <select id="settingShelfGroup" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
+          <option value="6m" ${window.shelfGroupInterval === '6m' ? 'selected' : ''}>每半年一個書櫃</option>
+          <option value="1y" ${window.shelfGroupInterval === '1y' ? 'selected' : ''}>每一年一個書櫃</option>
+          <option value="2y" ${window.shelfGroupInterval === '2y' ? 'selected' : ''}>每兩年一個書櫃</option>
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="text-xs font-bold text-slate-500 block mb-1">自動隱藏舊書櫃</label>
+        <select id="settingShelfHide" onchange="window.saveReadSettings()" class="w-full border-2 border-sky2 rounded-xl px-3 py-2 text-sm font-semibold focus:border-primary focus:outline-none bg-white transition-colors">
+          <option value="all" ${window.shelfHideThreshold === 'all' ? 'selected' : ''}>顯示全部 (不隱藏)</option>
+          <option value="1y" ${window.shelfHideThreshold === '1y' ? 'selected' : ''}>隱藏一年以前嘅書</option>
+          <option value="2y" ${window.shelfHideThreshold === '2y' ? 'selected' : ''}>隱藏兩年以前嘅書</option>
+          <option value="3y" ${window.shelfHideThreshold === '3y' ? 'selected' : ''}>隱藏三年以前嘅書</option>
+        </select>
+      </div>
+
       <div>
         <label class="flex items-center justify-between bg-slate-50 border border-slate-100 p-3 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors shadow-sm">
           <span class="text-sm font-bold text-slate-700">書櫃模式顯示評分星星</span>
@@ -5468,13 +5520,19 @@ window.renderReadSettings = () => {
 window.saveReadSettings = async () => {
   const shelfMode = document.getElementById('settingShelfMode').value;
   const showCoverStars = document.getElementById('settingShowCoverStars').checked;
+  const shelfGroup = document.getElementById('settingShelfGroup').value;
+  const shelfHide = document.getElementById('settingShelfHide').value;
   
   window.shelfDisplayMode = shelfMode;
   window.showCoverStars = showCoverStars;
+  window.shelfGroupInterval = shelfGroup;
+  window.shelfHideThreshold = shelfHide;
   
   // 同時更新 LocalStorage
   localStorage.setItem('gq_shelf_mode', shelfMode);
   localStorage.setItem('gq_show_cover_stars', showCoverStars);
+  localStorage.setItem('gq_shelf_group', shelfGroup);
+  localStorage.setItem('gq_shelf_hide', shelfHide);
   
   // 立即套用模式 (如果有開書架嘅話)
   if (currentReadPage === 'shelf') renderBooks();
@@ -5482,9 +5540,10 @@ window.saveReadSettings = async () => {
   if(currentUser) {
     try {
       await db.collection("users").doc(currentUser.uid).collection("settings").doc("preferences").set({
-        defaultStartupApp: defaultApp,
         shelfDisplayMode: shelfMode,
-        showCoverStars: showCoverStars // 🌟 儲存星星設定
+        showCoverStars: showCoverStars,
+        shelfGroupInterval: shelfGroup,
+        shelfHideThreshold: shelfHide
       }, { merge: true });
       showToast('⚙️ 設定已儲存同步！', 'success');
     } catch(e) {
