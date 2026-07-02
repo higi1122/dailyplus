@@ -3926,10 +3926,20 @@ function quickFinishBook(bookId, title) {
           <label class="text-[11px] font-bold text-slate-500 block mb-1">選擇結束日期</label>
           <input id="quickFinishDate" type="date" value="${todayStr}" class="w-full border-2 border-slate-200 rounded-xl px-3 py-2.5 focus:border-green-400 focus:outline-none transition font-bold text-slate-700 bg-white shadow-sm">
         </div>
-<div>
-          <label class="text-[11px] font-bold text-slate-500 block mb-1">評分 (滿分 5 星)</label>
-          ${window.generateStarHTML('quick', prevRating)}
-        </div>
+<div class="flex items-center gap-4">
+  <div class="flex-1">
+    <label class="text-[11px] font-bold text-slate-500 block mb-1">評分 (滿分 5 星)</label>
+    <div class="h-10 flex items-center">
+       ${window.generateStarHTML('quick', prevRating)}
+    </div>
+  </div>
+  
+  <div class="flex flex-col items-center justify-center pt-1">
+    <label for="quickFinishReread" class="text-[10px] font-bold text-amber-600 mb-1 cursor-pointer">值得再讀</label>
+    <input type="checkbox" id="quickFinishReread" class="w-5 h-5 accent-amber-500 rounded cursor-pointer shadow-sm border-2 border-amber-200">
+  </div>
+</div>
+
         <div>
           <label class="text-[11px] font-bold text-slate-500 block mb-1">整體書評</label>
           <textarea id="quickFinishReview" rows="5" placeholder="寫低你對呢本書嘅總結同感受..." class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 focus:border-green-400 focus:outline-none transition font-semibold text-slate-700 bg-white shadow-sm text-sm">${prevReview}</textarea>
@@ -3955,6 +3965,9 @@ async function confirmQuickFinish(bookId) {
     return; 
   }
   
+  // 🌟 獲取 Checkbox 狀態 (記得要同你 HTML 嗰個 input id 一致)
+  const isReread = document.getElementById('quickFinishReread').checked;
+  
   const btn = document.querySelector('.modal-box button.bg-green-500');
   if(btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 處理中...'; }
   lucide.createIcons();
@@ -3963,23 +3976,31 @@ async function confirmQuickFinish(bookId) {
     const rating = parseFloat(document.getElementById('quickRating').value) || 0;
     const review = document.getElementById('quickFinishReview').value.trim();
 
-    // 直寫入 Firebase，只需 Update 狀態同結束日期
+    // 更新 Firebase：加入 isReread 狀態
     await db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).update({
       status: 'finished',
       endDate: endDate,
       rating: rating,
-      review: review
+      review: review,
+      isReread: isReread  // 🌟 儲存呢個狀態
     });
+    
+    // 如果係喺有興趣版面做結案，要記得刷新埋畫面
+    if(window.currentReadPage === 'wishlist') window.renderWishlist();
+    if(window.currentReadPage === 'reread') window.renderRereadPage();
     
     closeModal();
     showToast('恭喜讀完一本書！🎉', 'success');
     
-    // 震動回饋 (Positive Reinforcement)，恭喜用家完成任務
+    // 震動回饋
     if(navigator.vibrate) navigator.vibrate([50, 50, 50]);
     
   } catch(e) {
     console.error(e);
     showToast('更新失敗，請檢查網絡', 'error');
+    // 處理失敗後回復按鈕狀態
+    const btn = document.querySelector('.modal-box button.bg-green-500');
+    if(btn) { btn.disabled = false; btn.innerHTML = '確認結案 🎉'; }
   }
 }
 
