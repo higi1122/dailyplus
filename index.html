@@ -335,6 +335,9 @@ tailwind.config = {
             </div>
           </div>
           <div class="flex gap-2">
+            <button id="rereadModeBtn" onclick="toggleRereadMode()" class="p-2 bg-slate-100 text-slate-500 rounded-lg border border-slate-200 hover:bg-amber-50 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center mr-1" title="值得再讀精選">
+              <i data-lucide="bookmark" class="w-5 h-5"></i>
+            </button>
             <button id="archiveModeBtn" onclick="toggleArchiveMode()" class="p-2 bg-slate-100 text-slate-500 rounded-lg border border-slate-200 hover:bg-slate-200 transition-all active:scale-90 cursor-pointer shadow-sm flex items-center justify-center mr-1" title="封存庫">
               <i data-lucide="archive" class="w-5 h-5"></i>
             </button>
@@ -3270,7 +3273,32 @@ window.generateStarHTML = (prefix, currentRating = 0) => {
 
 // 🌟 新增：封存模式狀態與切換功能
 window.isArchiveMode = false;
+window.isRereadMode = false; // 🌟 新增狀態
+
+// 🌟 值得再讀 模式切換
+window.toggleRereadMode = () => {
+  if (window.isArchiveMode) window.toggleArchiveMode(); // 確保互斥
+  window.isRereadMode = !window.isRereadMode;
+  
+  const bookMainContent = document.getElementById('bookMainContent');
+  const rereadBtn = document.getElementById('rereadModeBtn');
+  
+  if (window.isRereadMode) {
+    bookMainContent.classList.replace('bg-sky1', 'bg-amber-50');
+    rereadBtn.classList.replace('bg-slate-100', 'bg-amber-500');
+    rereadBtn.classList.replace('text-slate-500', 'text-white');
+    showToast('⭐ 進入值得再讀精選', 'info');
+  } else {
+    bookMainContent.classList.replace('bg-amber-50', 'bg-sky1');
+    rereadBtn.classList.replace('bg-amber-500', 'bg-slate-100');
+    rereadBtn.classList.replace('text-white', 'text-slate-500');
+    showToast('📚 返回我的書架', 'success');
+  }
+  renderBooks();
+};
+
 window.toggleArchiveMode = () => {
+  if (window.isRereadMode) window.toggleRereadMode(); // 確保互斥
   window.isArchiveMode = !window.isArchiveMode;
   
   const bookMainContent = document.getElementById('bookMainContent');
@@ -3348,11 +3376,13 @@ function renderBooks() {
     const matchesSearch = title.includes(searchVal) || author.includes(searchVal);
     const matchesCategory = categoryVal === 'all' || book.category === categoryVal;
     
-    const isArchived = book.status === 'archived';
     if (window.isArchiveMode) {
-      return matchesSearch && matchesCategory && isArchived;
+      return matchesSearch && matchesCategory && book.status === 'archived';
+    } else if (window.isRereadMode) {
+      // 🌟 只顯示值得再讀 且 (已讀完/閱讀中) 嘅書
+      return matchesSearch && matchesCategory && !!book.isReread && (book.status === 'finished' || book.status === 'reading');
     } else {
-      return matchesSearch && matchesCategory && !isArchived;
+      return matchesSearch && matchesCategory && book.status !== 'archived';
     }
   });
 
@@ -3442,6 +3472,13 @@ const toggleBtnHtml = hasBoth ? `
       shelfHtml += `</div></div></div>`;
       return shelfHtml;
     };
+
+    // 🌟 攔截：如果開啟咗「值得再讀」模式，直接畫一個精選櫃然後結束
+    if (window.isRereadMode) {
+      grid.innerHTML = renderWoodenShelf(filtered, '⭐ 值得再讀精選', 'bg-amber-500');
+      lucide.createIcons();
+      return;
+    }
 
     html += renderWoodenShelf(readingBooks, '正在閱讀', 'bg-orange-500 animate-pulse');
     
@@ -3535,6 +3572,23 @@ const toggleBtnHtml = hasBoth ? `
 
   } else {
     // 列表模式
+    
+    // 🌟 攔截：如果開啟咗「值得再讀」模式，直接畫清單然後結束
+    if (window.isRereadMode) {
+      grid.innerHTML = `
+        <div>
+          <div class="flex items-center gap-2 mb-4 px-1">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <h2 class="font-extrabold text-slate-800 text-base">⭐ 值得再讀精選</h2>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            ${filtered.map(book => renderSingleBookCard(book)).join('')}
+          </div>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
+
     if (readingBooks.length > 0) {
       // ❌ 移除了 card-enter
       html += `
@@ -3878,7 +3932,7 @@ function quickFinishBook(bookId, title) {
         </div>
         <div>
           <label class="text-[11px] font-bold text-slate-500 block mb-1">整體書評</label>
-          <textarea id="quickFinishReview" rows="3" placeholder="寫低你對呢本書嘅總結同感受..." class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 focus:border-green-400 focus:outline-none transition font-semibold text-slate-700 bg-white shadow-sm text-sm">${prevReview}</textarea>
+          <textarea id="quickFinishReview" rows="5" placeholder="寫低你對呢本書嘅總結同感受..." class="w-full border-2 border-slate-200 rounded-xl px-3 py-2 focus:border-green-400 focus:outline-none transition font-semibold text-slate-700 bg-white shadow-sm text-sm">${prevReview}</textarea>
         </div>
       </div>
       
@@ -3995,7 +4049,7 @@ window.openAddBookModal = (prefillData = null, returnMode = null) => {
           <div><label class="text-xs font-bold text-slate-500 block mb-1">評分 (滿分 5 星)</label>
           ${window.generateStarHTML('add', 0)}</div>
           <div><label class="text-xs font-bold text-slate-500 block mb-1">整體書評</label>
-          <textarea id="addReviewText" rows="3" placeholder="讀完啦？寫低你嘅感受啦..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm"></textarea></div>
+          <textarea id="addReviewText" rows="5" placeholder="讀完啦？寫低你嘅感受..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm"></textarea></div>
         </div>
         
         <div><label class="text-xs font-bold text-slate-500 block mb-1">首條筆記 (選填)</label><textarea id="bookNotes" rows="2" placeholder="開始閱讀嘅心情..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-semibold text-sm"></textarea></div>
@@ -4407,7 +4461,7 @@ window.viewBook = (bookId, groupIdsStr = '', defaultVer = 'main') => {
         <p class="text-sm text-slate-700 whitespace-pre-wrap font-semibold" style="word-break: break-word;">${n.text}</p>
       </div>
       <div id="noteEdit_${n.id}" class="hidden">
-        <textarea id="noteEditText_${n.id}" rows="3" class="w-full border-2 border-sky-200 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-sky-400 text-slate-700">${n.text}</textarea>
+        <textarea id="noteEditText_${n.id}" rows="5" class="w-full border-2 border-sky-200 rounded-lg p-2 text-sm font-semibold focus:outline-none focus:border-sky-400 text-slate-700">${n.text}</textarea>
         <div class="flex justify-end gap-2 mt-2">
           <button onclick="cancelEditNote('${n.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition">取消</button>
           <button onclick="saveEditedNote('${book.id}', '${n.id}')" class="text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition">儲存</button>
@@ -4460,7 +4514,7 @@ let reviewHtml = '';
            <div class="mb-3">
              ${window.generateStarHTML(`quickRev_${book.id}`, book.rating || 0)}
            </div>
-           <textarea id="quickRevText_${book.id}" rows="3" class="w-full border-2 border-orange-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-orange-400 text-slate-700 mb-2 bg-white/80" placeholder="寫低你對呢本書嘅感受...">${book.review || ''}</textarea>
+           <textarea id="quickRevText_${book.id}" rows="5" class="w-full border-2 border-orange-200 rounded-xl px-3 py-2 text-sm font-semibold focus:outline-none focus:border-orange-400 text-slate-700 mb-2 bg-white/80" placeholder="寫低你對呢本書嘅感受...">${book.review || ''}</textarea>
            <div class="flex justify-end gap-2 mt-2">
              <button onclick="window.toggleReviewEdit('${book.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-white hover:bg-slate-50 rounded-lg transition border border-slate-200 shadow-sm active:scale-95">取消</button>
              <button onclick="window.saveQuickReview('${book.id}')" class="text-xs font-bold bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition active:scale-95">儲存修改</button>
@@ -4534,7 +4588,7 @@ let verSwitchHtml = '';
           <button onclick="toggleQuickNoteInput('${book.id}')" class="text-[10px] font-bold bg-sky-500 text-white px-3 py-1.5 rounded-full hover:bg-sky-600 transition flex items-center gap-1 shadow-sm"><i data-lucide="plus" class="w-3 h-3"></i>新增筆記</button>
         </div>
         <div id="quickNoteContainer_${book.id}" class="hidden mb-3 bg-white p-3 rounded-xl border-2 border-sky-300 shadow-sm card-enter">
-           <textarea id="quickNoteText_${book.id}" rows="3" class="w-full border-none focus:ring-0 resize-none text-sm font-semibold text-slate-700 placeholder-slate-400 p-0" placeholder="輸入今日嘅心得..."></textarea>
+           <textarea id="quickNoteText_${book.id}" rows="5" class="w-full border-none focus:ring-0 resize-none text-sm font-semibold text-slate-700 placeholder-slate-400 p-0" placeholder="輸入今日嘅心得..."></textarea>
            <div class="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-100">
              <button onclick="toggleQuickNoteInput('${book.id}')" class="text-xs font-bold text-slate-500 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 rounded-lg transition">取消</button>
              <button onclick="saveQuickNote('${book.id}')" class="text-xs font-bold bg-sky-500 hover:bg-sky-600 text-white px-4 py-1.5 rounded-lg shadow-sm transition">加入 📝</button>
@@ -4749,7 +4803,7 @@ function editBookInfo(bookId) {
           <div><label class="text-xs font-bold text-slate-500 block mb-1">評分 (滿分 5 星)</label>
           ${window.generateStarHTML('edit', book.rating || 0)}</div>
           <div><label class="text-xs font-bold text-slate-500 block mb-1">整體書評</label>
-          <textarea id="editReviewText" rows="3" placeholder="寫低你對呢本書嘅感受啦..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm">${book.review || ''}</textarea></div>
+          <textarea id="editReviewText" rows="5" placeholder="寫低你對呢本書嘅感受..." class="w-full border-2 border-sky2 rounded-xl px-3 py-2 focus:border-primary focus:outline-none transition font-medium text-slate-600 text-sm">${book.review || ''}</textarea></div>
         </div>
 
       </div>
@@ -5264,94 +5318,92 @@ window.renderWishlist = () => {
   } else if (filtered.length === 0) {
     grid.innerHTML = `<div class="text-center py-10 text-slate-400 font-bold">搵唔到符合條件嘅書 🔍</div>`;
   } else {
-    // 🌟 核心：根據設定選擇「書櫃模式」定「列表模式」
+ // 🌟 核心：根據設定選擇「書櫃模式」定「列表模式」
     if (window.wishlistDisplayMode === 'shelf') {
       
-      // 🌟 確保木書架引擎存在 (因為原本個 function 收埋咗喺主書架度，有興趣版面 call 唔到會報錯)
-      if (!window.renderWoodenShelf) {
-        window.renderWoodenShelf = (books, title, badgeColor) => {
-          if (books.length === 0) return '';
-          let shelfHtml = `
-            <div class="mb-4">
-              <div class="flex items-center gap-2 mb-3 px-1">
-                <span class="w-2 h-2 rounded-full ${badgeColor}"></span>
-                <h2 class="font-extrabold text-slate-800 text-base">${title} (${books.length})</h2>
-              </div>
-              <div class="bg-[#f4ebe1] pt-[20px] px-5 pb-6 rounded shadow-inner border-[3px] border-b-[12px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
-                <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
-                <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-7 gap-y-8 relative z-10">`;
+      // 🌟 定義有興趣版面專用嘅木書架引擎 (加入心心及下載按鈕)
+      window.renderWishlistShelf = (books, title, badgeColor) => {
+        if (books.length === 0) return '';
+        let shelfHtml = `
+          <div class="mb-4">
+            <div class="flex items-center gap-2 mb-3 px-1">
+              <span class="w-2 h-2 rounded-full ${badgeColor}"></span>
+              <h2 class="font-extrabold text-slate-800 text-base">${title} (${books.length})</h2>
+            </div>
+            <div class="bg-[#f4ebe1] pt-[20px] px-5 pb-6 rounded shadow-inner border-[3px] border-b-[12px] border-[#dec4a6] relative overflow-hidden" style="box-shadow: inset 0px 8px 16px rgba(0,0,0,0.06);">
+              <div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: repeating-linear-gradient(transparent, transparent 135px, #8b6e4e 135px, #8b6e4e 137px);"></div>
+              <div class="grid grid-cols-[repeat(auto-fill,72px)] justify-center gap-x-7 gap-y-8 relative z-10">`;
 
-          books.forEach(book => {
-            const v = window.getBookVersions ? window.getBookVersions(book) : { main: book, sub: null };
-            const disp = v.main || book;
-            const hasBoth = !!v.sub;
-            
-            const toggleBtnHtml = hasBoth ? `
-              <div class="absolute bottom-0.5 -left-0.5 flex items-center gap-1 z-30" style="pointer-events: auto;">
-                <button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1 rounded text-slate-600 hover:bg-white transition-all active:scale-90"><i data-lucide="layers" class="w-3 h-3"></i></button>
-                <button id="cv_setmain_btn_${book.id}" onclick="event.stopPropagation(); window.quickSetMainVersion('${book.id}')" class="bg-white text-slate-700 shadow-sm border border-slate-300 px-1 py-0.5 rounded text-[9px] font-bold transition-all duration-300 opacity-0 pointer-events-none -translate-x-2 whitespace-nowrap hover:bg-slate-50">設為主要</button>
-              </div>` : '';
-              
-            let stackedHtml = '';
-            let mainExtraClass = ''; 
-            if (hasBoth) {
-              mainExtraClass = '-translate-x-[4px] transition-transform'; 
-              stackedHtml = v.sub.cover
-                ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" loading="lazy" class="absolute -top-0 -right-1.5 w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-slate-300 pointer-events-none brightness-90 z-0">`
-                : `<div id="cv_bg_img_${book.id}" class="absolute -top-0 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
-            }
-            
-            const mainCoverHtml = disp.cover 
-              ? `<img id="cv_img_${book.id}" src="${disp.cover}" loading="lazy" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] pointer-events-none select-none z-10 ${mainExtraClass}" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
-              : `<div id="cv_img_${book.id}" class="relative w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none z-10 ${mainExtraClass}" style="-webkit-touch-callout: none; -webkit-user-select: none;">${disp.title}</div>`;
-              
-            const coverHtml = toggleBtnHtml + stackedHtml + mainCoverHtml;
-              
-            let coverStarHtml = '';
-            if (window.showCoverStars && book.rating > 0) {
-              coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
-                <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
-              for(let s=1; s<=5; s++) {
-                const isFull = book.rating >= s;
-                const isHalf = book.rating === s - 0.5;
-                const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-                const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
-                coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-              }
-              coverStarHtml += `</div>`;
-            }
-
-            shelfHtml += `
-              <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
-                   style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
-                   ontouchstart="window.handleBookPressStart(event, '${book.id}')"
-                   ontouchend="window.handleBookPressEnd()" 
-                   ontouchmove="window.handleBookPressEnd()" 
-                   onmousedown="window.handleBookPressStart(event, '${book.id}')" 
-                   onmouseup="window.handleBookPressEnd()" 
-                   onmouseleave="window.handleBookPressEnd()" 
-                   onclick="window.handleBookClick(event, '${book.id}')" 
-                   oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
-                ${coverHtml}
-                ${coverStarHtml}
-                <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
-              </div>`;
-          });
+        books.forEach(book => {
+          const v = window.getBookVersions ? window.getBookVersions(book) : { main: book, sub: null };
+          const disp = v.main || book;
+          const hasBoth = !!v.sub;
           
-          shelfHtml += `</div></div></div>`;
-          return shelfHtml;
-        };
-      }
+          const toggleBtnHtml = hasBoth ? `
+            <div class="absolute bottom-0.5 -left-0.5 flex items-center gap-1 z-30" style="pointer-events: auto;">
+              <button id="cv_btn_${book.id}" data-ver="main" onclick="window.toggleCardVersion(event, '${book.id}')" class="bg-white/90 backdrop-blur shadow-sm border border-slate-200 p-1 rounded text-slate-600 hover:bg-white transition-all active:scale-90"><i data-lucide="layers" class="w-3 h-3"></i></button>
+              <button id="cv_setmain_btn_${book.id}" onclick="event.stopPropagation(); window.quickSetMainVersion('${book.id}')" class="bg-white text-slate-700 shadow-sm border border-slate-300 px-1 py-0.5 rounded text-[9px] font-bold transition-all duration-300 opacity-0 pointer-events-none -translate-x-2 whitespace-nowrap hover:bg-slate-50">設為主要</button>
+            </div>` : '';
+            
+          let stackedHtml = '';
+          let mainExtraClass = ''; 
+          if (hasBoth) {
+            mainExtraClass = '-translate-x-[4px] transition-transform'; 
+            stackedHtml = v.sub.cover
+              ? `<img id="cv_bg_img_${book.id}" src="${v.sub.cover}" loading="lazy" class="absolute -top-0 -right-1.5 w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-slate-300 pointer-events-none brightness-90 z-0">`
+              : `<div id="cv_bg_img_${book.id}" class="absolute -top-0 -right-2 w-[72px] h-[105px] bg-slate-200 rounded-[2px] shadow-sm border border-slate-300 z-0 brightness-90 flex items-center justify-center text-[10px] overflow-hidden text-slate-500 font-extrabold p-1 pointer-events-none select-none">${v.sub.title ? v.sub.title.substring(0,4) : '📗'}</div>`;
+          }
+          
+          const mainCoverHtml = disp.cover 
+            ? `<img id="cv_img_${book.id}" src="${disp.cover}" loading="lazy" class="relative w-[72px] h-[105px] object-cover rounded-[2px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] pointer-events-none select-none z-10 ${mainExtraClass}" style="-webkit-touch-callout: none; -webkit-user-select: none;">`
+            : `<div id="cv_img_${book.id}" class="relative w-[72px] h-[105px] bg-slate-200 rounded-[2px] flex items-center justify-center text-[10px] shadow-[3px_3px_8px_rgba(0,0,0,0.3)] border border-black/10 text-center font-extrabold text-slate-500 p-1.5 leading-tight overflow-hidden pointer-events-none select-none z-10 ${mainExtraClass}" style="-webkit-touch-callout: none; -webkit-user-select: none;">${disp.title}</div>`;
+            
+          const coverHtml = toggleBtnHtml + stackedHtml + mainCoverHtml;
+            
+          let coverStarHtml = '';
+          if (window.showCoverStars && book.rating > 0) {
+            coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
+              <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
+            for(let s=1; s<=5; s++) {
+              const isFull = book.rating >= s;
+              const isHalf = book.rating === s - 0.5;
+              const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+              const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
+              coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+            }
+            coverStarHtml += `</div>`;
+          }
+
+          shelfHtml += `
+            <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
+                 style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                 ontouchstart="window.handleBookPressStart(event, '${book.id}')"
+                 ontouchend="window.handleBookPressEnd()" 
+                 ontouchmove="window.handleBookPressEnd()" 
+                 onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+                 onmouseup="window.handleBookPressEnd()" 
+                 onmouseleave="window.handleBookPressEnd()" 
+                 onclick="window.handleBookClick(event, '${book.id}')" 
+                 oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
+              ${coverHtml}
+              ${coverStarHtml}
+              <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
+            </div>`;
+        });
+        
+        shelfHtml += `</div></div></div>`;
+        return shelfHtml;
+      };
 
       let html = '';
       const wGroups = {};
-      const wMode = window.wishlistGroupMode || 'year';
+      const wMode = window.wishlistGroupMode || 'month';
       
       filtered.forEach(book => {
         let label = '未分類';
         let sortKey = 0;
         
-if (['year', 'half', 'quarter', 'month'].includes(wMode)) {
+        if (['year', 'half', 'quarter', 'month'].includes(wMode)) {
           const dStr = book.timestamp || book.startDate; 
           if (dStr) {
             const d = new Date(dStr);
@@ -5376,7 +5428,6 @@ if (['year', 'half', 'quarter', 'month'].includes(wMode)) {
               }
             }
           }
-        
         } else if (wMode === 'category') {
           label = book.category ? book.category.trim() : '未分類';
           sortKey = label === '未分類' ? 0 : 1; 
@@ -5392,15 +5443,14 @@ if (['year', 'half', 'quarter', 'month'].includes(wMode)) {
       });
 
       let sortedWGroups = Object.values(wGroups);
-      // 🌟 確保所有時間單位 (year, half, quarter, month) 都按時序排列
-      if (['year', 'half', 'quarter', 'month'].includes(wMode)) {
+      if (['year', 'half', 'quarter', 'month', 'lang'].includes(wMode)) {
          sortedWGroups.sort((a, b) => b.sortKey - a.sortKey);
       } else {
          sortedWGroups.sort((a, b) => { if (a.label === '未分類') return 1; if (b.label === '未分類') return -1; return a.label.localeCompare(b.label, 'zh-HK'); });
       }
 
       sortedWGroups.forEach(group => {
-        html += window.renderWoodenShelf(group.books, `有興趣 (${group.label})`, 'bg-pink-500'); 
+        html += window.renderWishlistShelf(group.books, `有興趣 (${group.label})`, 'bg-pink-500'); 
       });
       grid.innerHTML = html;
 
@@ -5456,10 +5506,10 @@ if (['year', 'half', 'quarter', 'month'].includes(wMode)) {
               ${coverHtml}
               <div class="absolute top-2 right-2 flex flex-col gap-1.5 z-20">
                 <button onclick="event.stopPropagation(); window.toggleWishlistHeart('${book.id}', ${isHearted})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
-                  <i data-lucide="heart" class="w-4 h-4 transition-colors ${isHearted ? 'text-pink-500' : 'text-slate-300'}"></i>
+                  <i data-lucide="heart" class="w-4 h-4 transition-colors ${isHearted ? 'text-pink-500 fill-pink-100' : 'text-slate-300'}"></i>
                 </button>
                 <button onclick="event.stopPropagation(); window.toggleWishlistDownloaded('${book.id}', ${!!book.isDownloaded})" class="p-1.5 rounded-full bg-white/80 backdrop-blur shadow-sm hover:bg-white transition-all active:scale-90 border border-slate-100/50">
-                  <i data-lucide="check-circle-2" class="w-4 h-4 transition-colors ${book.isDownloaded ? 'text-blue-500' : 'text-slate-300'}"></i>
+                  <i data-lucide="check-circle-2" class="w-4 h-4 transition-colors ${book.isDownloaded ? 'text-blue-500 fill-blue-100' : 'text-slate-300'}"></i>
                 </button>
               </div>
             </div>
@@ -5790,19 +5840,96 @@ window.handleBookClick = (e, bookId) => {
   viewBook(bookId, '', currentVer);
 };
 
+// 🌟 新增：長按選單專用的即時刷新切換器
+window.toggleMenuHeart = async (bookId, currentVal) => {
+  if (window.toggleWishlistHeart) {
+    await window.toggleWishlistHeart(bookId, currentVal);
+    window.showBookMenu(null, bookId); // ⚡ 即時重新渲染選單，圖標馬上變色
+  }
+};
+
+window.toggleMenuDownloaded = async (bookId, currentVal) => {
+  if (window.toggleWishlistDownloaded) {
+    await window.toggleWishlistDownloaded(bookId, currentVal);
+    window.showBookMenu(null, bookId); // ⚡ 即時重新渲染選單，圖標馬上變色
+  }
+};
+
+// 🌟 新增：選單專用「值得再讀」狀態切換
+window.toggleMenuReread = async (bookId, currentVal) => {
+  const newVal = !currentVal;
+  const book = window.allBooks.find(b => b.id === bookId);
+  if (book) book.isReread = newVal;
+  
+  // ⚡ 即時刷新長按選單，保持選單開啟兼立刻變色
+  window.showBookMenu(null, bookId);
+  
+  // 🔄 同步刷新背景所有可能受到影響嘅版面數據
+  if (window.currentReadPage === 'shelf') renderBooks();
+  if (window.currentReadPage === 'wishlist') window.renderWishlist();
+  if (window.currentReadPage === 'reread') window.renderRereadPage();
+
+  // ☁️ 同步備份上雲端 Firebase
+  if (currentUser) {
+    db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).set({
+      isReread: newVal
+    }, { merge: true }).catch(e => console.error(e));
+  }
+};
+
+
 window.showBookMenu = (e, bookId) => {
-  e.preventDefault();
-  e.stopPropagation();
+  // 🌟 修改：允許 e 為空（方便上面做即時刷新）
+  if (e && e.preventDefault) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
   const book = window.allBooks.find(b => b.id === bookId);
   if(!book) return;
 
-  let html = `<div class="modal-box" onclick="event.stopPropagation()">
-    <h3 class="font-bold text-lg text-primary mb-4 text-center truncate px-2">《${book.title}》</h3>
+const isHearted = !!book.isHearted;
+  const isDownloaded = !!book.isDownloaded;
+  const isReread = !!book.isReread; // 🌟 新增值得再讀狀態
+
+// 🌟 核心判斷：是否已讀完或閱讀中
+  const isReadStatus = (book.status === 'finished' || book.status === 'reading');
+
+  // 🌟 1. 決定心心掣要唔要顯示
+  let heartBtnHtml = '';
+  if (!isReadStatus) {
+    heartBtnHtml = `
+      <button onclick="event.stopPropagation(); window.toggleMenuHeart('${book.id}', ${isHearted})" class="p-2 rounded-full bg-slate-50 hover:bg-slate-100 transition-all active:scale-90 border border-slate-100 shadow-sm" title="最愛">
+        <i data-lucide="heart" class="w-4 h-4 transition-colors ${isHearted ? 'text-pink-500 fill-pink-100' : 'text-slate-400'}"></i>
+      </button>`;
+  }
+
+  // 🌟 2. 決定第二個掣顯示「值得再讀」定「已下載」
+  let secondBtnHtml = '';
+  if (isReadStatus) {
+    secondBtnHtml = `
+      <button onclick="event.stopPropagation(); window.toggleMenuReread('${book.id}', ${isReread})" class="p-2 rounded-full bg-slate-50 hover:bg-slate-100 transition-all active:scale-90 border border-slate-100 shadow-sm" title="值得再讀">
+        <i data-lucide="bookmark" class="w-4 h-4 transition-colors ${isReread ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}"></i>
+      </button>`;
+  } else {
+    secondBtnHtml = `
+      <button onclick="event.stopPropagation(); window.toggleMenuDownloaded('${book.id}', ${isDownloaded})" class="p-2 rounded-full bg-slate-50 hover:bg-slate-100 transition-all active:scale-90 border border-slate-100 shadow-sm" title="已下載">
+        <i data-lucide="check-circle-2" class="w-4 h-4 transition-colors ${isDownloaded ? 'text-blue-500 fill-blue-100' : 'text-slate-400'}"></i>
+      </button>`;
+  }
+
+  let html = `<div class="modal-box relative" onclick="event.stopPropagation()">
+    
+    <div class="absolute top-3 right-3 flex items-center gap-1.5 z-50">
+      ${heartBtnHtml}
+      ${secondBtnHtml}
+    </div>
+
+    <h3 class="font-bold text-lg text-primary mb-4 text-center truncate pl-2 pr-20">《${book.title}》</h3>
     <div class="space-y-2">`;
   
   // 智能選項 1：標記為已讀完 (如果目前唔係 finished)
   if (book.status !== 'finished') {
-    // 💡 巧妙地重用咗你之前寫落嘅 quickFinishBook，佢會自動彈出問你結束日期
     html += `<button onclick="closeModal(); quickFinishBook('${book.id}', '${book.title.replace(/'/g,"\\'")}')" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
       <i data-lucide="check-circle" class="w-5 h-5"></i> 標記為已讀完
     </button>`;
@@ -5819,14 +5946,14 @@ window.showBookMenu = (e, bookId) => {
     </button>`;
   }
 
-// 智能選項 3：移回有興趣 (如果目前唔係 wishlist 同 archived)
+  // 智能選項 3：移回有興趣 (如果目前唔係 wishlist 同 archived)
   if (book.status !== 'wishlist' && book.status !== 'archived') {
     html += `<button onclick="window.menuMoveToWishlist('${book.id}')" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
       <i data-lucide="heart" class="w-5 h-5"></i> 移回有興趣
     </button>`;
   }
   
-  // 🌟 新增：封存與還原按鈕
+  // 🌟 封存與還原按鈕
   if (book.status === 'archived') {
     html += `<button onclick="window.unarchiveBook('${book.id}')" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm border border-blue-100">
       <i data-lucide="archive-restore" class="w-5 h-5"></i> 移出封存區 (放回書架)
