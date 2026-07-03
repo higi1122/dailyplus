@@ -5906,28 +5906,27 @@ window.handleBookClick = (e, bookId) => {
 };
 
 // 🌟 新增：長按選單專用的即時刷新切換器
+// 🌟 修改：選單專用的切換器 (點擊後自動關閉選單)
 window.toggleMenuHeart = async (bookId, currentVal) => {
   if (window.toggleWishlistHeart) {
     await window.toggleWishlistHeart(bookId, currentVal);
-    window.showBookMenu(null, bookId); // ⚡ 即時重新渲染選單，圖標馬上變色
+    closeModal(); // ⚡ 點擊後立即關閉選單
   }
 };
 
 window.toggleMenuDownloaded = async (bookId, currentVal) => {
   if (window.toggleWishlistDownloaded) {
     await window.toggleWishlistDownloaded(bookId, currentVal);
-    window.showBookMenu(null, bookId); // ⚡ 即時重新渲染選單，圖標馬上變色
+    closeModal(); // ⚡ 點擊後立即關閉選單
   }
 };
 
-// 🌟 新增：選單專用「值得再讀」狀態切換
 window.toggleMenuReread = async (bookId, currentVal) => {
   const newVal = !currentVal;
   const book = window.allBooks.find(b => b.id === bookId);
   if (book) book.isReread = newVal;
   
-  // ⚡ 即時刷新長按選單，保持選單開啟兼立刻變色
-  window.showBookMenu(null, bookId);
+  closeModal(); // ⚡ 點擊後立即關閉選單
   
   // 🔄 同步刷新背景所有可能受到影響嘅版面數據
   if (window.currentReadPage === 'shelf') renderBooks();
@@ -5935,7 +5934,7 @@ window.toggleMenuReread = async (bookId, currentVal) => {
   if (window.currentReadPage === 'reread') window.renderRereadPage();
 
   // ☁️ 同步備份上雲端 Firebase
-  if (currentUser) {
+  if (typeof currentUser !== 'undefined' && currentUser) {
     db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).set({
       isReread: newVal
     }, { merge: true }).catch(e => console.error(e));
