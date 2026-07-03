@@ -167,8 +167,8 @@ tailwind.config = {
   <script>
     window.syncHideTimeout = null;
 
-    // 處理底部同步狀態切換
-    window.updateBottomSync = (fromCache) => {
+// 處理底部同步狀態切換 (完美版)
+    window.updateBottomSync = (fromCache, hasPendingWrites = false) => {
       const indicator = document.getElementById('bottomSyncIndicator');
       const dot = document.getElementById('syncDot');
       const text = document.getElementById('syncTextBottom');
@@ -183,27 +183,26 @@ tailwind.config = {
 
       // 清除之前嘅計時器
       if(window.syncHideTimeout) clearTimeout(window.syncHideTimeout);
-
-      // 顯示牌仔 (移走 opacity-0 就會慢慢 Fade in)
       indicator.classList.remove('opacity-0');
 
       if(fromCache) {
         // 🚨 離線狀態：紅色、長著
-        indicator.classList.remove('bg-emerald-600/90', 'border-emerald-500');
-        indicator.classList.add('bg-slate-800/90', 'border-slate-600');
-        dot.classList.remove('bg-emerald-300');
-        dot.classList.add('bg-red-400', 'animate-pulse');
+        indicator.className = 'fixed bottom-[85px] left-1/2 -translate-x-1/2 z-[9990] bg-slate-800/90 backdrop-blur border border-slate-600 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-sm transition-opacity duration-500 pointer-events-none';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse';
         text.innerText = '離線中';
+      } else if (hasPendingWrites) {
+        // 🔄 同步中狀態：藍色、長著 (正在寫入伺服器)
+        indicator.className = 'fixed bottom-[85px] left-1/2 -translate-x-1/2 z-[9990] bg-blue-600/90 backdrop-blur border border-blue-500 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-sm transition-opacity duration-500 pointer-events-none';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse';
+        text.innerText = '同步中...';
       } else {
-        // ✅ 同步狀態：綠色、1秒後消失
-        indicator.classList.remove('bg-slate-800/90', 'border-slate-600');
-        indicator.classList.add('bg-emerald-600/90', 'border-emerald-500');
-        dot.classList.remove('bg-red-400', 'animate-pulse');
-        dot.classList.add('bg-emerald-300');
+        // ✅ 已同步狀態：綠色、1秒後 Fade out
+        indicator.className = 'fixed bottom-[85px] left-1/2 -translate-x-1/2 z-[9990] bg-emerald-600/90 backdrop-blur border border-emerald-500 rounded-full px-2.5 py-1 flex items-center gap-1.5 shadow-sm transition-opacity duration-500 pointer-events-none';
+        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-300';
         text.innerText = '已同步';
 
         window.syncHideTimeout = setTimeout(() => {
-          indicator.classList.add('opacity-0'); // 加上 opacity-0 就會慢慢 Fade out
+          indicator.classList.add('opacity-0'); 
         }, 1000);
       }
     };
@@ -830,6 +829,17 @@ auth.onAuthStateChanged(async user => {
     if(pwdInput) pwdInput.value = '';
   }
 });
+
+// 🌟 確保 Object Keys 排序一致，防止 Firebase 本地與伺服器回應的 Key 順序不同導致無謂重繪
+window.stableStringify = (obj) => {
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (Array.isArray(obj)) return obj.map(window.stableStringify);
+  return Object.keys(obj).sort().reduce((acc, key) => {
+    acc[key] = window.stableStringify(obj[key]);
+    return acc;
+  }, {});
+};
+
 // 🌟 新增：獨立出「共用社交數據」(好友、邀請)，確保跨模塊同步
 window.initSocialData = () => {
   const user = firebase.auth().currentUser; if (!user) return;
@@ -864,19 +874,19 @@ window.initReadingData = () => {
   if (window.booksUnsubscribe) return; 
   const user = firebase.auth().currentUser; if (!user) return;
   
-  window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
+window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    // 🔒 比對書本內容有冇真正改變
-    const currentBooksStr = JSON.stringify(window.allBooks);
+    // 🔒 加入 window.stableStringify 確保 Keys 排序完全一致
+    const currentBooksStr = JSON.stringify(window.stableStringify(window.allBooks));
     const dataChanged = currentBooksStr !== window.lastBooksStr;
     window.lastBooksStr = currentBooksStr;
 
-    // ⚡ 只有在數據內容真正變動時，先允許重畫書架，徹底杜絕連線狀態引致嘅閃爍！
     if(document.getElementById('readingApp').style.display === 'flex' && dataChanged) {
       renderBooks();
     }
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態列
+    // 🌟 傳入 hasPendingWrites
+    window.updateBottomSync(snapshot.metadata.fromCache, snapshot.metadata.hasPendingWrites); 
   });
   window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -894,18 +904,19 @@ window.initTodoData = () => {
   if (window.todosUnsubscribe) return;
   const user = firebase.auth().currentUser; if (!user) return;
   
-  window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
+window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     
-    // 🔒 比對 Todo 內容有冇真正改變
-    const currentTodosStr = JSON.stringify(window.allTodos);
+    // 🔒 加入 window.stableStringify
+    const currentTodosStr = JSON.stringify(window.stableStringify(window.allTodos));
     const dataChanged = currentTodosStr !== window.lastTodosStr;
     window.lastTodosStr = currentTodosStr;
 
     if(document.getElementById('todoApp').style.display === 'flex' && dataChanged) { 
       if(typeof window.renderTodos === 'function') window.renderTodos(); 
     }
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
+    // 🌟 傳入 hasPendingWrites
+    window.updateBottomSync(snapshot.metadata.fromCache, snapshot.metadata.hasPendingWrites); 
   });
 };
 
@@ -914,11 +925,11 @@ window.initGymData = () => {
   if (recordsUnsubscribe) return;
   const user = firebase.auth().currentUser; if (!user) return;
   
-  recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot({ includeMetadataChanges: true }, snapshot => {
+recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
     
-    // 🔒 比對運動記錄有冇真正改變
-    const currentRecordsStr = JSON.stringify(allRecords);
+    // 🔒 加入 window.stableStringify
+    const currentRecordsStr = JSON.stringify(window.stableStringify(allRecords));
     const dataChanged = currentRecordsStr !== window.lastRecordsStr;
     window.lastRecordsStr = currentRecordsStr;
 
@@ -926,7 +937,8 @@ window.initGymData = () => {
       document.getElementById('totalPoints').textContent = getTotalPoints().available;
       if(currentPage !== 'admin') renderCurrentPage();
     }
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
+    // 🌟 傳入 hasPendingWrites
+    window.updateBottomSync(snapshot.metadata.fromCache, snapshot.metadata.hasPendingWrites); 
   });
   
   window.chalUnsubscribe = db.collection("users").doc(user.uid).collection("challenges").orderBy("timestamp", "desc").onSnapshot(snap => {
