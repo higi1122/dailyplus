@@ -4582,9 +4582,14 @@ return `
         <div class="absolute top-3 right-11 z-50">
           <button onblur="setTimeout(() => { const m = document.getElementById('zMenu_${book.id}_${verKey}'); if(m) m.classList.add('hidden'); }, 200)" onclick="document.getElementById('zMenu_${book.id}_${verKey}').classList.toggle('hidden');" class="text-indigo-500 bg-indigo-50 hover:bg-indigo-100 rounded-full w-7 h-7 flex items-center justify-center transition-all font-black text-xs shadow-sm border border-indigo-100 active:scale-90">Z</button>
           <div id="zMenu_${book.id}_${verKey}" class="hidden absolute right-0 mt-2 shadow-lg bg-white rounded-xl w-36 text-sm font-bold border border-slate-100 p-1.5 z-[100] flex flex-col gap-1">
-            <a onclick="window.open('${zUrl}', '_blank');" class="cursor-pointer text-indigo-600 hover:bg-indigo-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i> 打開連結</a>
-            <a onclick="window.copyZLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> 複製連結</a>
-          </div>
+            <a onclick="window.open('${zUrl}', '_blank');" class="cursor-pointer text-indigo-600 hover:bg-indigo-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i> Z-lib</a>
+            <a onclick="window.open('https://annas-archive.gl/search?q=${encodeURIComponent(safeTitle)}', '_blank');" class="cursor-pointer text-amber-600 hover:bg-amber-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors">
+                <i data-lucide="search" class="w-4 h-4"></i> Anna's </a>   
+                            <a onclick="window.copyZLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> 複製Z-lib</a>
+
+            <a onclick="window.copyAnnasLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors">
+                <i data-lucide="copy" class="w-4 h-4"></i> 複製Anna's</a>
+    </div>
         </div>
         <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
           ${cHtml}
@@ -6334,7 +6339,28 @@ window.copyZLink = (title) => {
     showToast('🔗 已複製 Z-Lib 搜尋連結', 'success');
   }
 };
-    
+   
+// 🌟 新增：複製 Anna's Archive 連結
+window.copyAnnasLink = (title) => {
+  const url = `https://annas-archive.gl/search?q=${encodeURIComponent(title)}`;
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('🔗 已複製 Anna\'s Archive 連結', 'success');
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
+  } else {
+    // 備用方案
+    const el = document.createElement('textarea');
+    el.value = url;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('🔗 已複製 Anna\'s Archive 連結', 'success');
+  }
+};
+
 // ========== 👥 書友分頁與 Inbox 渲染 ==========
 window.renderReadFriends = () => {
   const container = document.getElementById('read-page-friends');
