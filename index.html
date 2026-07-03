@@ -4612,10 +4612,10 @@ const renderVerContent = (vData, verKey) => {
         
         <div class="absolute top-3 right-12 z-50 flex items-center gap-1.5">
           
-          ${heartBtnHtml}
+${heartBtnHtml}
           ${secondBtnHtml}
 
-          <div class="relative">
+          <div class="w-px h-5 bg-slate-200 mx-1"></div> <div class="relative ml-1">
             <button onblur="setTimeout(() => { const m = document.getElementById('zMenu_${book.id}_${verKey}'); if(m) m.classList.add('hidden'); }, 200)" onclick="document.getElementById('zMenu_${book.id}_${verKey}').classList.toggle('hidden');" class="w-8 h-8 flex items-center justify-center text-sky-500 bg-white hover:bg-sky-50 border border-slate-200 rounded-full transition-all shadow-sm active:scale-90">
               <i data-lucide="download" class="w-4 h-4"></i>
             </button>
