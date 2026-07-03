@@ -3452,6 +3452,15 @@ const toggleBtnHtml = hasBoth ? `
           coverStarHtml += `</div>`;
         }
 
+        // 🌟 新增：書櫃封面右上角嘅黃金書籤標誌
+        let bookmarkHtml = '';
+        if (book.isReread) {
+          bookmarkHtml = `
+            <div class="absolute -top-0.5 -right-0.5 z-30 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] pointer-events-none">
+              <i data-lucide="bookmark" class="w-4 h-4 text-amber-500 fill-amber-500"></i>
+            </div>`;
+        }
+
         shelfHtml += `
           <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
                style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
@@ -3465,6 +3474,7 @@ const toggleBtnHtml = hasBoth ? `
                oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
             ${coverHtml}
             ${coverStarHtml}
+            ${bookmarkHtml}
             <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
           </div>`;
       });
@@ -3473,12 +3483,7 @@ const toggleBtnHtml = hasBoth ? `
       return shelfHtml;
     };
 
-    // 🌟 攔截：如果開啟咗「值得再讀」模式，直接畫一個精選櫃然後結束
-    if (window.isRereadMode) {
-      grid.innerHTML = renderWoodenShelf(filtered, '⭐ 值得再讀精選', 'bg-amber-500');
-      lucide.createIcons();
-      return;
-    }
+
 
     html += renderWoodenShelf(readingBooks, '正在閱讀', 'bg-orange-500 animate-pulse');
     
@@ -3867,26 +3872,34 @@ let mainCoverExtraClass = '';
     ratingHtml += `</div>`;
   }
 
-  const categoryTagHtml = book.category 
-    ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
-    : '';
+  const categoryTagHtml = book.category ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` : '';
 
-  return `
-    <div 
-      ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
-      ontouchend="window.handleBookPressEnd()" 
-      ontouchmove="window.handleBookPressEnd()" 
-      onmousedown="window.handleBookPressStart(event, '${book.id}')" 
-      onmouseup="window.handleBookPressEnd()" 
-      onmouseleave="window.handleBookPressEnd()" 
-      onclick="window.handleBookClick(event, '${book.id}')" 
-      oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
-      class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative"
-      style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
-      <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
-        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
-        ${coverHtml}
-      </div>
+      // 🌟 新增：列表模式封面右上角嘅黃金書籤標誌
+      let listBookmarkHtml = '';
+      if (book.isReread) {
+        listBookmarkHtml = `
+          <div class="absolute top-2 right-2 z-20 drop-shadow-sm pointer-events-none">
+            <i data-lucide="bookmark" class="w-5 h-5 text-amber-500 fill-amber-500"></i>
+          </div>`;
+      }
+
+      return `
+        <div 
+          ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
+          ontouchend="window.handleBookPressEnd()" 
+          ontouchmove="window.handleBookPressEnd()" 
+          onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+          onmouseup="window.handleBookPressEnd()" 
+          onmouseleave="window.handleBookPressEnd()" 
+          onclick="window.handleBookClick(event, '${book.id}')" 
+          oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
+          class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative"
+          style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
+          <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
+            <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
+            ${coverHtml}
+            ${listBookmarkHtml}
+          </div>
       <div class="p-3 flex-1 flex flex-col bg-white">
        <h3 id="cv_title_${book.id}" class="font-extrabold text-sm text-slate-800 truncate mb-1">${disp.title}</h3>
           <p id="cv_author_${book.id}" class="text-[11px] font-bold text-slate-400 truncate">${disp.author || '未知作者'}</p>        ${ratingHtml}
@@ -5398,35 +5411,45 @@ window.renderWishlist = () => {
             
           const coverHtml = toggleBtnHtml + stackedHtml + mainCoverHtml;
             
-          let coverStarHtml = '';
-          if (window.showCoverStars && book.rating > 0) {
-            coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
-              <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
-            for(let s=1; s<=5; s++) {
-              const isFull = book.rating >= s;
-              const isHalf = book.rating === s - 0.5;
-              const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-              const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
-              coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+ let coverStarHtml = '';
+            if (window.showCoverStars && book.rating > 0) {
+              coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
+                <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
+              for(let s=1; s<=5; s++) {
+                const isFull = book.rating >= s;
+                const isHalf = book.rating === s - 0.5;
+                const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+                const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
+                coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+              }
+              coverStarHtml += `</div>`;
             }
-            coverStarHtml += `</div>`;
-          }
 
-          shelfHtml += `
-            <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
-                 style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
-                 ontouchstart="window.handleBookPressStart(event, '${book.id}')"
-                 ontouchend="window.handleBookPressEnd()" 
-                 ontouchmove="window.handleBookPressEnd()" 
-                 onmousedown="window.handleBookPressStart(event, '${book.id}')" 
-                 onmouseup="window.handleBookPressEnd()" 
-                 onmouseleave="window.handleBookPressEnd()" 
-                 onclick="window.handleBookClick(event, '${book.id}')" 
-                 oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
-              ${coverHtml}
-              ${coverStarHtml}
-              <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
-            </div>`;
+            // 🌟 新增：書櫃封面右上角嘅黃金書籤標誌
+            let bookmarkHtml = '';
+            if (book.isReread) {
+              bookmarkHtml = `
+                <div class="absolute -top-1.5 -right-1.5 z-30 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] pointer-events-none">
+                  <i data-lucide="bookmark" class="w-4 h-4 text-amber-500 fill-amber-500"></i>
+                </div>`;
+            }
+
+            shelfHtml += `
+              <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
+                   style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                   ontouchstart="window.handleBookPressStart(event, '${book.id}')"
+                   ontouchend="window.handleBookPressEnd()" 
+                   ontouchmove="window.handleBookPressEnd()" 
+                   onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+                   onmouseup="window.handleBookPressEnd()" 
+                   onmouseleave="window.handleBookPressEnd()" 
+                   onclick="window.handleBookClick(event, '${book.id}')" 
+                   oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
+                ${coverHtml}
+                ${coverStarHtml}
+                ${bookmarkHtml}
+                <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
+              </div>`;
         });
         
         shelfHtml += `</div></div></div>`;
