@@ -853,6 +853,11 @@ window.initSocialData = () => {
   }
 };
 
+// 🌟 核心快取鎖：用於記錄上一次渲染的數據快照，阻止無謂嘅閃爍
+window.lastBooksStr = "";
+window.lastTodosStr = "";
+window.lastRecordsStr = "";
+
 // 🌟 功能模塊按需讀取
 window.initReadingData = () => {
   window.initSocialData(); // 同步加載好友名單！
@@ -861,8 +866,17 @@ window.initReadingData = () => {
   
   window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if(document.getElementById('readingApp').style.display === 'flex') renderBooks();
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
+    
+    // 🔒 比對書本內容有冇真正改變
+    const currentBooksStr = JSON.stringify(window.allBooks);
+    const dataChanged = currentBooksStr !== window.lastBooksStr;
+    window.lastBooksStr = currentBooksStr;
+
+    // ⚡ 只有在數據內容真正變動時，先允許重畫書架，徹底杜絕連線狀態引致嘅閃爍！
+    if(document.getElementById('readingApp').style.display === 'flex' && dataChanged) {
+      renderBooks();
+    }
+    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態列
   });
   window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -882,7 +896,15 @@ window.initTodoData = () => {
   
   window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if(document.getElementById('todoApp').style.display === 'flex') { if(typeof window.renderTodos === 'function') window.renderTodos(); }
+    
+    // 🔒 比對 Todo 內容有冇真正改變
+    const currentTodosStr = JSON.stringify(window.allTodos);
+    const dataChanged = currentTodosStr !== window.lastTodosStr;
+    window.lastTodosStr = currentTodosStr;
+
+    if(document.getElementById('todoApp').style.display === 'flex' && dataChanged) { 
+      if(typeof window.renderTodos === 'function') window.renderTodos(); 
+    }
     window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
   });
 };
@@ -894,8 +916,16 @@ window.initGymData = () => {
   
   recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
-    document.getElementById('totalPoints').textContent = getTotalPoints().available;
-    if(currentPage !== 'admin') renderCurrentPage();
+    
+    // 🔒 比對運動記錄有冇真正改變
+    const currentRecordsStr = JSON.stringify(allRecords);
+    const dataChanged = currentRecordsStr !== window.lastRecordsStr;
+    window.lastRecordsStr = currentRecordsStr;
+
+    if (dataChanged) {
+      document.getElementById('totalPoints').textContent = getTotalPoints().available;
+      if(currentPage !== 'admin') renderCurrentPage();
+    }
     window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
   });
   
@@ -916,6 +946,10 @@ window.clearAllListeners = () => {
   if(window.friendsUnsubscribe) { window.friendsUnsubscribe(); window.friendsUnsubscribe = null; }
   if(window.reqsUnsubscribe) { window.reqsUnsubscribe(); window.reqsUnsubscribe = null; }
   if(window.chalUnsubscribe) { window.chalUnsubscribe(); window.chalUnsubscribe = null; }
+  // 清空快取鎖，確保下次切換 App 重新進入時能正常抓取第一次數據
+  window.lastBooksStr = "";
+  window.lastTodosStr = "";
+  window.lastRecordsStr = "";
 };
 
 // ✅ 升級版：進入指定的應用模塊（修復雙重繪製閃爍問題）
@@ -3452,6 +3486,15 @@ const toggleBtnHtml = hasBoth ? `
           coverStarHtml += `</div>`;
         }
 
+        // 🌟 新增：書櫃封面右上角嘅黃金書籤標誌
+        let bookmarkHtml = '';
+        if (book.isReread) {
+          bookmarkHtml = `
+            <div class="absolute -top-0.5 -right-0.5 z-30 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] pointer-events-none">
+              <i data-lucide="bookmark" class="w-4 h-4 text-amber-500 fill-amber-500"></i>
+            </div>`;
+        }
+
         shelfHtml += `
           <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
                style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
@@ -3465,6 +3508,7 @@ const toggleBtnHtml = hasBoth ? `
                oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
             ${coverHtml}
             ${coverStarHtml}
+            ${bookmarkHtml}
             <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
           </div>`;
       });
@@ -3473,12 +3517,7 @@ const toggleBtnHtml = hasBoth ? `
       return shelfHtml;
     };
 
-    // 🌟 攔截：如果開啟咗「值得再讀」模式，直接畫一個精選櫃然後結束
-    if (window.isRereadMode) {
-      grid.innerHTML = renderWoodenShelf(filtered, '⭐ 值得再讀精選', 'bg-amber-500');
-      lucide.createIcons();
-      return;
-    }
+
 
     html += renderWoodenShelf(readingBooks, '正在閱讀', 'bg-orange-500 animate-pulse');
     
@@ -3867,26 +3906,34 @@ let mainCoverExtraClass = '';
     ratingHtml += `</div>`;
   }
 
-  const categoryTagHtml = book.category 
-    ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` 
-    : '';
+  const categoryTagHtml = book.category ? `<div class="mt-1.5"><span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100 truncate max-w-full"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${book.category}</span></div>` : '';
 
-  return `
-    <div 
-      ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
-      ontouchend="window.handleBookPressEnd()" 
-      ontouchmove="window.handleBookPressEnd()" 
-      onmousedown="window.handleBookPressStart(event, '${book.id}')" 
-      onmouseup="window.handleBookPressEnd()" 
-      onmouseleave="window.handleBookPressEnd()" 
-      onclick="window.handleBookClick(event, '${book.id}')" 
-      oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
-      class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative"
-      style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
-      <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
-        <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
-        ${coverHtml}
-      </div>
+      // 🌟 新增：列表模式封面右上角嘅黃金書籤標誌
+      let listBookmarkHtml = '';
+      if (book.isReread) {
+        listBookmarkHtml = `
+          <div class="absolute top-2 right-2 z-20 drop-shadow-sm pointer-events-none">
+            <i data-lucide="bookmark" class="w-5 h-5 text-amber-500 fill-amber-500"></i>
+          </div>`;
+      }
+
+      return `
+        <div 
+          ontouchstart="window.handleBookPressStart(event, '${book.id}')" 
+          ontouchend="window.handleBookPressEnd()" 
+          ontouchmove="window.handleBookPressEnd()" 
+          onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+          onmouseup="window.handleBookPressEnd()" 
+          onmouseleave="window.handleBookPressEnd()" 
+          onclick="window.handleBookClick(event, '${book.id}')" 
+          oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;"
+          class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-slate-100 flex flex-col relative"
+          style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;">
+          <div class="bg-gradient-to-b from-slate-50 to-slate-100 pt-5 pb-3 flex justify-center items-end relative min-h-[150px]">
+            <div class="absolute bottom-0 left-0 w-full h-1.5 bg-slate-200/60 border-t border-slate-200"></div>
+            ${coverHtml}
+            ${listBookmarkHtml}
+          </div>
       <div class="p-3 flex-1 flex flex-col bg-white">
        <h3 id="cv_title_${book.id}" class="font-extrabold text-sm text-slate-800 truncate mb-1">${disp.title}</h3>
           <p id="cv_author_${book.id}" class="text-[11px] font-bold text-slate-400 truncate">${disp.author || '未知作者'}</p>        ${ratingHtml}
@@ -4555,7 +4602,7 @@ let reviewHtml = '';
     document.getElementById(`viewTab_sub_${bId}`).className = ver === 'sub' ? 'flex-1 py-2 text-xs font-bold rounded-lg bg-white text-orange-500 shadow-sm transition-all' : 'flex-1 py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-slate-600 transition-all';
   };
 
-  const renderVerContent = (vData, verKey) => {
+const renderVerContent = (vData, verKey) => {
     if(!vData || !vData.title) return '';
     const isCjk = /[\u4e00-\u9fa5]/.test(vData.title);
     const searchTerm = isCjk ? vData.title.substring(0, 15) : vData.title.substring(0, 30);
@@ -4564,19 +4611,62 @@ let reviewHtml = '';
     const cHtml = vData.cover ? `<img src="${vData.cover}" class="w-24 flex-shrink-0 self-start aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">` : `<div class="w-24 flex-shrink-0 self-start aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-3xl shadow-sm">📗</div>`;
     const dHtml = vData.desc ? `<div class="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-100"><h4 class="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1"><i data-lucide="info" class="w-4 h-4"></i>官方簡介</h4><p id="bookDescText_${book.id}_${verKey}" class="text-sm text-slate-600 whitespace-pre-wrap font-medium line-clamp-5 transition-all" style="word-break: break-word;">${vData.desc}</p>${vData.desc.length > 120 ? `<button onclick="toggleDescription('${book.id}_${verKey}', this)" class="mt-2 w-full flex items-center justify-center gap-1 text-xs font-bold text-sky-500 bg-sky-50 hover:bg-sky-100 py-1.5 rounded-lg transition-colors"><span>展開閱讀</span> <i data-lucide="chevron-down" class="w-3 h-3"></i></button>` : ''}</div>` : '';
 
-return `
+    const isHearted = !!book.isHearted;
+    const isDownloaded = !!book.isDownloaded;
+    const isReread = !!book.isReread; 
+
+    // 🌟 核心判斷：是否已讀完或閱讀中
+    const isReadStatus = (book.status === 'finished' || book.status === 'reading');
+
+    // 🌟 1. 決定心心掣要唔要顯示 (統一轉為 w-8 h-8 完美圓形)
+    let heartBtnHtml = '';
+    if (!isReadStatus) {
+      heartBtnHtml = `
+        <button onclick="event.stopPropagation(); window.toggleMenuHeart('${book.id}', ${isHearted})" class="w-8 h-8 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition-all active:scale-90" title="最愛">
+          <i data-lucide="heart" class="w-4 h-4 transition-colors ${isHearted ? 'text-pink-500 fill-pink-100' : 'text-slate-400'}"></i>
+        </button>`;
+    }
+
+    // 🌟 2. 決定第二個掣顯示「值得再讀」定「已下載」
+    let secondBtnHtml = '';
+    if (isReadStatus) {
+      secondBtnHtml = `
+        <button onclick="event.stopPropagation(); window.toggleMenuReread('${book.id}', ${isReread})" class="w-8 h-8 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition-all active:scale-90" title="值得再讀">
+          <i data-lucide="bookmark" class="w-4 h-4 transition-colors ${isReread ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}"></i>
+        </button>`;
+    } else {
+      secondBtnHtml = `
+        <button onclick="event.stopPropagation(); window.toggleMenuDownloaded('${book.id}', ${isDownloaded})" class="w-8 h-8 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition-all active:scale-90" title="已下載">
+          <i data-lucide="check-circle-2" class="w-4 h-4 transition-colors ${isDownloaded ? 'text-blue-500 fill-blue-100' : 'text-slate-400'}"></i>
+        </button>`;
+    }
+
+    return `
       <div id="viewVerBlock_${book.id}_${verKey}" class="ver-block_${book.id} ${verKey === defaultVer ? 'block' : 'hidden'}">
-        <div class="absolute top-3 right-11 z-50">
-          <button onblur="setTimeout(() => { const m = document.getElementById('zMenu_${book.id}_${verKey}'); if(m) m.classList.add('hidden'); }, 200)" onclick="document.getElementById('zMenu_${book.id}_${verKey}').classList.toggle('hidden');" class="text-indigo-500 bg-indigo-50 hover:bg-indigo-100 rounded-full w-7 h-7 flex items-center justify-center transition-all font-black text-xs shadow-sm border border-indigo-100 active:scale-90">Z</button>
-          <div id="zMenu_${book.id}_${verKey}" class="hidden absolute right-0 mt-2 shadow-lg bg-white rounded-xl w-36 text-sm font-bold border border-slate-100 p-1.5 z-[100] flex flex-col gap-1">
-            <a onclick="window.open('${zUrl}', '_blank');" class="cursor-pointer text-indigo-600 hover:bg-indigo-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i> 打開連結</a>
-            <a onclick="window.copyZLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> 複製連結</a>
+        
+        <div class="absolute top-3 right-12 z-50 flex items-center gap-1.5">
+          
+${heartBtnHtml}
+          ${secondBtnHtml}
+
+          <div class="w-px h-5 bg-slate-200 mx-1"></div> <div class="relative ml-1">
+<button onblur="setTimeout(() => { const m = document.getElementById('zMenu_${book.id}_${verKey}'); if(m) m.classList.add('hidden'); }, 200)" onclick="document.getElementById('zMenu_${book.id}_${verKey}').classList.toggle('hidden');" class="w-8 h-8 flex items-center justify-center text-sky-500 bg-white hover:bg-sky-50 border border-slate-200 rounded-full transition-all shadow-sm active:scale-90">
+              <i data-lucide="download" class="w-4 h-4"></i>
+            </button>
+            <div id="zMenu_${book.id}_${verKey}" class="hidden absolute right-0 mt-2 shadow-xl bg-white rounded-xl w-44 text-sm font-bold border border-slate-100 p-1.5 z-[100] flex flex-col gap-1 text-left">
+              <a onclick="window.open('${zUrl}', '_blank');" class="cursor-pointer text-indigo-600 hover:bg-indigo-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="external-link" class="w-4 h-4"></i> Z-lib 打開</a>
+              <a onclick="window.copyZLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> 複製 Z-lib</a>
+              <div class="h-px bg-slate-100 my-1 mx-2"></div>
+              <a onclick="window.open('https://annas-archive.gl/search?q=${encodeURIComponent(safeTitle)}', '_blank');" class="cursor-pointer text-amber-600 hover:bg-amber-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="search" class="w-4 h-4"></i> Anna's Archive</a>   
+              <a onclick="window.copyAnnasLink('${safeTitle}');" class="cursor-pointer text-slate-600 hover:bg-slate-50 rounded-lg py-2 px-3 flex items-center gap-2 transition-colors"><i data-lucide="copy" class="w-4 h-4"></i> 複製 Anna's</a>
+            </div>
           </div>
         </div>
+
         <div class="flex gap-4 mb-4 bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
           ${cHtml}
-          <div class="flex-1 flex flex-col min-w-0">
-            <h3 class="font-extrabold text-lg text-slate-800 leading-tight pr-4">${vData.title}</h3>
+          <div class="flex-1 flex flex-col min-w-0 pt-1">
+            <h3 class="font-extrabold text-lg text-slate-800 leading-tight pr-1">${vData.title}</h3>
             <p class="text-sm font-semibold text-slate-500 mt-1">${vData.author || '未知作者'}</p>
             <div class="mb-1">${categoryBadge}</div>
             <div class="mt-auto pt-2">${interactiveStatusHtml}${dateDisplay}</div>
@@ -4589,16 +4679,17 @@ return `
 let verSwitchHtml = '';
   if (hasBoth) {
     verSwitchHtml = `
-      <div class="flex bg-slate-100/80 p-1 rounded-xl mb-3 shadow-inner">
+      <div class="flex bg-slate-100/80 p-1 rounded-xl mb-3 shadow-inner mt-2">
         <button id="viewTab_main_${book.id}" onclick="window.switchViewVersion('${book.id}', 'main')" class="flex-1 py-2 text-xs font-bold rounded-lg ${defaultVer === 'main' ? 'bg-white text-orange-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'} transition-all">📖 主要版本</button>
         <button id="viewTab_sub_${book.id}" onclick="window.switchViewVersion('${book.id}', 'sub')" class="flex-1 py-2 text-xs font-bold rounded-lg ${defaultVer === 'sub' ? 'bg-white text-orange-500 shadow-sm' : 'text-slate-400 hover:text-slate-600'} transition-all">📚 其他版本</button>
       </div>`;
   }
 
   let html = `
-    <div class="modal-box max-w-md text-left bg-slate-50 relative pt-12" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
-      <button onclick="closeModal()" class="absolute top-3 right-3 text-slate-400 hover:text-slate-600 bg-slate-200/50 hover:bg-slate-200 rounded-full p-1.5 transition-colors z-50"><i data-lucide="x" class="w-4 h-4"></i></button>
-      ${paginationHtml}
+    <div class="modal-box max-w-md text-left bg-slate-50 relative pt-14" onclick="event.stopPropagation()" style="max-height:85vh; overflow-y:auto;">
+      
+      <button onclick="closeModal()" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 bg-slate-200/60 hover:bg-slate-300 rounded-full transition-colors z-50"><i data-lucide="x" class="w-4 h-4"></i></button>
+            ${paginationHtml}
       ${verSwitchHtml}
       ${renderVerContent(vb.main, 'main')}
       ${renderVerContent(vb.sub, 'sub')}
@@ -5359,7 +5450,7 @@ window.renderWishlist = () => {
  // 🌟 核心：根據設定選擇「書櫃模式」定「列表模式」
     if (window.wishlistDisplayMode === 'shelf') {
       
-      // 🌟 定義有興趣版面專用嘅木書架引擎 (加入心心及下載按鈕)
+// 🌟 定義有興趣版面專用嘅木書架引擎 (加入心心及下載標記)
       window.renderWishlistShelf = (books, title, badgeColor) => {
         if (books.length === 0) return '';
         let shelfHtml = `
@@ -5412,6 +5503,19 @@ window.renderWishlist = () => {
             coverStarHtml += `</div>`;
           }
 
+          // 🌟 有興趣書櫃：只顯示右上角狀態小標記 (心心/下載)
+          let wishlistMarksHtml = '';
+          if (book.isHearted || book.isDownloaded) {
+            wishlistMarksHtml = `<div class="absolute -top-1.5 -right-1.5 z-30 flex flex-col gap-0.5 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] pointer-events-none">`;
+            if (book.isHearted) {
+              wishlistMarksHtml += `<i data-lucide="heart" class="w-4 h-4 text-pink-500 fill-pink-100"></i>`;
+            }
+            if (book.isDownloaded) {
+              wishlistMarksHtml += `<i data-lucide="check-circle-2" class="w-4 h-4 text-blue-400 fill-blue-100 bg-white rounded-full"></i>`;
+            }
+            wishlistMarksHtml += `</div>`;
+          }
+
           shelfHtml += `
             <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
                  style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
@@ -5425,6 +5529,7 @@ window.renderWishlist = () => {
                  oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
               ${coverHtml}
               ${coverStarHtml}
+              ${wishlistMarksHtml}
               <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
             </div>`;
         });
@@ -5879,28 +5984,27 @@ window.handleBookClick = (e, bookId) => {
 };
 
 // 🌟 新增：長按選單專用的即時刷新切換器
+// 🌟 修改：選單專用的切換器 (點擊後自動關閉選單)
 window.toggleMenuHeart = async (bookId, currentVal) => {
   if (window.toggleWishlistHeart) {
     await window.toggleWishlistHeart(bookId, currentVal);
-    window.showBookMenu(null, bookId); // ⚡ 即時重新渲染選單，圖標馬上變色
+    closeModal(); // ⚡ 點擊後立即關閉選單
   }
 };
 
 window.toggleMenuDownloaded = async (bookId, currentVal) => {
   if (window.toggleWishlistDownloaded) {
     await window.toggleWishlistDownloaded(bookId, currentVal);
-    window.showBookMenu(null, bookId); // ⚡ 即時重新渲染選單，圖標馬上變色
+    closeModal(); // ⚡ 點擊後立即關閉選單
   }
 };
 
-// 🌟 新增：選單專用「值得再讀」狀態切換
 window.toggleMenuReread = async (bookId, currentVal) => {
   const newVal = !currentVal;
   const book = window.allBooks.find(b => b.id === bookId);
   if (book) book.isReread = newVal;
   
-  // ⚡ 即時刷新長按選單，保持選單開啟兼立刻變色
-  window.showBookMenu(null, bookId);
+  closeModal(); // ⚡ 點擊後立即關閉選單
   
   // 🔄 同步刷新背景所有可能受到影響嘅版面數據
   if (window.currentReadPage === 'shelf') renderBooks();
@@ -5908,7 +6012,7 @@ window.toggleMenuReread = async (bookId, currentVal) => {
   if (window.currentReadPage === 'reread') window.renderRereadPage();
 
   // ☁️ 同步備份上雲端 Firebase
-  if (currentUser) {
+  if (typeof currentUser !== 'undefined' && currentUser) {
     db.collection("users").doc(currentUser.uid).collection("books").doc(bookId).set({
       isReread: newVal
     }, { merge: true }).catch(e => console.error(e));
@@ -6308,7 +6412,28 @@ window.copyZLink = (title) => {
     showToast('🔗 已複製 Z-Lib 搜尋連結', 'success');
   }
 };
-    
+   
+// 🌟 新增：複製 Anna's Archive 連結
+window.copyAnnasLink = (title) => {
+  const url = `https://annas-archive.gl/search?q=${encodeURIComponent(title)}`;
+  
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('🔗 已複製 Anna\'s Archive 連結', 'success');
+      if (navigator.vibrate) navigator.vibrate(50);
+    });
+  } else {
+    // 備用方案
+    const el = document.createElement('textarea');
+    el.value = url;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('🔗 已複製 Anna\'s Archive 連結', 'success');
+  }
+};
+
 // ========== 👥 書友分頁與 Inbox 渲染 ==========
 window.renderReadFriends = () => {
   const container = document.getElementById('read-page-friends');
