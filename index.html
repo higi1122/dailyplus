@@ -5372,7 +5372,7 @@ window.renderWishlist = () => {
  // 🌟 核心：根據設定選擇「書櫃模式」定「列表模式」
     if (window.wishlistDisplayMode === 'shelf') {
       
-      // 🌟 定義有興趣版面專用嘅木書架引擎 (加入心心及下載按鈕)
+// 🌟 定義有興趣版面專用嘅木書架引擎 (加入心心及下載標記)
       window.renderWishlistShelf = (books, title, badgeColor) => {
         if (books.length === 0) return '';
         let shelfHtml = `
@@ -5411,45 +5411,49 @@ window.renderWishlist = () => {
             
           const coverHtml = toggleBtnHtml + stackedHtml + mainCoverHtml;
             
- let coverStarHtml = '';
-            if (window.showCoverStars && book.rating > 0) {
-              coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
-                <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
-              for(let s=1; s<=5; s++) {
-                const isFull = book.rating >= s;
-                const isHalf = book.rating === s - 0.5;
-                const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
-                const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
-                coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
-              }
-              coverStarHtml += `</div>`;
+          let coverStarHtml = '';
+          if (window.showCoverStars && book.rating > 0) {
+            coverStarHtml = `<div class="absolute -top-3.5 left-0 w-full flex justify-center gap-[1px] pointer-events-none z-20 drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
+              <svg style="width:0;height:0;position:absolute;"><linearGradient id="half_grad_${book.id}_cover" x1="0" x2="1" y1="0" y2="0"><stop offset="50%" stop-color="#f59e0b" /><stop offset="50%" stop-color="#e2e8f0" /></linearGradient></svg>`;  
+            for(let s=1; s<=5; s++) {
+              const isFull = book.rating >= s;
+              const isHalf = book.rating === s - 0.5;
+              const colorClass = (isFull || isHalf) ? 'text-warm3' : 'text-slate-200';
+              const fillAttr = isHalf ? `url(#half_grad_${book.id}_cover)` : 'currentColor';
+              coverStarHtml += `<svg class="w-2.5 h-2.5 ${colorClass}" fill="${fillAttr}" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
             }
+            coverStarHtml += `</div>`;
+          }
 
-            // 🌟 新增：書櫃封面右上角嘅黃金書籤標誌
-            let bookmarkHtml = '';
-            if (book.isReread) {
-              bookmarkHtml = `
-                <div class="absolute -top-1.5 -right-1.5 z-30 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] pointer-events-none">
-                  <i data-lucide="bookmark" class="w-4 h-4 text-amber-500 fill-amber-500"></i>
-                </div>`;
+          // 🌟 有興趣書櫃：只顯示右上角狀態小標記 (心心/下載)
+          let wishlistMarksHtml = '';
+          if (book.isHearted || book.isDownloaded) {
+            wishlistMarksHtml = `<div class="absolute -top-1.5 -right-1.5 z-30 flex flex-col gap-0.5 drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] pointer-events-none">`;
+            if (book.isHearted) {
+              wishlistMarksHtml += `<i data-lucide="heart" class="w-4 h-4 text-pink-500 fill-pink-100"></i>`;
             }
+            if (book.isDownloaded) {
+              wishlistMarksHtml += `<i data-lucide="check-circle-2" class="w-4 h-4 text-blue-400 fill-blue-100 bg-white rounded-full"></i>`;
+            }
+            wishlistMarksHtml += `</div>`;
+          }
 
-            shelfHtml += `
-              <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
-                   style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
-                   ontouchstart="window.handleBookPressStart(event, '${book.id}')"
-                   ontouchend="window.handleBookPressEnd()" 
-                   ontouchmove="window.handleBookPressEnd()" 
-                   onmousedown="window.handleBookPressStart(event, '${book.id}')" 
-                   onmouseup="window.handleBookPressEnd()" 
-                   onmouseleave="window.handleBookPressEnd()" 
-                   onclick="window.handleBookClick(event, '${book.id}')" 
-                   oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
-                ${coverHtml}
-                ${coverStarHtml}
-                ${bookmarkHtml}
-                <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
-              </div>`;
+          shelfHtml += `
+            <div class="relative cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 group"
+                 style="-webkit-touch-callout: none; -webkit-user-select: none; user-select: none;"
+                 ontouchstart="window.handleBookPressStart(event, '${book.id}')"
+                 ontouchend="window.handleBookPressEnd()" 
+                 ontouchmove="window.handleBookPressEnd()" 
+                 onmousedown="window.handleBookPressStart(event, '${book.id}')" 
+                 onmouseup="window.handleBookPressEnd()" 
+                 onmouseleave="window.handleBookPressEnd()" 
+                 onclick="window.handleBookClick(event, '${book.id}')" 
+                 oncontextmenu="window.showBookMenu(event, '${book.id}'); return false;">
+              ${coverHtml}
+              ${coverStarHtml}
+              ${wishlistMarksHtml}
+              <div class="absolute -bottom-[2px] left-1/2 -translate-x-1/2 w-[115%] h-[4px] bg-[#a88965] rounded shadow-[0_2px_4px_rgba(0,0,0,0.2)] -z-10 group-hover:bg-[#c4a47d] transition-colors"></div>
+            </div>`;
         });
         
         shelfHtml += `</div></div></div>`;
