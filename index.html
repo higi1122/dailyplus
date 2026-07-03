@@ -4576,7 +4576,7 @@ let reviewHtml = '';
     const safeTitle = vData.title.replace(/'/g, "\\'");
     const cHtml = vData.cover ? `<img src="${vData.cover}" class="w-24 flex-shrink-0 self-start aspect-[2/3] object-cover rounded-lg shadow-sm border border-slate-200">` : `<div class="w-24 flex-shrink-0 self-start aspect-[2/3] bg-slate-200 rounded-lg flex items-center justify-center text-3xl shadow-sm">📗</div>`;
     const dHtml = vData.desc ? `<div class="bg-white rounded-xl p-4 mb-4 shadow-sm border border-slate-100"><h4 class="text-xs font-bold text-slate-400 mb-2 flex items-center gap-1"><i data-lucide="info" class="w-4 h-4"></i>官方簡介</h4><p id="bookDescText_${book.id}_${verKey}" class="text-sm text-slate-600 whitespace-pre-wrap font-medium line-clamp-5 transition-all" style="word-break: break-word;">${vData.desc}</p>${vData.desc.length > 120 ? `<button onclick="toggleDescription('${book.id}_${verKey}', this)" class="mt-2 w-full flex items-center justify-center gap-1 text-xs font-bold text-sky-500 bg-sky-50 hover:bg-sky-100 py-1.5 rounded-lg transition-colors"><span>展開閱讀</span> <i data-lucide="chevron-down" class="w-3 h-3"></i></button>` : ''}</div>` : '';
-
+ 
 return `
       <div id="viewVerBlock_${book.id}_${verKey}" class="ver-block_${book.id} ${verKey === defaultVer ? 'block' : 'hidden'}">
         <div class="absolute top-3 right-11 z-50">
