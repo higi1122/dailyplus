@@ -5158,6 +5158,23 @@ window.switchReadPage = (page) => {
   currentReadPage = page;
   const pages = ['shelf', 'calendar', 'wishlist', 'settings', 'friends'];
   
+// 🌟 動態切換背景色
+  if (scrollContainer) {
+    // 1. 先清除所有可能嘅背景色
+    scrollContainer.classList.remove('bg-sky1', 'bg-slate-200', 'bg-amber-50', 'bg-pink-50');
+    
+    // 2. 根據目前頁面或者模式補返正確嘅背景色
+    if (page === 'wishlist') {
+      scrollContainer.classList.add('bg-pink-50'); // 🌸 有興趣版面變淺粉紅
+    } else if (page === 'shelf') {
+      if (window.isArchiveMode) scrollContainer.classList.add('bg-slate-200');
+      else if (window.isRereadMode) scrollContainer.classList.add('bg-amber-50');
+      else scrollContainer.classList.add('bg-sky1');
+    } else {
+      scrollContainer.classList.add('bg-sky1'); // 其他頁面預設天空藍
+    }
+  }
+
   pages.forEach(p => {
     document.getElementById('read-page-'+p).classList.add('hidden');
     document.getElementById('read-page-'+p).classList.remove('block');
