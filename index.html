@@ -853,6 +853,11 @@ window.initSocialData = () => {
   }
 };
 
+// 🌟 核心快取鎖：用於記錄上一次渲染的數據快照，阻止無謂嘅閃爍
+window.lastBooksStr = "";
+window.lastTodosStr = "";
+window.lastRecordsStr = "";
+
 // 🌟 功能模塊按需讀取
 window.initReadingData = () => {
   window.initSocialData(); // 同步加載好友名單！
@@ -861,8 +866,17 @@ window.initReadingData = () => {
   
   window.booksUnsubscribe = db.collection("users").doc(user.uid).collection("books").orderBy("timestamp", "desc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allBooks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if(document.getElementById('readingApp').style.display === 'flex') renderBooks();
-    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
+    
+    // 🔒 比對書本內容有冇真正改變
+    const currentBooksStr = JSON.stringify(window.allBooks);
+    const dataChanged = currentBooksStr !== window.lastBooksStr;
+    window.lastBooksStr = currentBooksStr;
+
+    // ⚡ 只有在數據內容真正變動時，先允許重畫書架，徹底杜絕連線狀態引致嘅閃爍！
+    if(document.getElementById('readingApp').style.display === 'flex' && dataChanged) {
+      renderBooks();
+    }
+    window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態列
   });
   window.bookSharesUnsubscribe = db.collection("users").doc(user.uid).collection("book_shares").orderBy("timestamp", "desc").onSnapshot(snap => {
     window.myBookShares = snap.docs.map(d => ({id: d.id, ...d.data()}));
@@ -882,7 +896,15 @@ window.initTodoData = () => {
   
   window.todosUnsubscribe = db.collection("users").doc(user.uid).collection("todos").orderBy("timestamp", "asc").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     window.allTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    if(document.getElementById('todoApp').style.display === 'flex') { if(typeof window.renderTodos === 'function') window.renderTodos(); }
+    
+    // 🔒 比對 Todo 內容有冇真正改變
+    const currentTodosStr = JSON.stringify(window.allTodos);
+    const dataChanged = currentTodosStr !== window.lastTodosStr;
+    window.lastTodosStr = currentTodosStr;
+
+    if(document.getElementById('todoApp').style.display === 'flex' && dataChanged) { 
+      if(typeof window.renderTodos === 'function') window.renderTodos(); 
+    }
     window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
   });
 };
@@ -894,8 +916,16 @@ window.initGymData = () => {
   
   recordsUnsubscribe = db.collection("users").doc(user.uid).collection("records").onSnapshot({ includeMetadataChanges: true }, snapshot => {
     allRecords = snapshot.docs.map(doc => ({ ...doc.data(), __backendId: doc.id }));
-    document.getElementById('totalPoints').textContent = getTotalPoints().available;
-    if(currentPage !== 'admin') renderCurrentPage();
+    
+    // 🔒 比對運動記錄有冇真正改變
+    const currentRecordsStr = JSON.stringify(allRecords);
+    const dataChanged = currentRecordsStr !== window.lastRecordsStr;
+    window.lastRecordsStr = currentRecordsStr;
+
+    if (dataChanged) {
+      document.getElementById('totalPoints').textContent = getTotalPoints().available;
+      if(currentPage !== 'admin') renderCurrentPage();
+    }
     window.updateBottomSync(snapshot.metadata.fromCache); // 🌟 更新底部狀態
   });
   
@@ -916,6 +946,10 @@ window.clearAllListeners = () => {
   if(window.friendsUnsubscribe) { window.friendsUnsubscribe(); window.friendsUnsubscribe = null; }
   if(window.reqsUnsubscribe) { window.reqsUnsubscribe(); window.reqsUnsubscribe = null; }
   if(window.chalUnsubscribe) { window.chalUnsubscribe(); window.chalUnsubscribe = null; }
+  // 清空快取鎖，確保下次切換 App 重新進入時能正常抓取第一次數據
+  window.lastBooksStr = "";
+  window.lastTodosStr = "";
+  window.lastRecordsStr = "";
 };
 
 // ✅ 升級版：進入指定的應用模塊（修復雙重繪製閃爍問題）
