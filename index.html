@@ -1299,7 +1299,17 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
       tagHtml += `<span class="text-[10px] font-bold bg-slate-200 text-slate-600 px-1 py-0.5 rounded-full flex-shrink-0">+${hiddenCount}</span>`;
     }
 
-calHtml += `<button onclick="selectDate('${dateStr}')" oncontextmenu="return false;" class="rounded-xl p-1 h-20 flex flex-col items-start justify-start transition-all overflow-hidden ${isSelected?'bg-[#70a7ff] text-white shadow-md':isToday?'bg-sky2 ring-2 ring-primary':'bg-white hover:bg-[#f2faff]'} ${hasFW?'ring-1 ring-sky3':''} ${clipboardMode?'ring-1 ring-green-400 cursor-copy':''}">
+calHtml += `<button 
+      ontouchstart="window.handleDayPressStart(event, '${dateStr}')" 
+      ontouchend="window.handleDayPressEnd()" 
+      ontouchmove="window.handleDayPressEnd()" 
+      onmousedown="window.handleDayPressStart(event, '${dateStr}')" 
+      onmouseup="window.handleDayPressEnd()" 
+      onmouseleave="window.handleDayPressEnd()" 
+      onclick="window.handleDayClick(event, '${dateStr}')" 
+      oncontextmenu="window.showDayMenu(event, '${dateStr}'); return false;"
+      class="rounded-xl p-1 h-20 flex flex-col items-start justify-start transition-all overflow-hidden ${isSelected?'bg-[#70a7ff] text-white shadow-md':isToday?'bg-sky2 ring-2 ring-primary':'bg-white hover:bg-[#f2faff]'} ${hasFW?'ring-1 ring-sky3':''} ${clipboardMode?'ring-1 ring-green-400 cursor-copy':''}"
+      style="-webkit-touch-callout: none; user-select: none;">
       <div class="flex justify-between items-start w-full">
         <span class="text-xs font-bold ${isSelected?'text-white':isToday?'text-primary':'text-slate-700'}">${d}</span>
         <div class="flex gap-0.5">
@@ -1511,6 +1521,95 @@ if(w.category==='functional') {
 }
 
 // ========== CLIPBOARD FUNCTIONS ==========
+
+// 🌟 1. 日曆格子長按專用邏輯 (全日操作)
+window.dayPressTimer = null;
+window.isDayLongPress = false;
+
+window.handleDayPressStart = (e, dateStr) => {
+  window.isDayLongPress = false;
+  if (window.dayPressTimer) clearTimeout(window.dayPressTimer);
+  window.dayPressTimer = setTimeout(() => {
+    window.isDayLongPress = true;
+    if (navigator.vibrate) navigator.vibrate(50); // 手機微震動
+    window.showDayMenu(e, dateStr);
+  }, 600); // 600毫秒觸發長按
+};
+
+window.handleDayPressEnd = () => {
+  if (window.dayPressTimer) {
+    clearTimeout(window.dayPressTimer);
+    window.dayPressTimer = null;
+  }
+};
+
+window.handleDayClick = (e, dateStr) => {
+  if (window.isDayLongPress) {
+    e.preventDefault();
+    e.stopPropagation();
+    return; // 如果係長按，攔截原本嘅點擊，唔好打開詳情
+  }
+  selectDate(dateStr); // 執行原本嘅點擊選取邏輯
+};
+
+window.showDayMenu = (e, dateStr) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // 檢查當日有無記錄
+  const dayRecs = allRecords.filter(r => r.record_type === 'workout' && r.date === dateStr);
+  if(dayRecs.length === 0) {
+      showToast('呢日冇記錄可以操作', 'info');
+      return;
+  }
+
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <h3 class="font-extrabold text-lg text-primary mb-4 text-center">📅 ${dateStr}</h3>
+    <div class="space-y-2">
+      <button onclick="copyDayWorkouts('${dateStr}')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="copy-check" class="w-5 h-5"></i> 複製全日記錄 (${dayRecs.length} 筆)
+      </button>
+      <button onclick="window.promptDeleteDayWorkouts('${dateStr}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="trash-2" class="w-5 h-5"></i> 刪除全日記錄
+      </button>
+      <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+    </div>
+  </div>`);
+  lucide.createIcons();
+};
+
+window.promptDeleteDayWorkouts = (dateStr) => {
+  const dayRecs = allRecords.filter(r => r.record_type === 'workout' && r.date === dateStr);
+  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+    <div class="text-4xl mb-2 text-center">🗑️</div>
+    <h3 class="font-bold text-lg mb-1 text-center">刪除全日記錄？</h3>
+    <p class="text-slate-500 text-sm mb-4 text-center">將會永久刪除 ${dateStr} 嘅 ${dayRecs.length} 筆記錄！</p>
+    <button id="confirmDayDelBtn" onclick="window.confirmDeleteDayWorkouts('${dateStr}')" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-xl transition mb-2">確認刪除全日</button>
+    <button onclick="closeModal()" class="w-full bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl hover:bg-slate-200 transition">取消</button>
+  </div>`);
+};
+
+window.confirmDeleteDayWorkouts = async (dateStr) => {
+  const btn = document.getElementById('confirmDayDelBtn');
+  if(btn) { btn.disabled = true; btn.textContent = '刪除中...'; }
+
+  const dayRecs = allRecords.filter(r => r.record_type === 'workout' && r.date === dateStr);
+  try {
+    // 批量平行刪除，速度極快
+    const promises = dayRecs.map(rec => 
+      db.collection("users").doc(currentUser.uid).collection("records").doc(rec.__backendId).delete()
+    );
+    await Promise.all(promises);
+    closeModal();
+    showToast(`已刪除 ${dayRecs.length} 筆記錄！`, 'success');
+  } catch(e) {
+    console.error(e);
+    showToast('刪除失敗，請檢查網絡', 'error');
+    if(btn) btn.disabled = false;
+  }
+};
+
+// 🌟 2. 獨立記錄長按專用邏輯 (原有代碼保留)
 let pressTimer = null;
 let isLongPress = false;
 
