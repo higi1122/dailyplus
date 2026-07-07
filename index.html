@@ -23,8 +23,7 @@ body { font-family: 'Nunito', sans-serif; }
 .tab-active { color: #3b82f6; background: #eff6ff; }
 .tab-inactive { color: #94a3b8; }
 .progress-bar { transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
-.card-enter { animation: cardIn 0.3s ease-out; }
-@keyframes cardIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+.card-enter { /* 已移除彈出動畫，保持空白即可 */ }
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 .float-anim { animation: float 3s ease-in-out infinite; }
 .seg-btn { padding: 6px 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
@@ -5424,8 +5423,8 @@ window.renderWishlist = () => {
   const countEl = document.getElementById('totalWishlistCount');
   if (countEl) countEl.textContent = rawWishlist.length;
 
-  // 更新圖示
-  const modeBtnIcon = document.querySelector('#wlModeBtn i');
+  // 🌟 更新圖示 (修復：因為 Lucide 會將 <i> 變成 <svg>，所以改用 [data-lucide] 去準確鎖定)
+  const modeBtnIcon = document.querySelector('#wlModeBtn [data-lucide]');
   if (modeBtnIcon) {
     modeBtnIcon.setAttribute('data-lucide', window.wishlistDisplayMode === 'shelf' ? 'list' : 'layout-grid');
   }
