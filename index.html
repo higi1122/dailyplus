@@ -8005,13 +8005,12 @@ window.togglePinnedBoard = () => {
   const content = document.getElementById('pinnedBoardContent');
   const icon = document.getElementById('pinnedBoardIcon');
   const preview = document.getElementById('pinnedBoardPreview');
-  const input = document.getElementById('newPinnedInput');
   
   if (content.classList.contains('hidden')) {
     content.classList.remove('hidden');
     icon.style.transform = 'rotate(180deg)';
     preview.classList.add('hidden');
-    if(input) input.focus();
+
   } else {
     content.classList.add('hidden');
     icon.style.transform = 'rotate(0deg)';
