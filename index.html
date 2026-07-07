@@ -7748,14 +7748,15 @@ window.fetchLibraryData = async (mode) => {
         html += `
           <div onclick="window.showBookDetails('${encodedData}')" class="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex gap-3 hover:shadow-md hover:border-blue-200 transition cursor-pointer group">
             ${cover ? `<img src="${cover}" class="w-16 h-24 object-cover rounded shadow-sm border border-slate-200 flex-shrink-0 group-hover:scale-105 transition-transform">` : `<div class="w-16 h-24 bg-slate-200 rounded flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-200 flex-shrink-0">無封面</div>`}
-            <div class="flex-1 min-w-0 flex flex-col justify-between">
-              <div>
-                <h4 class="font-extrabold text-sm text-slate-800 line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors">${title}</h4>
-                <p class="text-[10px] font-bold text-slate-500 truncate mt-1">${author}</p>
-                <div class="flex gap-2 mt-0.5">
-                  <span class="text-[9px] font-bold text-slate-400"><i data-lucide="calendar" class="w-2.5 h-2.5 inline align-text-top"></i> ${publishedDate}</span>
-                </div>
-              </div>
+<div class="flex-1 min-w-0 flex flex-col justify-between">
+  <div>
+    <h4 class="font-extrabold text-sm text-slate-800 line-clamp-2 leading-snug group-hover:text-blue-600 transition-colors">${title}</h4>
+    <p class="text-[10px] font-bold text-slate-500 truncate mt-1">${author}</p>
+    <div class="flex items-center gap-2 mt-1.5">
+      <span class="text-[9px] font-bold text-slate-400"><i data-lucide="calendar" class="w-2.5 h-2.5 inline align-text-top"></i> ${publishedDate}</span>
+      ${finalCategory ? `<span class="inline-flex items-center gap-0.5 text-[9px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded border border-sky-100"><i data-lucide="tag" class="w-2.5 h-2.5 flex-shrink-0"></i>${finalCategory}</span>` : ''}
+    </div>
+  </div>
               <div class="mt-2 text-right">
                 <button onclick="event.stopPropagation(); window.addRecToWishlist(event, '${encodedData}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors shadow-sm active:scale-95">
                   ❤️ 加入清單
@@ -7798,12 +7799,12 @@ window.showBookDetails = (encodedDataStr) => {
           <div class="flex flex-col justify-start">
             <h2 class="text-lg font-black text-slate-800 leading-snug mb-1">${book.title}</h2>
             <p class="text-sm font-extrabold text-pink-500 mb-3">${book.author}</p>
-            
+            ${book.category ? `<div class="mb-2"><span class="inline-flex items-center gap-0.5 text-[10px] font-bold bg-sky-50 text-sky-600 px-2 py-0.5 rounded border border-sky-100"><i data-lucide="tag" class="w-3 h-3 flex-shrink-0"></i>${book.category}</span></div>` : ''}
+
             <div class="space-y-1.5 mt-auto">
               <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="star" class="w-3.5 h-3.5 text-orange-400"></i> ${book.rating}</p>
               <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="building" class="w-3.5 h-3.5 opacity-70"></i> ${book.publisher}</p>
               <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 opacity-70"></i> ${book.publishedDate}</p>
-              <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="book-open" class="w-3.5 h-3.5 opacity-70"></i> ${book.pageCount}</p>
               <p class="text-[11px] font-bold text-slate-500 flex items-center gap-1.5"><i data-lucide="barcode" class="w-3.5 h-3.5 opacity-70"></i> ISBN: ${book.isbn}</p>
             </div>
           </div>
