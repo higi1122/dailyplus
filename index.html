@@ -1400,30 +1400,13 @@ const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 tex
             </a>`;
           }
 
-        // 判斷是否為「計劃」狀態
+// 判斷是否為「計劃」狀態
           let finalCardBg = w.status === 'planned' ? 'bg-slate-50 border-2 border-dashed border-slate-300' : cardBgClass;
           let finalTextColor = w.status === 'planned' ? 'text-slate-500' : textColorClass;
 
-        detailHtml += `<div class="w-full text-left ${finalCardBg} rounded-xl p-3 mb-2 flex items-start justify-between transition-colors ${finalTextColor}">
-            <button 
-              ontouchstart="window.handlePressStart(event, '${w.__backendId}')" 
-              ontouchend="window.handlePressEnd()" 
-              ontouchmove="window.handlePressEnd()" 
-              onmousedown="window.handlePressStart(event, '${w.__backendId}')" 
-              onmouseup="window.handlePressEnd()" 
-              onmouseleave="window.handlePressEnd()" 
-              onclick="window.handleRecordClick(event, '${w.__backendId}')" 
-              oncontextmenu="event.preventDefault();" 
-              class="flex-1 flex items-start gap-2 border-none bg-none cursor-pointer text-left select-none" 
-              style="-webkit-touch-callout: none;">              
-              
-    ${subcatDisplay ? `<div class="flex-shrink-0 mt-0.5 ${w.status==='planned'?'opacity-50':''}">${subcatDisplay}</div>` : ''}
-              <div class="flex-1">
-                <div class="font-bold text-sm flex items-center gap-1">${w.status==='planned'?'📝 ':''}${w.exercise}</div>
-                <div class="text-xs opacity-75 mt-1">${formatWorkoutDetail(w)}</div>
-              </div>
-            </button>
-            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 ml-2">
+        detailHtml += `<div class="w-full text-left ${finalCardBg} rounded-xl p-3 mb-2 block overflow-hidden transition-colors ${finalTextColor}">
+            
+            <div class="float-right flex flex-col items-end gap-1.5 ml-2 mb-1 -mt-1 relative z-10">
               <div class="flex items-center gap-1">
                 ${linkBtnHtml}
                 ${w.status === 'planned'
@@ -1436,7 +1419,29 @@ const subcatColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 tex
                 : ''
               }
             </div>
-          </div>`;
+
+            <div 
+              ontouchstart="window.handlePressStart(event, '${w.__backendId}')" 
+              ontouchend="window.handlePressEnd()" 
+              ontouchmove="window.handlePressEnd()" 
+              onmousedown="window.handlePressStart(event, '${w.__backendId}')" 
+              onmouseup="window.handlePressEnd()" 
+              onmouseleave="window.handlePressEnd()" 
+              onclick="window.handleRecordClick(event, '${w.__backendId}')" 
+              oncontextmenu="event.preventDefault();" 
+              class="block cursor-pointer text-left select-none relative z-0" 
+              style="-webkit-touch-callout: none;">              
+              
+              ${subcatDisplay ? `<div class="float-left mr-2 mt-0.5 ${w.status==='planned'?'opacity-50':''}">${subcatDisplay}</div>` : ''}
+              
+              <div class="font-bold text-sm leading-tight pt-0.5 break-words">
+                ${w.status==='planned'?'📝 ':''}${w.exercise}
+              </div>
+              <div class="text-xs opacity-75 mt-1.5 block break-words">
+                ${formatWorkoutDetail(w)}
+              </div>
+              
+            </div> </div>`;
         });
         detailHtml += '</div>';
       });
