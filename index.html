@@ -1467,17 +1467,15 @@ if(selectedDate) {
             }
 
             if (foundSc) {
-                let scColor = 'bg-indigo-200 text-indigo-800';
-                if (foundSc.includes('組合')) {
-                  const muscleColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };
-                  const muscle = foundSc.split('-')[1];
-                  scColor = muscleColors[muscle] || 'bg-fuchsia-100 text-fuchsia-700';
+                // 🌟 核心修改：如果是「組合」系列，不顯示子分類標籤，保留原本乾淨排版
+                if (!foundSc.includes('組合')) {
+                  let scColor = 'bg-indigo-200 text-indigo-800';
+                  if (foundSc.includes('瑜伽')) scColor = 'bg-violet-200 text-violet-800';
+                  else if (foundSc.includes('徒手')) scColor = 'bg-emerald-200 text-emerald-800';
+                  else if (foundSc.includes('拉伸')) scColor = 'bg-teal-200 text-teal-800';
+                  
+                  subcatDisplay = `<span class="text-xs font-semibold ${scColor} px-2 py-0.5 rounded-full shadow-sm">${foundSc}</span>`;
                 }
-                else if (foundSc.includes('瑜伽')) scColor = 'bg-violet-200 text-violet-800';
-                else if (foundSc.includes('徒手')) scColor = 'bg-emerald-200 text-emerald-800';
-                else if (foundSc.includes('拉伸')) scColor = 'bg-teal-200 text-teal-800';
-                
-                subcatDisplay = `<span class="text-xs font-semibold ${scColor} px-2 py-0.5 rounded-full shadow-sm">${foundSc}</span>`;
             }
           } else if(w.category === 'cardio') {
             cardBgClass = 'bg-orange-100 hover:bg-orange-200';
@@ -1496,30 +1494,15 @@ if(selectedDate) {
             </a>`;
           }
 
-        // 判斷是否為「計劃」狀態
+// 判斷是否為「計劃」狀態
           let finalCardBg = w.status === 'planned' ? 'bg-slate-50 border-2 border-dashed border-slate-300' : cardBgClass;
           let finalTextColor = w.status === 'planned' ? 'text-slate-500' : textColorClass;
 
-        detailHtml += `<div class="w-full text-left ${finalCardBg} rounded-xl p-3 mb-2 flex items-start justify-between transition-colors ${finalTextColor}">
-            <button 
-              ontouchstart="window.handlePressStart(event, '${w.__backendId}')" 
-              ontouchend="window.handlePressEnd()" 
-              ontouchmove="window.handlePressEnd()" 
-              onmousedown="window.handlePressStart(event, '${w.__backendId}')" 
-              onmouseup="window.handlePressEnd()" 
-              onmouseleave="window.handlePressEnd()" 
-              onclick="window.handleRecordClick(event, '${w.__backendId}')" 
-              oncontextmenu="event.preventDefault();" 
-              class="flex-1 flex items-start gap-2 border-none bg-none cursor-pointer text-left select-none" 
-              style="-webkit-touch-callout: none;">              
-              
-    ${subcatDisplay ? `<div class="flex-shrink-0 mt-0.5 ${w.status==='planned'?'opacity-50':''}">${subcatDisplay}</div>` : ''}
-              <div class="flex-1">
-                <div class="font-bold text-sm flex items-center gap-1">${w.status==='planned'?'📝 ':''}${w.exercise}</div>
-                <div class="text-xs opacity-75 mt-1">${formatWorkoutDetail(w)}</div>
-              </div>
-            </button>
-            <div class="flex flex-col items-end gap-1.5 flex-shrink-0 ml-2">
+        // 🌟 核心排版更新：使用 float 浮動排版
+        detailHtml += `<div class="w-full text-left ${finalCardBg} rounded-xl p-3 mb-2 block overflow-hidden transition-colors ${finalTextColor}">
+            
+            <!-- 🌟 1. 右上角操作區 (影片/星星/完成按鈕) 放最前，設為 float-right -->
+            <div class="float-right flex flex-col items-end gap-1.5 ml-2 mb-1 -mt-1 relative z-10">
               <div class="flex items-center gap-1">
                 ${linkBtnHtml}
                 ${w.status === 'planned'
@@ -1532,6 +1515,32 @@ if(selectedDate) {
                 : ''
               }
             </div>
+
+            <!-- 🌟 2. 點擊區塊：將 button 改為 div，解除強制換行限制 -->
+            <div 
+              ontouchstart="window.handlePressStart(event, '${w.__backendId}')" 
+              ontouchend="window.handlePressEnd()" 
+              ontouchmove="window.handlePressEnd()" 
+              onmousedown="window.handlePressStart(event, '${w.__backendId}')" 
+              onmouseup="window.handlePressEnd()" 
+              onmouseleave="window.handlePressEnd()" 
+              onclick="window.handleRecordClick(event, '${w.__backendId}')" 
+              oncontextmenu="event.preventDefault();" 
+              class="block cursor-pointer text-left select-none relative z-0" 
+              style="-webkit-touch-callout: none;">              
+              
+              <!-- 🌟 3. 左上角分類標籤，設為 float-left -->
+              ${subcatDisplay ? `<div class="float-left mr-2 mt-0.5 ${w.status==='planned'?'opacity-50':''}">${subcatDisplay}</div>` : ''}
+              
+              <!-- 🌟 4. 運動名稱與詳情：自然流動排版 -->
+              <div class="font-bold text-sm leading-tight pt-0.5 break-words">
+                ${w.status==='planned'?'📝 ':''}${w.exercise}
+              </div>
+              <div class="text-xs opacity-75 mt-1.5 block break-words">
+                ${formatWorkoutDetail(w)}
+              </div>
+              
+            </div> 
           </div>`;
         });
         detailHtml += '</div>';
