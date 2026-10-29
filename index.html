@@ -1291,7 +1291,10 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
 
           // 配對專屬顏色
           if (label.includes('組合')) {
-            colorClass = 'bg-fuchsia-100 text-fuchsia-700'; 
+            // 🌟 核心：讀取組合後面嘅部位 (例如 "腹")，並配對力量訓練嘅專屬顏色
+            const muscleColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };
+            const muscle = label.split('-')[1]; // 抽出部位
+            colorClass = muscleColors[muscle] || 'bg-fuchsia-100 text-fuchsia-700'; // 搵唔到對應部位就用粉紫
           } else if (label.includes('瑜伽')) {
             colorClass = 'bg-violet-100 text-violet-700'; 
           } else if (label.includes('徒手')) {
@@ -1465,7 +1468,11 @@ if(selectedDate) {
 
             if (foundSc) {
                 let scColor = 'bg-indigo-200 text-indigo-800';
-                if (foundSc.includes('組合')) scColor = 'bg-fuchsia-200 text-fuchsia-800';
+                if (foundSc.includes('組合')) {
+                  const muscleColors = { '胸': 'bg-red-100 text-red-700', '背': 'bg-cyan-100 text-cyan-700', '腿': 'bg-green-100 text-green-700', '肩': 'bg-yellow-100 text-yellow-700', '臂': 'bg-purple-100 text-purple-700', '腹': 'bg-stone-200 text-stone-700' };
+                  const muscle = foundSc.split('-')[1];
+                  scColor = muscleColors[muscle] || 'bg-fuchsia-100 text-fuchsia-700';
+                }
                 else if (foundSc.includes('瑜伽')) scColor = 'bg-violet-200 text-violet-800';
                 else if (foundSc.includes('徒手')) scColor = 'bg-emerald-200 text-emerald-800';
                 else if (foundSc.includes('拉伸')) scColor = 'bg-teal-200 text-teal-800';
