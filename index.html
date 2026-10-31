@@ -1319,11 +1319,9 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
             tagSet.add(uniqueKey);
             
            if (isPlanned) {
-              // 📝 計劃中：扣減 1px 左右 padding (px-[3px]) 抵消邊框，達成「內框」效果
-              allTags.push(`<span class="text-[10px] font-bold ${colorClass} border border-dashed border-current px-[3px] rounded-full whitespace-nowrap flex-shrink-0 opacity-80" style="padding-top: 1px; padding-bottom: 1px;">${label}</span>`);
+              allTags.push(`<span class="text-[9px] leading-none font-bold ${colorClass} border border-dashed border-current px-1 py-[2px] rounded-full whitespace-nowrap flex-shrink-0 opacity-80 flex items-center">${label}</span>`);
             } else {
-              // ✅ 已完成：還原最 Slim 嘅原本實色標籤 (無邊框)
-              allTags.push(`<span class="text-[10px] font-bold ${colorClass} px-1 rounded-full whitespace-nowrap flex-shrink-0" style="padding-top: 2px; padding-bottom: 2px;">${label}</span>`);
+              allTags.push(`<span class="text-[9px] leading-none font-bold ${colorClass} px-1 py-[3px] rounded-full whitespace-nowrap flex-shrink-0 flex items-center">${label}</span>`);
             }
           }
         }
@@ -1362,9 +1360,9 @@ calHtml += `<button
       oncontextmenu="window.showDayMenu(event, '${dateStr}'); return false;"
       class="rounded-xl p-1 h-20 flex flex-col items-start justify-start transition-all overflow-hidden ${isSelected?'bg-[#70a7ff] text-white shadow-md':isToday?'bg-sky2 ring-2 ring-primary':'bg-white hover:bg-[#f2faff]'} ${hasFW?'ring-1 ring-sky3':''} ${clipboardMode?'ring-1 ring-green-400 cursor-copy':''}"
       style="-webkit-touch-callout: none; user-select: none;">
-      <div class="flex justify-between items-start w-full">
-        <span class="text-xs font-bold ${isSelected?'text-white':isToday?'text-primary':'text-slate-700'}">${d}</span>
-        <div class="flex gap-0.5">
+      <div class="flex justify-between items-start w-full mb-[1px]">
+        <span class="text-[11px] leading-tight font-bold ${isSelected?'text-white':isToday?'text-primary':'text-slate-700'}">${d}</span>
+        <div class="flex gap-0.5 mt-0.5">
           ${cellHasStar ? `<i data-lucide="star" class="w-2.5 h-2.5 ${isSelected?'text-white':'text-warm3'} fill-current"></i>` : ''}
           ${cellHasHeart ? `<i data-lucide="heart" class="w-2.5 h-2.5 ${isSelected?'text-white':'text-pink-500'} fill-current"></i>` : ''}
         </div>
