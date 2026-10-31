@@ -1370,7 +1370,7 @@ calHtml += `<button
       class="rounded-xl p-1 h-20 flex flex-col items-start justify-start transition-all overflow-hidden ${isSelected?'bg-[#70a7ff] text-white shadow-md':isToday?'bg-sky2 ring-2 ring-primary':'bg-white hover:bg-[#f2faff]'} ${hasFW?'ring-1 ring-sky3':''} ${clipboardMode?'ring-1 ring-green-400 cursor-copy':''}"
       style="-webkit-touch-callout: none; user-select: none;">
       <div class="flex justify-between items-start w-full mb-[1px]">
-        <span class="text-[11px] leading-tight font-bold ${isSelected?'text-white':isToday?'text-primary':'text-slate-700'}">${d}</span>
+        <span class="text-[11px] leading-tight font-bold ${isSelected ? 'text-white' : isToday ? 'text-primary' : new Date(calYear, calMonth, d).getDay() === 0 ? 'text-red-500  px-1 rounded-md' : 'text-slate-700'}">${d}</span>
         <div class="flex gap-0.5 mt-0.5">
           ${cellHasStar ? `<i data-lucide="star" class="w-2.5 h-2.5 ${isSelected?'text-white':'text-warm3'} fill-current"></i>` : ''}
           ${cellHasHeart ? `<i data-lucide="heart" class="w-2.5 h-2.5 ${isSelected?'text-white':'text-pink-500'} fill-current"></i>` : ''}
