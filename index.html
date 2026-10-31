@@ -1680,7 +1680,10 @@ window.showDayMenu = (e, dateStr) => {
     <h3 class="font-extrabold text-lg text-primary mb-4 text-center">📅 ${dateStr}</h3>
     <div class="space-y-2">
       <button onclick="copyDayWorkouts('${dateStr}')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
-        <i data-lucide="copy-check" class="w-5 h-5"></i> 複製全日記錄 (${dayRecs.length} 筆)
+        <i data-lucide="copy" class="w-5 h-5"></i> 複製全日記錄
+      </button>
+      <button onclick="copyDayWorkoutsToToday('${dateStr}')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="calendar-check" class="w-5 h-5"></i> 複製全日記錄至今日
       </button>
       <button onclick="window.promptDeleteDayWorkouts('${dateStr}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
         <i data-lucide="trash-2" class="w-5 h-5"></i> 刪除全日記錄
@@ -1774,8 +1777,14 @@ function showWorkoutMenu(e, backendId) {
       <button onclick="copyWorkout('${backendId}')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
         <i data-lucide="copy" class="w-5 h-5"></i> 複製此記錄
       </button>
+      <button onclick="copyWorkoutToToday('${backendId}')" class="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="calendar-plus" class="w-5 h-5"></i> 複製此記錄至今日
+      </button>
       <button onclick="copyDayWorkouts('${rec.date}')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
         <i data-lucide="copy-check" class="w-5 h-5"></i> 複製全日記錄
+      </button>
+      <button onclick="copyDayWorkoutsToToday('${rec.date}')" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+        <i data-lucide="calendar-check" class="w-5 h-5"></i> 複製全日記錄至今日
       </button>
       <button onclick="deleteRecord('${backendId}')" class="w-full bg-red-50 hover:bg-red-100 text-red-500 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
         <i data-lucide="trash-2" class="w-5 h-5"></i> 刪除
@@ -1813,6 +1822,65 @@ function cancelClipboard() {
   clipboardWorkout = null;
   showToast('已取消複製', 'info');
   renderCalendar();
+}
+
+// 🌟 新增功能：一鍵複製單項記錄至今日
+async function copyWorkoutToToday(backendId) {
+  const rec = allRecords.find(r => r.__backendId === backendId);
+  if(!rec) return;
+  
+  const todayStr = toDateStr(new Date());
+  
+  const newRec = {
+    record_type: 'workout', date: todayStr, category: rec.category, exercise: rec.exercise,
+    weight: rec.weight || 0, reps: rec.reps || 0, sets: rec.sets || 1, duration: rec.duration || '', distance: rec.distance || 0, level: rec.level || 0,
+    notes: rec.notes || '', link: rec.link || '', points: rec.points || 0,
+    reward_id: '', used: false, redeemed_at: '',
+    user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
+    font_size: 0, status: rec.status || 'completed'
+  };
+
+  closeModal(); // 先閂選單保持流暢
+  
+  try {
+    await db.collection("users").doc(currentUser.uid).collection("records").add(newRec);
+    showToast('已複製記錄至今日！', 'success');
+    goToToday(); // 🌟 寫入後自動跳轉至今日畫面睇結果
+  } catch(e) {
+    console.error(e);
+    showToast('複製失敗，請檢查網絡', 'error');
+  }
+}
+
+// 🌟 新增功能：一鍵複製全日記錄至今日
+async function copyDayWorkoutsToToday(dateStr) {
+  const dayRecs = allRecords.filter(r => r.record_type === 'workout' && r.date === dateStr);
+  if(dayRecs.length === 0) return;
+  
+  const todayStr = toDateStr(new Date());
+  closeModal(); // 先閂選單保持流暢
+  
+  try {
+    // 將當日所有記錄轉化為寫入請求，使用 Promise.all 平行極速上傳
+    const promises = dayRecs.map(srcRec => {
+      const newRec = {
+        record_type: 'workout', date: todayStr, category: srcRec.category, exercise: srcRec.exercise,
+        weight: srcRec.weight || 0, reps: srcRec.reps || 0, sets: srcRec.sets || 1, duration: srcRec.duration || '', distance: srcRec.distance || 0, level: srcRec.level || 0,
+        notes: srcRec.notes || '', link: srcRec.link || '', points: srcRec.points || 0,
+        reward_id: '', used: false, redeemed_at: '',
+        user_name: currentUser ? (currentUser.displayName || currentUser.email.split('@')[0]) : '',
+        font_size: 0, status: srcRec.status || 'completed'
+      };
+      return db.collection("users").doc(currentUser.uid).collection("records").add(newRec);
+    });
+    
+    await Promise.all(promises); 
+    showToast(`已成功複製 ${dayRecs.length} 筆記錄至今日！`, 'success');
+    goToToday(); // 🌟 寫入後自動跳轉至今日畫面睇結果
+  } catch(e) {
+    console.error(e);
+    showToast('複製失敗，請檢查網絡', 'error');
+  }
 }
 
 async function pasteWorkout(dateStr) {
