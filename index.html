@@ -1658,8 +1658,15 @@ window.handleDayClick = (e, dateStr) => {
 };
 
 window.showDayMenu = (e, dateStr) => {
-  e.preventDefault();
-  e.stopPropagation();
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
+  // 🌟 核心修正：立刻清除系統長按產生嘅「文字反白選取」
+  if (window.getSelection) {
+    window.getSelection().removeAllRanges();
+  }
   
   // 檢查當日有無記錄
   const dayRecs = allRecords.filter(r => r.record_type === 'workout' && r.date === dateStr);
@@ -1668,7 +1675,8 @@ window.showDayMenu = (e, dateStr) => {
       return;
   }
 
-  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+  // 🌟 加入 select-none 防止選單彈出時文字被意外選中
+  showModal(`<div class="modal-box select-none" onclick="event.stopPropagation()">
     <h3 class="font-extrabold text-lg text-primary mb-4 text-center">📅 ${dateStr}</h3>
     <div class="space-y-2">
       <button onclick="copyDayWorkouts('${dateStr}')" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
@@ -1746,12 +1754,21 @@ window.handleRecordClick = (e, backendId) => {
 };
 
 function showWorkoutMenu(e, backendId) {
-  e.preventDefault();
-  e.stopPropagation();
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
+  // 🌟 核心修正：立刻清除系統長按產生嘅「文字反白選取」
+  if (window.getSelection) {
+    window.getSelection().removeAllRanges();
+  }
+
   const rec = allRecords.find(r => r.__backendId === backendId);
   if(!rec) return;
 
-  showModal(`<div class="modal-box" onclick="event.stopPropagation()">
+  // 🌟 喺 modal-box 加入 select-none 防止選單被反白
+  showModal(`<div class="modal-box select-none" onclick="event.stopPropagation()">
     <h3 class="font-bold text-lg text-primary mb-4 text-center">${rec.exercise}</h3>
     <div class="space-y-2">
       <button onclick="copyWorkout('${backendId}')" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
