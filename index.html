@@ -1328,6 +1328,15 @@ let calHtml = `<div class="relative flex items-center justify-center mb-3 min-h-
       });
     }
 
+    // 🌟 更新邏輯：將標籤重新排序，將所有「組合」標籤推到最前
+    allTags.sort((a, b) => {
+      const aIsCombo = a.includes('組合');
+      const bIsCombo = b.includes('組合');
+      if (aIsCombo && !bIsCombo) return -1; // 如果 a 係組合，a 優先排最前面
+      if (!aIsCombo && bIsCombo) return 1;  // 如果 b 係組合，b 優先排最前面
+      return 0; // 如果大家都係組合，或者大家都唔係組合，就保持原本加入嘅次序
+    });
+
     // Dynamically fit tags based on available space
     // Create a temporary container to measure actual width
     let tagHtml = '';
